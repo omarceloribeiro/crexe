@@ -1,0 +1,23 @@
+{
+  "archive_sha256": "ff12e03761607b48bd618271a5321fe740c0bd42f0bbf49cff7c67bd9b88cd3e",
+  "original_files_verified_unchanged": 11,
+  "sdk": "8.0.425",
+  "target": "net8.0-windows",
+  "build": {
+    "exit_code": 0,
+    "warnings": 0,
+    "errors": 0
+  },
+  "publish": {
+    "exit_code": 0,
+    "rid": "win-x64",
+    "self_contained": true,
+    "single_file": true,
+    "exe_bytes": 71609978,
+    "exe_sha256": "b6cf88e928e52dafb5398deaf5f49d3ebe4fab100c465d78de308cc85ac7c32d",
+    "pe_machine": "0x8664"
+  },
+  "gui_tested": false,
+  "smtp_tested": false,
+  "crexe_engine_used": false
+}

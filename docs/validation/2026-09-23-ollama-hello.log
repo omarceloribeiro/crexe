@@ -1,0 +1,7 @@
+Target: linux (OS=linux, ARCH=x86_64)
+Workspace: /work/ollama-hello-cache/8b3789b43295a14ce5fbb8ba72b4bbbe2cbc710577737d66c3d5f01cb1c03b71
+LLM: provider=openai-compatible, baseUrl=http://host.docker.internal:11434/v1, model=crexe-qa-gemma4-12b
+Error: LLM did not return valid JSON. First chars: {"files":[{"path":"src/main.c","content":"#include <stdio.h>\n\nint main() {\n    printf(\"CREXE_OLLAMA_OK\\n\");\n    return 0;\
+
+Caused by:
+    EOF while parsing a string at line 1 column 129

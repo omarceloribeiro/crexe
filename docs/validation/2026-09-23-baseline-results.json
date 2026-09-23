@@ -1,0 +1,315 @@
+{
+  "scope": "Linux container; original Rust source; synthetic local provider; no OpenAI calls",
+  "pass": 13,
+  "fail": 14,
+  "total": 27,
+  "results": [
+    {
+      "name": "cli_help",
+      "expected": "Help succeeds",
+      "status": "PASS",
+      "evidence": {
+        "exit": 0,
+        "output": "CREXE v1 Rust executor\n\nUsage: crexe-linux-baseline <COMMAND>\n\nCommands:\n  exec  Generate + build + run a .crexe file\n  help  Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help  Print help\n",
+        "requests": 0,
+        "seconds": 0.03
+      }
+    },
+    {
+      "name": "cli_version",
+      "expected": "Version is available for support diagnostics",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 2,
+        "output": "error: unexpected argument '--version' found\n\nUsage: crexe-linux-baseline <COMMAND>\n\nFor more information, try '--help'.\n",
+        "requests": 0,
+        "seconds": 0.016
+      }
+    },
+    {
+      "name": "original_yaml_parsing",
+      "expected": "Original YAML reaches generation and reports missing key without a request",
+      "status": "PASS",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /root/.cache/crexe/b203ec3d06d4910f68d798770f661fa57e0920ac1940f7af3a49cf82fa9d476b\nError: Missing API key env var: OPENAI_API_KEY\n\nCaused by:\n    environment variable not found\n",
+        "requests": 0,
+        "seconds": 0.035
+      }
+    },
+    {
+      "name": "generate_compile_run",
+      "expected": "Mock generation compiles real C and executes from a different CWD",
+      "status": "PASS",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.1
+      }
+    },
+    {
+      "name": "cache_hit_without_api_key",
+      "expected": "Valid cache runs without generation or API key",
+      "status": "PASS",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace\nCache hit: skipping generate/build\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 0,
+        "seconds": 0.025
+      }
+    },
+    {
+      "name": "direct_invocation",
+      "expected": "File as first argument uses valid cache",
+      "status": "PASS",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace\nCache hit: skipping generate/build\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 0,
+        "seconds": 0.022
+      }
+    },
+    {
+      "name": "input_override",
+      "expected": "Changed input regenerates and appears in request prompt",
+      "status": "PASS",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.063
+      }
+    },
+    {
+      "name": "edited_prompt_regenerates",
+      "expected": "Editing recipe invalidates cache",
+      "status": "PASS",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.062
+      }
+    },
+    {
+      "name": "forced_rebuild",
+      "expected": "Rebuild forces generation",
+      "status": "PASS",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/happy path with spaces and accents ç/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.064
+      }
+    },
+    {
+      "name": "invalid_override",
+      "expected": "Invalid override fails without generation",
+      "status": "PASS",
+      "evidence": {
+        "exit": 1,
+        "output": "Error: --set must be KEY=VALUE, got: bad-input\n",
+        "requests": 0,
+        "seconds": 0.016
+      }
+    },
+    {
+      "name": "invalid_yaml",
+      "expected": "Invalid syntax fails before generation",
+      "status": "PASS",
+      "evidence": {
+        "exit": 1,
+        "output": "Error: Invalid YAML\n\nCaused by:\n    did not find expected node content at line 2 column 1, while parsing a flow node\n",
+        "requests": 0,
+        "seconds": 0.019
+      }
+    },
+    {
+      "name": "unknown_spec_version",
+      "expected": "Unknown version fails before generation",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/future-version/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/future-version/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/future-version/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/future-version/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.066
+      }
+    },
+    {
+      "name": "missing_tool_preflight",
+      "expected": "Invalid build requirement is detected before paid generation",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/missing-tool/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\nError: Command not allowed by policy: crexe-qa-nonexistent-tool\n",
+        "requests": 1,
+        "seconds": 0.034
+      }
+    },
+    {
+      "name": "empty_generator_files",
+      "expected": "Empty file list is rejected",
+      "status": "PASS",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/empty-output/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nError: LLM output contains empty files[]\n",
+        "requests": 1,
+        "seconds": 0.033
+      }
+    },
+    {
+      "name": "provider_http_error",
+      "expected": "HTTP error is reported without successful cache",
+      "status": "PASS",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/provider-error/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nError: LLM HTTP 401 Unauthorized: {\"error\": {\"message\": \"Synthetic provider error\"}}\n",
+        "requests": 1,
+        "seconds": 0.032
+      }
+    },
+    {
+      "name": "reject_parent_traversal",
+      "expected": "Parent traversal is rejected",
+      "status": "PASS",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/path-traversal/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nError: Refusing to write path containing '..': /work/crexe-baseline-ploon95d/path-traversal/cache/workspace/../outside.txt\n",
+        "requests": 1,
+        "seconds": 0.034
+      }
+    },
+    {
+      "name": "reject_absolute_generated_path",
+      "expected": "Absolute output path is rejected as required by draft RFC",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/absolute-inside/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/absolute-inside/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/absolute-inside/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/absolute-inside/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.064
+      }
+    },
+    {
+      "name": "no_external_directory_side_effect",
+      "expected": "Rejected external path creates no outside directories",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/absolute-outside/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nError: Refusing to write outside workspace: /work/crexe-baseline-ploon95d/absolute-outside/outside/sub/file.txt\n",
+        "requests": 1,
+        "seconds": 0.033,
+        "outside_parent_created": true
+      }
+    },
+    {
+      "name": "reject_final_symlink_escape",
+      "expected": "Writing generated files cannot overwrite an external symlink target",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/final-file-symlink/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/final-file-symlink/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/final-file-symlink/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/final-file-symlink/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.064,
+        "outside_sentinel_unchanged": false
+      }
+    },
+    {
+      "name": "empty_allowlist_denies_commands",
+      "expected": "Empty command allowlist does not grant unrestricted execution",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/empty-allowlist/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/empty-allowlist/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/empty-allowlist/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/empty-allowlist/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 0.066
+      }
+    },
+    {
+      "name": "build_timeout_enforced",
+      "expected": "A one-second timeout stops a command that waits over two seconds",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/build-timeout/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/build-timeout/cache/workspace) python3 -c import time;time.sleep(2.2)\n$ (cwd=/work/crexe-baseline-ploon95d/build-timeout/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/build-timeout/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/build-timeout/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+        "requests": 1,
+        "seconds": 2.282
+      }
+    },
+    {
+      "name": "child_environment_filtered",
+      "expected": "Build/run do not inherit an unrelated synthetic secret",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/child-secret/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/child-secret/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/child-secret/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/child-secret/cache/workspace) /usr/bin/python3 -c import os;print(os.getenv(\"CREXE_QA_SECRET\",\"ABSENT\"))\nsynthetic-secret-marker\n",
+        "requests": 1,
+        "seconds": 0.073
+      }
+    },
+    {
+      "name": "generated_run_cannot_escape_workspace",
+      "expected": "A build prefix containing traversal does not authorize an outside executable",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/generated-run-outside/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/generated-run-outside/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/generated-run-outside/cache/workspace) cc src/main.c -o build/qa-app\n$ (cwd=/work/crexe-baseline-ploon95d/generated-run-outside/cache/workspace) ./build/../../outside.sh\nCREXE_QA_OUTSIDE_WORKSPACE\n",
+        "requests": 1,
+        "seconds": 0.06
+      }
+    },
+    {
+      "name": "failed_rebuild_not_silent_cache_hit",
+      "expected": "Failed replacement build is not silently treated as a valid new build",
+      "status": "FAIL",
+      "evidence": {
+        "failed_rebuild": {
+          "exit": 1,
+          "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/failed-rebuild/cache/workspace\nLLM: provider=openai-compatible, baseUrl=http://127.0.0.1:33769/v1, model=qa-mock\nWrote: src/main.c\n$ (cwd=/work/crexe-baseline-ploon95d/failed-rebuild/cache/workspace) mkdir -p build\n$ (cwd=/work/crexe-baseline-ploon95d/failed-rebuild/cache/workspace) cc src/main.c -o build/qa-app\nsrc/main.c:1:1: error: unknown type name ‘this’\n    1 | this deliberately does not compile\n      | ^~~~\nsrc/main.c:1:19: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘does’\n    1 | this deliberately does not compile\n      |                   ^~~~\nsrc/main.c:1:19: error: unknown type name ‘does’\nError: Command failed: cc src/main.c -o build/qa-app\n",
+          "requests": 1,
+          "seconds": 0.037
+        },
+        "next_run": {
+          "exit": 0,
+          "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/failed-rebuild/cache/workspace\nCache hit: skipping generate/build\n$ (cwd=/work/crexe-baseline-ploon95d/failed-rebuild/cache/workspace) ./build/qa-app\nCREXE_QA_APP_OK\n",
+          "requests": 0,
+          "seconds": 0.026
+        }
+      }
+    },
+    {
+      "name": "missing_cached_artifact_recovers",
+      "expected": "Missing artifact invalidates cache and rebuilds",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/missing-artifact/cache/workspace\nCache hit: skipping generate/build\n$ (cwd=/work/crexe-baseline-ploon95d/missing-artifact/cache/workspace) ./build/qa-app\nError: Failed to start command: ./build/qa-app\n\nCaused by:\n    No such file or directory (os error 2)\n",
+        "requests": 0,
+        "seconds": 0.024
+      }
+    },
+    {
+      "name": "corrupt_manifest_recovers",
+      "expected": "Corrupt cache manifest is handled as an invalid cache entry",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 1,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/corrupt-manifest/cache/workspace\nError: key must be a string at line 1 column 2\n",
+        "requests": 0,
+        "seconds": 0.022
+      }
+    },
+    {
+      "name": "changed_cached_artifact_detected",
+      "expected": "Changed artifact is detected before cache reuse",
+      "status": "FAIL",
+      "evidence": {
+        "exit": 0,
+        "output": "Target: linux (OS=linux, ARCH=x86_64)\nWorkspace: /work/crexe-baseline-ploon95d/changed-artifact/cache/workspace\nCache hit: skipping generate/build\n$ (cwd=/work/crexe-baseline-ploon95d/changed-artifact/cache/workspace) ./build/qa-app\n",
+        "requests": 0,
+        "seconds": 0.021
+      }
+    }
+  ]
+}

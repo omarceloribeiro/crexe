@@ -1,0 +1,9 @@
+Publicando executavel self-contained win-x64...
+  Determinando os projetos a serem restaurados...
+  <EXTRACTED_PROJECT>\src\SmtpEmailTester\SmtpEmailTester.csproj restaurado (em 819 ms).
+  SmtpEmailTester -> <EXTRACTED_PROJECT>\src\SmtpEmailTester\bin\Release\net8.0-windows\win-x64\SmtpEmailTester.dll
+  SmtpEmailTester -> <EXTRACTED_PROJECT>\src\SmtpEmailTester\bin\Release\net8.0-windows\win-x64\publish\
+
+Publicacao concluida.
+Executavel publicado em:
+src\SmtpEmailTester\bin\Release\net8.0-windows\win-x64\publish\SmtpEmailTester.exe

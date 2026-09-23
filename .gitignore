@@ -1,0 +1,15 @@
+# Context imported from another machine: generated programs and private app data.
+# Preserved locally and in a separate local snapshot; never publish this folder.
+/docs/legado/TestesDeOutraMaquina/
+
+# Build output and local execution caches.
+target/
+.crexe-cache/
+__pycache__/
+*.pyc
+
+# Local secrets. Documented templates may be versioned.
+.env
+.env.*
+!.env.example
+!.env.sample

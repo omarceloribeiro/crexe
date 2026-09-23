@@ -1,0 +1,6 @@
+# Keep the imported baseline byte-for-byte, including existing line endings.
+# Adopt formatting/line-ending conventions in a separate implementation change.
+* -text
+
+# LICENSE was already tracked with normalized line endings in the initial commit.
+LICENSE text

@@ -1,0 +1,7 @@
+Target: linux (OS=linux, ARCH=x86_64)
+Workspace: /work/ollama-cache/b12cb6518ebc4fd425f2cdbd98d931386961d83187dec39b8c7ffbec3a13eac5
+LLM: provider=openai-compatible, baseUrl=http://host.docker.internal:11434/v1, model=gemma4:12b
+Error: error sending request for url (http://host.docker.internal:11434/v1/chat/completions)
+
+Caused by:
+    operation timed out
