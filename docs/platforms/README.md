@@ -1,14 +1,16 @@
 # Uma base Rust para Windows, Linux e macOS
 
-Status: orientação de implementação da v1. A engine original continua em `src/`; os módulos abaixo ainda serão extraídos conforme o [plano](../PLANO_V1.md). O baseline fixo `baseline/pre-v1` permanece inalterado.
+Status: orientação de implementação da v1, atualizada em 24/09/2026. A engine original continua em `src/`; os módulos abaixo ainda serão extraídos conforme o [plano](../PLANO_V1.md). O baseline fixo `baseline/pre-v1` permanece inalterado.
 
-**Regra atual do autor: não usar Windows Sandbox em hipótese alguma nesta fase.** Não instalar, habilitar, iniciar, testar ou invocar esse produto, inclusive por arquivos `.wsb`, `WindowsSandbox.exe`, comandos gerados ou fallback. Uma possível feature futura depende de nova decisão. A execução nativa no Windows e outros mecanismos de isolamento de processos continuam sendo opções a avaliar conforme o plano.
+**Decisão atual do autor: o “sandbox” da v1 é apenas uma pasta temporária no host do usuário, sem isolamento de processos.** A engine usa ferramentas locais e não exige Docker, WSL ou VMs. Isolamento real fica para uma evolução futura.
+
+**Não usar Windows Sandbox em hipótese alguma nesta fase.** Não instalar, habilitar, iniciar, testar ou invocar esse produto, inclusive por arquivos `.wsb`, `WindowsSandbox.exe`, comandos gerados ou fallback. Uma possível feature futura depende de nova decisão.
 
 ## Mecanismo padrão
 
 Usar a compilação condicional nativa de Rust, `#[cfg(...)]`, e as dependências por target do Cargo. O compilador seleciona os módulos adequados ao sistema de destino. Não remover arquivos, comentar imports manualmente nem manter uma cópia inteira da engine por sistema operacional. Esse mecanismo é documentado na [referência oficial de Rust](https://doc.rust-lang.org/reference/conditional-compilation.html).
 
-O núcleo compartilhado contém parsers, configuração, providers, plano de projeto, cache e orquestração. Código específico de janela, console, associação de arquivos, caminhos do sistema e sandbox fica nos módulos responsáveis por essas integrações. Os tipos públicos e eventos consumidos pelo núcleo não devem expor tipos exclusivos de uma API Windows.
+O núcleo compartilhado contém parsers, configuração, providers, plano de projeto, workspace, cache e orquestração. Código específico de janela, console, associação de arquivos, caminhos do sistema e controle de subprocessos fica nos módulos responsáveis por essas integrações. Os tipos públicos e eventos consumidos pelo núcleo não devem expor tipos exclusivos de uma API Windows.
 
 ## Organização da apresentação
 
@@ -57,17 +59,17 @@ A implementação de Windows também deve tratar as diferenças entre abertura p
 
 ## Ambiente dos programas gerados
 
-A seleção de módulos Rust decide como compilar a engine. A seleção do ambiente de build/teste/run de um programa gerado é outra decisão, feita em runtime por requisitos e política local, conforme a seção “Escolha entre host nativo e sandbox Linux” do plano.
+A seleção de módulos Rust decide como compilar a engine. Na v1, o programa gerado é compilado/testado no próprio host, em uma pasta temporária exclusiva criada pela engine, conforme as seções “Execução no host e compatibilidade do perfil” e “Workspace temporário no host” do plano. O usuário não configura um backend separado.
 
-- Um perfil Windows que exige ferramentas ou drivers locais usa um backend Windows compatível; a presença de Docker Linux não muda o target solicitado.
-- Um projeto ou fase compatível com Linux pode usar o contêiner disponível e preparado, quando permitido.
-- O modo host deve estar previsto na configuração local e informa seu nível real de isolamento. Não escolhê-lo silenciosamente depois de uma falha no sandbox.
-- Dependências são verificadas dentro do ambiente em que serão usadas. Modelos podem sugerir requisitos, mas não concedem permissões nem escolhem comandos arbitrários de descoberta.
-- Build, testes com mocks e testes físicos podem usar ambientes distintos. Os resultados devem dizer o que foi efetivamente validado.
+- Resolver a pasta temporária pelas APIs do sistema; validar caminhos e links e usar diretório de trabalho explícito. Instalação da engine e cache persistente ficam separados dos temporários.
+- Selecionar um perfil compatível com OS/arquitetura, SDKs e ferramentas disponíveis localmente. Na falta de compatibilidade, diagnosticar sem iniciar contêineres, WSL ou outro SO.
+- Aplicar timeouts e cancelamento aos trabalhos próprios, sem herdar credenciais do provider nem elevar privilégios automaticamente. A pasta não restringe acesso dos processos a outros arquivos ou à rede.
+- Publicar fontes, ZIP e artefatos necessários no cache após validação e iniciar o app de lá. Limpar só o workspace da execução, sem afetar processos ativos, diagnóstico preservado ou última versão boa.
+- Registrar build, testes com mocks e testes físicos separadamente, mesmo no mesmo host. Modelos podem sugerir requisitos, mas a engine valida comandos/dependências antes de executá-los.
 
-Para reduzir o tempo até abrir o app, preferir um único ambiente compatível e não repetir build/testes em outro backend sem necessidade. Quando a intenção exigir interpretação, uma triagem curta por IA identifica requisitos de SO, APIs, ferramentas e dispositivos por fase; essa resposta é validada pela engine e não concede permissões. A pergunta deve abranger também macOS/Linux, sem classificar tudo como “Windows ou não Windows”. Perfis já resolvidos e cache válido dispensam a chamada. Se já houver planejamento inicial por IA, incorporar a triagem nessa resposta, sem duplicação. Medir a duração e o carregamento do modelo; não prometer que toda chamada curta terá baixa latência.
+Quando a intenção exigir interpretação, uma triagem curta por IA identifica requisitos de SO, APIs, ferramentas e dispositivos; não escolhe entre host e sandbox. A pergunta abrange Windows/macOS/Linux. Perfis já resolvidos e cache válido dispensam a chamada; incorporar a triagem ao planejamento existente quando possível, medindo tempo e carregamento do modelo.
 
-Não usar Windows Sandbox para resolver incompatibilidades ou requisitos ausentes. Casos sem backend permitido recebem diagnóstico. Exemplos como Unity, biometria e impressão orientam a arquitetura; suporte concreto depende de perfis e validações próprios, sem ampliar implicitamente a matriz da v1.
+Isolamento real e seus backends ficam para o futuro. Docker usado em auditorias ou infraestrutura de CI não é requisito de instalação/execução da v1. Não usar Windows Sandbox para resolver requisitos ausentes. Exemplos como Unity, biometria e impressão continuam dependendo de perfis e validações próprios, sem ampliar implicitamente a matriz da v1.
 
 ## Compilação e verificação
 
@@ -90,5 +92,6 @@ Critérios do CREXE:
 - Compilar e testar o núcleo compartilhado nos sistemas anunciados, a partir do mesmo commit.
 - Confirmar que uma compilação Linux/macOS não tenta compilar imports de Windows.
 - Validar separadamente os modos CLI sem desktop e GUI disponíveis; compilar o núcleo não comprova funcionamento da janela.
-- Manter as diferenças de instalação, associação e sandbox atrás de módulos específicos, usando o mesmo mecanismo padrão.
+- Manter as diferenças de instalação, associação, caminhos temporários e controle de subprocessos atrás de módulos específicos, usando o mesmo mecanismo padrão.
+- Validar criação/limpeza do workspace e execução do cache em cada host anunciado, sem Docker/WSL; documentar os SDKs/compiladores locais exigidos pelos perfis.
 - Registrar no README público a matriz de suporte, requisitos e comandos efetivamente verificados. A janela Windows pode ser entregue primeiro sem impedir os builds da CLI nos demais sistemas.
