@@ -52,6 +52,8 @@ struct FileConfig {
     version: u32,
     default_provider: String,
     providers: BTreeMap<String, Provider>,
+    #[serde(default)]
+    execution: super::policy::Policy,
 }
 
 #[derive(Clone)]
@@ -59,6 +61,7 @@ pub(crate) struct Settings {
     pub profile: String,
     pub provider: Provider,
     pub secret_names: Vec<String>,
+    pub execution: super::policy::Policy,
     secrets: BTreeMap<String, String>,
 }
 
@@ -96,6 +99,7 @@ impl Settings {
             provider.model = model.to_owned();
         }
         provider.validate()?;
+        config.execution.validate()?;
         let mut secret_names = vec!["OPENAI_API_KEY".into(), "crexe_openai_api_key_env".into()];
         secret_names.extend(
             config
@@ -119,6 +123,7 @@ impl Settings {
             profile,
             provider,
             secret_names,
+            execution: config.execution,
             secrets,
         })
     }
@@ -137,7 +142,9 @@ impl Settings {
     }
 
     pub fn identity(&self) -> Result<Vec<u8>> {
-        Ok(serde_json::to_vec(&self.provider)?)
+        Ok(serde_json::to_vec(
+            &serde_json::json!({"provider": self.provider, "execution": self.execution}),
+        )?)
     }
 }
 

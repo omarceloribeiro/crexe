@@ -405,3 +405,163 @@ fn native_ollama_repairs_a_real_compiler_error_and_exports_portable_sources() {
     assert!(cached.contains("Cache hit"));
     assert_eq!(provider.count.load(Ordering::SeqCst), 2);
 }
+
+#[test]
+fn project_operations_rebuild_test_publish_and_export_without_a_provider() {
+    let provider = Provider::start();
+    let temp = tempfile::tempdir().unwrap();
+    let home = temp.path().join("engine");
+    configure(&provider, &home);
+    let mut spec = recipe(&provider);
+    let run = spec["targets"]["native"]["run"]["cmd"].clone();
+    spec["targets"]["native"]["test"] = json!({"steps": [{"cmd": run}]});
+    let mut publish = spec["targets"]["native"]["build"]["steps"][0]["cmd"].clone();
+    publish[3] = json!(if cfg!(windows) {
+        "published.exe"
+    } else {
+        "published"
+    });
+    spec["targets"]["native"]["publish"] = json!({"steps": [{"cmd": publish}]});
+    let file = temp.path().join("project.crexe");
+    fs::write(&file, serde_json::to_vec(&spec).unwrap()).unwrap();
+    let generated = success(
+        Command::new(engine())
+            .arg(&file)
+            .arg("--no-run")
+            .env("CREXE_HOME", &home)
+            .env("CREXE_TEST_KEY", "synthetic")
+            .output()
+            .unwrap(),
+    );
+    let revision = std::path::PathBuf::from(
+        generated
+            .lines()
+            .find_map(|line| line.strip_prefix("Validated revision: "))
+            .unwrap(),
+    );
+    let manifest = fs::read(revision.join("CREXE-PROJECT.json")).unwrap();
+    // Stop the server. Every following operation must work without an API key/network.
+    provider.stop.store(true, Ordering::SeqCst);
+    let built = temp.path().join("rebuilt project");
+    let published = temp.path().join("published project");
+    for (operation, output) in [
+        ("build", Some(&built)),
+        ("test", None),
+        ("publish", Some(&published)),
+    ] {
+        let mut command = Command::new(engine());
+        command
+            .arg(operation)
+            .arg(&revision)
+            .env("CREXE_HOME", &home)
+            .env_remove("CREXE_TEST_KEY");
+        if let Some(path) = output {
+            command.arg("--output").arg(path);
+        }
+        success(command.output().unwrap());
+    }
+    assert!(published
+        .join(if cfg!(windows) {
+            "published.exe"
+        } else {
+            "published"
+        })
+        .is_file());
+    assert_eq!(
+        fs::read(revision.join("CREXE-PROJECT.json")).unwrap(),
+        manifest
+    );
+    assert!(success(
+        Command::new(engine())
+            .arg("run")
+            .arg(&built)
+            .env("CREXE_HOME", &home)
+            .output()
+            .unwrap()
+    )
+    .contains("CREXE_FIXTURE_WHITE"));
+    let archive = temp.path().join("project-export.zip");
+    success(
+        Command::new(engine())
+            .arg("export")
+            .arg(&built)
+            .arg("--output")
+            .arg(&archive)
+            .env("CREXE_HOME", &home)
+            .output()
+            .unwrap(),
+    );
+    let mut zip = zip::ZipArchive::new(fs::File::open(archive).unwrap()).unwrap();
+    assert!(zip.by_name("CREXE-PROJECT.json").is_ok());
+    assert!(zip.by_name("src/main.rs").is_ok());
+    let failed = Command::new(engine())
+        .arg("build")
+        .arg(&revision)
+        .arg("--output")
+        .arg(&built)
+        .env("CREXE_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(!failed.status.success());
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("already exists"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn recipe_cannot_override_local_tool_or_generation_budget() {
+    let provider = Provider::start();
+    let temp = tempfile::tempdir().unwrap();
+    let home = temp.path().join("engine");
+    configure(&provider, &home);
+    let config = home.join("config.toml");
+    let original = fs::read_to_string(&config).unwrap();
+    fs::write(
+        &config,
+        format!("{original}\n[execution]\nallowed_tools=[]\n"),
+    )
+    .unwrap();
+    let file = temp.path().join("denied.crexe");
+    fs::write(&file, serde_json::to_vec(&recipe(&provider)).unwrap()).unwrap();
+    let blocked = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+    assert!(!blocked.status.success());
+    assert!(String::from_utf8_lossy(&blocked.stderr).contains("not approved"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 0);
+    fs::write(
+        &config,
+        format!("{original}\n[execution]\nmax_output_tokens_total=128\n"),
+    )
+    .unwrap();
+    let blocked = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+    assert!(!blocked.status.success());
+    assert!(String::from_utf8_lossy(&blocked.stderr).contains("output-token budget exhausted"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 0);
+    fs::write(&config, &original).unwrap();
+    let mut shell_spec = recipe(&provider);
+    let shell = if cfg!(windows) { "cmd" } else { "sh" };
+    shell_spec["targets"]["native"]["build"]["steps"][0]["cmd"] = json!([shell]);
+    shell_spec["policies"]["commandAllowlist"][std::env::consts::OS] = json!([shell]);
+    fs::write(&file, serde_json::to_vec(&shell_spec).unwrap()).unwrap();
+    let blocked = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+    assert!(!blocked.status.success());
+    assert!(String::from_utf8_lossy(&blocked.stderr).contains("allow_shells"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 0);
+
+    fs::write(
+        &config,
+        format!("{original}\n[execution]\nmax_provider_requests=1\n"),
+    )
+    .unwrap();
+    let mut broken = recipe(&provider);
+    broken["prompt"]["user_by_target"]["native"] = json!("REPAIRME");
+    fs::write(&file, serde_json::to_vec(&broken).unwrap()).unwrap();
+    let blocked = Command::new(engine())
+        .arg(&file)
+        .args(["--no-run", "--max-repairs", "2"])
+        .env("CREXE_HOME", &home)
+        .env("CREXE_TEST_KEY", "synthetic")
+        .output()
+        .unwrap();
+    assert!(!blocked.status.success());
+    assert!(String::from_utf8_lossy(&blocked.stderr).contains("request budget exhausted"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
+}

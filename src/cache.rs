@@ -116,7 +116,7 @@ impl Entry {
     }
 }
 
-fn copy_tree(
+pub(crate) fn copy_tree(
     root: &Path,
     directory: &Path,
     destination: &Path,

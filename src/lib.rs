@@ -9,7 +9,6 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 mod cache;
 mod config;
@@ -19,8 +18,10 @@ mod generator;
 mod installation;
 mod package;
 mod paths;
+mod policy;
 mod presentation;
 mod profiles;
+mod project;
 
 const RUNTIME_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -83,6 +84,28 @@ enum Commands {
     Inspect { file: PathBuf },
     /// Show local configuration and available tool paths without reading secrets
     Doctor,
+    /// Build a generated project without using a model; write a new project directory
+    Build {
+        project: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Build and test a generated project without using a model
+    Test { project: PathBuf },
+    /// Run the existing artifact described by a generated project's manifest
+    Run { project: PathBuf },
+    /// Build, test and publish a project into a new directory; no deploy or model call
+    Publish {
+        project: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Export current project sources and scripts into a new ZIP without generation
+    Export {
+        project: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -138,9 +161,30 @@ pub fn run() -> Result<()> {
         Commands::Unassociate => installation::unassociate()?,
         Commands::Inspect { file } => inspect(file, &cli)?,
         Commands::Doctor => doctor(&cli)?,
+        Commands::Build { project, output } => {
+            project_operation("build", project, Some(output), &cli)?
+        }
+        Commands::Test { project } => project_operation("test", project, None, &cli)?,
+        Commands::Run { project } => project_operation("run", project, None, &cli)?,
+        Commands::Publish { project, output } => {
+            project_operation("publish", project, Some(output), &cli)?
+        }
+        Commands::Export { project, output } => {
+            project_operation("export", project, Some(output), &cli)?
+        }
     }
 
     Ok(())
+}
+
+fn project_operation(operation: &str, root: &Path, output: Option<&Path>, cli: &Cli) -> Result<()> {
+    let settings = config::Settings::load(
+        cli.config.as_deref(),
+        cli.provider.as_deref(),
+        cli.model.as_deref(),
+        None,
+    )?;
+    project::operate(operation, root, output, &settings)
 }
 
 fn doctor(cli: &Cli) -> Result<()> {
@@ -327,7 +371,7 @@ fn exec_crexe(
                     "run",
                     &runtime.os,
                     &ctx,
-                    &settings.secret_names,
+                    &settings,
                 )?;
             }
             return Ok(());
@@ -336,16 +380,18 @@ fn exec_crexe(
     let workspace = tempfile::Builder::new().prefix("crexe-work-").tempdir()?;
     let workspace_path = workspace.path().canonicalize()?;
     println!("Workspace: {}", workspace_path.display());
+    let mut generation = generator::Session::new(&settings);
     let result = (|| -> Result<PathBuf> {
         for cmd in &build_steps {
             let command = render_template(&cmd[0], &spec, &ctx);
             executor::resolve_tool(&command)?;
+            settings.execution.authorize(&command)?;
             check_allowlist(&spec, &[command], &runtime.os, "build", &workspace_path)?;
         }
         profiles::preflight(&spec, &workspace_path, &settings.secret_names)?;
         let (system_prompt, user_prompt) = build_prompt(&spec, &target, &ctx)?;
         presentation::phase("Gerando seu programa…");
-        let mut generated = generator::generate(&settings, &system_prompt, &user_prompt)?;
+        let mut generated = generation.generate(&system_prompt, &user_prompt)?;
         for attempt in 0..=cli.max_repairs {
             let attempt_path = workspace_path.join(format!("attempt-{}", attempt + 1));
             fs::create_dir(&attempt_path)?;
@@ -361,7 +407,7 @@ fn exec_crexe(
                         "build",
                         &runtime.os,
                         &ctx,
-                        &settings.secret_names,
+                        &settings,
                     )?;
                 }
                 if let Some(steps) = get_path(&spec, &["targets", &target, "test", "steps"])
@@ -377,7 +423,7 @@ fn exec_crexe(
                             "test",
                             &runtime.os,
                             &ctx,
-                            &settings.secret_names,
+                            &settings,
                         )?;
                     }
                 }
@@ -410,7 +456,7 @@ fn exec_crexe(
                     );
                     let repair = format!("Original request:\n{user_prompt}\nCurrent complete source files:\n{}\nCompiler/test diagnostics:\n{}\nCorrect the actual failure. Return the FULL corrected files[] snapshot, not a patch. Preserve requested behavior and tests. Do not change the engine-owned build commands or install global tools.", serde_json::to_string(&generated)?, truncate(&diagnostics, 24000));
                     presentation::phase("Corrigindo erros de compilação…");
-                    generated = generator::generate(&settings, &system_prompt, &repair)?;
+                    generated = generation.generate(&system_prompt, &repair)?;
                 }
             }
         }
@@ -441,7 +487,7 @@ fn exec_crexe(
             "run",
             &runtime.os,
             &ctx,
-            &settings.secret_names,
+            &settings,
         )?;
     }
     Ok(())
@@ -682,6 +728,9 @@ fn apply_generated_files(
             bail!("Windows Sandbox is prohibited; generated content was rejected");
         }
         let rendered = render_template(&file.path, &Value::Null, ctx);
+        if project::reserved(&rendered.replace('\\', "/")) {
+            bail!("Generated file targets engine-owned project metadata/scripts: {rendered}");
+        }
         let relative = paths::relative_file(&rendered)?;
         let key = relative.to_string_lossy().to_lowercase();
         if !destinations.insert(key) {
@@ -812,33 +861,37 @@ fn run_command(
     phase: &str,
     os_name: &str,
     ctx: &BTreeMap<String, String>,
-    secret_names: &[String],
+    settings: &config::Settings,
 ) -> Result<()> {
     let mut cmd: Vec<String> = cmd_raw
         .iter()
         .map(|s| render_template(s, spec, ctx))
         .collect();
 
-    if phase == "run" {
-        cmd = resolve_run_command(cmd, cwd)?;
-    }
-
     if cmd.is_empty() {
         bail!("Empty command");
     }
 
+    if phase == "run" || (phase == "test" && is_generated_run_target(cwd, &cmd[0])) {
+        cmd = resolve_run_command(cmd, cwd)?;
+    }
+
+    if !(matches!(phase, "run" | "test")
+        && is_generated_run_target(cwd, &cmd[0])
+        && !policy::requires_shell(&cmd[0]))
+    {
+        settings.execution.authorize(&cmd[0])?;
+    }
     check_allowlist(spec, &cmd, os_name, phase, cwd)?;
 
     let printable = cmd.join(" ");
     println!("$ (cwd={}) {}", cwd.display(), printable);
 
-    let timeout =
-        if phase == "run" && get_path(spec, &["policies", "timeoutSeconds", "run"]).is_none() {
-            None
-        } else {
-            Some(Duration::from_secs(timeout_seconds(spec, phase)))
-        };
-    executor::run(&cmd, cwd, timeout, phase != "run", secret_names)
+    let timeout = settings.execution.timeout(
+        phase,
+        get_path(spec, &["policies", "timeoutSeconds", phase]).and_then(Value::as_u64),
+    );
+    executor::run(&cmd, cwd, timeout, phase != "run", &settings.secret_names)
 }
 
 fn resolve_run_command(mut cmd: Vec<String>, cwd: &Path) -> Result<Vec<String>> {
@@ -872,7 +925,7 @@ fn resolve_run_command(mut cmd: Vec<String>, cwd: &Path) -> Result<Vec<String>> 
         return Ok(cmd);
     }
     bail!(
-        "Expected run artifact is missing: {}. Use --rebuild to regenerate.",
+        "Expected run artifact is missing: {}. Build the project first, or use exec --rebuild with the recipe.",
         expected.display()
     )
 }
@@ -884,7 +937,7 @@ fn check_allowlist(
     phase: &str,
     cwd: &Path,
 ) -> Result<()> {
-    if phase == "run" && is_generated_run_target(cwd, &cmd[0]) {
+    if matches!(phase, "run" | "test") && is_generated_run_target(cwd, &cmd[0]) {
         return Ok(());
     }
     let Some(list) =
@@ -993,13 +1046,6 @@ fn default_cache_root() -> Result<PathBuf> {
             .context("Neither XDG_CACHE_HOME nor HOME is set")?
             .join("crexe"),
     })
-}
-
-fn timeout_seconds(spec: &Value, phase: &str) -> u64 {
-    get_path(spec, &["policies", "timeoutSeconds", phase])
-        .and_then(Value::as_i64)
-        .unwrap_or(180)
-        .max(1) as u64
 }
 
 fn get_path<'a>(v: &'a Value, path: &[&str]) -> Option<&'a Value> {

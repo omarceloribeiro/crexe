@@ -73,6 +73,18 @@ crexe calculadora.crexe --rebuild --max-repairs 2
 
 Cada revisão aprovada inclui `source.zip`. No perfil .NET, ele contém os fontes, `.csproj`, instruções e scripts de build, run, test e publish. O ZIP pode ser recompilado sem CREXE, com os pré-requisitos indicados. O publish .NET é dependente do runtime; não instala nem publica na internet. A exportação exige um destino novo. YAML legado inclui scripts de build/run; não inventa uma operação publish ausente.
 
+O manifesto `CREXE-PROJECT.json` guarda fontes e operações usados pela CLI e pelos scripts. Com uma revisão ou ZIP extraído, estas operações não chamam a IA nem precisam de uma chave:
+
+```powershell
+crexe build ./projeto-extraido --output ./projeto-recompilado
+crexe test ./projeto-extraido
+crexe run ./projeto-recompilado
+crexe publish ./projeto-extraido --output ./projeto-publicado
+crexe export ./projeto-extraido --output ./fontes.zip
+```
+
+Build/test/publish usam uma nova pasta temporária; build/publish entregam uma nova pasta de saída e preservam o projeto de origem. Export empacota os fontes atuais sem recompilá-los. Um ZIP de versões anteriores sem manifesto precisa ser regenerado para usar esses comandos; seus scripts continuam utilizáveis. [Contrato das operações](docs/PROJETOS_V1.md).
+
 O cache tem revisões imutáveis, manifesto de hashes e troca atômica do ponteiro de revisão. Builds com falha preservam a revisão anterior e o workspace de diagnóstico. Arquivo ausente/modificado no cache exige regeneração. Copiar apenas o `.crexe` compartilha a intenção, sem transportar o cache. `--cache-dir` muda a raiz por decisão local.
 
 ## Limites atuais
@@ -81,7 +93,7 @@ Build e aplicativo usam o **host com as permissões do usuário**. A pasta tempo
 
 Há validação de caminhos, limites de resposta/arquivos/logs, controle de subprocessos, timeout e cancelamento, sem herança das credenciais configuradas. Isso não impede um programa nativo malicioso de acessar o host. `allowNetwork: false` é rejeitado porque a engine não oferece isolamento de rede.
 
-Ainda faltam, entre outros critérios: matriz nativa completa, perfil automático C++/Cocoa/GTK, política local mais ampla, triagem de compatibilidade, gestão de dependências além do SDK, limites globais de orçamento, operações build/publish dedicadas na CLI e preparação da release. Confira o registro de implementação antes de distribuir.
+Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na configuração local; a receita não pode ampliá-los. Ainda faltam, entre outros critérios: validação de aplicativos em toda a matriz nativa, perfil automático C++/Cocoa/GTK, triagem de compatibilidade, gestão de dependências além do SDK e preparação da release. Confira o registro de implementação antes de distribuir.
 
 ## Documentação e licença
 

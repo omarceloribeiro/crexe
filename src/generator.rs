@@ -6,11 +6,57 @@ use super::{
 use anyhow::{bail, Context, Result};
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
-use std::{io::Read, time::Duration};
+use std::{
+    io::Read,
+    time::{Duration, Instant},
+};
 
 const MAX_RESPONSE: u64 = 20 * 1024 * 1024;
 
-pub(crate) fn generate(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOutput> {
+pub(crate) struct Session<'a> {
+    settings: &'a Settings,
+    started: Instant,
+    requests: u8,
+    reserved_tokens: u32,
+}
+
+impl<'a> Session<'a> {
+    pub fn new(settings: &'a Settings) -> Self {
+        Self {
+            settings,
+            started: Instant::now(),
+            requests: 0,
+            reserved_tokens: 0,
+        }
+    }
+    pub fn generate(&mut self, system: &str, user: &str) -> Result<GeneratedOutput> {
+        let policy = &self.settings.execution;
+        if self.requests >= policy.max_provider_requests {
+            bail!("Local provider request budget exhausted");
+        }
+        if system.len().saturating_add(user.len()) > policy.max_prompt_bytes {
+            bail!("Prompt exceeds local max_prompt_bytes; no provider request was made");
+        }
+        let reserved = self
+            .reserved_tokens
+            .saturating_add(self.settings.provider.max_output_tokens);
+        if reserved > policy.max_output_tokens_total {
+            bail!("Local output-token budget exhausted; no provider request was made");
+        }
+        let remaining = Duration::from_secs(policy.generation_timeout_seconds)
+            .checked_sub(self.started.elapsed())
+            .filter(|v| v.as_secs() > 0)
+            .context("Local generation time budget exhausted")?;
+        self.requests += 1;
+        self.reserved_tokens = reserved;
+        let mut settings = self.settings.clone();
+        settings.provider.timeout_seconds =
+            settings.provider.timeout_seconds.min(remaining.as_secs());
+        generate(&settings, system, user)
+    }
+}
+
+fn generate(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOutput> {
     if super::executor::cancelled() {
         bail!("Cancelled");
     }

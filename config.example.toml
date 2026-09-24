@@ -1,6 +1,16 @@
 version = 1
 default_provider = "local"
 
+[execution]
+allowed_tools = ["dotnet", "rustc", "g++", "gcc", "clang++", "clang", "windres", "make", "pkg-config"]
+allow_shells = false
+build_timeout_seconds = 300
+test_timeout_seconds = 60
+generation_timeout_seconds = 1800
+max_provider_requests = 3
+max_output_tokens_total = 18000
+max_prompt_bytes = 131072
+
 [providers.local]
 kind = "ollama"
 base_url = "http://127.0.0.1:11434"
