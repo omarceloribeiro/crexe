@@ -388,7 +388,7 @@ fn exec_crexe(
             settings.execution.authorize(&command)?;
             check_allowlist(&spec, &[command], &runtime.os, "build", &workspace_path)?;
         }
-        profiles::preflight(&spec, &workspace_path, &settings.secret_names)?;
+        profiles::preflight(&spec, &workspace_path, &settings)?;
         let (system_prompt, user_prompt) = build_prompt(&spec, &target, &ctx)?;
         presentation::phase("Gerando seu programa…");
         let mut generated = generation.generate(&system_prompt, &user_prompt)?;
@@ -397,11 +397,12 @@ fn exec_crexe(
             fs::create_dir(&attempt_path)?;
             apply_generated_files(&attempt_path, &generated.files, &ctx)?;
             profiles::scaffold(&spec, &attempt_path)?;
+            let attempt_spec = profiles::materialize(&spec, &attempt_path, &generated.files, &ctx)?;
             presentation::phase("Compilando seu programa…");
             let built = (|| -> Result<()> {
-                for cmd in &build_steps {
+                for cmd in &get_build_steps(&attempt_spec, &target)? {
                     run_command(
-                        &spec,
+                        &attempt_spec,
                         cmd,
                         &attempt_path,
                         "build",
@@ -437,7 +438,13 @@ fn exec_crexe(
             match built {
                 Ok(()) => {
                     presentation::phase("Preparando os arquivos…");
-                    package::create(&spec, &target, &ctx, &attempt_path, &generated.files)?;
+                    package::create(
+                        &attempt_spec,
+                        &target,
+                        &ctx,
+                        &attempt_path,
+                        &generated.files,
+                    )?;
                     return cache.publish(&attempt_path);
                 }
                 Err(error) => {

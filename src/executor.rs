@@ -59,6 +59,31 @@ pub(crate) fn run(
     capture: bool,
     secret_names: &[String],
 ) -> Result<()> {
+    execute(args, cwd, timeout, capture, true, secret_names).map(|_| ())
+}
+
+pub(crate) fn output(args: &[String], cwd: &Path, secret_names: &[String]) -> Result<String> {
+    execute(
+        args,
+        cwd,
+        Some(Duration::from_secs(15)),
+        true,
+        false,
+        secret_names,
+    )
+}
+
+fn execute(
+    args: &[String],
+    cwd: &Path,
+    timeout: Option<Duration>,
+    capture: bool,
+    print_output: bool,
+    secret_names: &[String],
+) -> Result<String> {
+    if args.is_empty() {
+        bail!("Empty command");
+    }
     if CANCELLED.load(Ordering::SeqCst) {
         bail!("Cancelled");
     }
@@ -131,18 +156,23 @@ pub(crate) fn run(
             drop(job);
             #[cfg(unix)]
             kill_group(child.id());
+            let captured = if capture {
+                tail(&mut stdout)?
+            } else {
+                String::new()
+            };
             let diagnostics = if capture {
-                format!("{}{}", tail(&mut stdout)?, tail(&mut stderr)?)
+                format!("{captured}{}", tail(&mut stderr)?)
             } else {
                 String::new()
             };
             if !status.success() {
                 bail!("Command failed ({status}): {}\n{diagnostics}", args[0]);
             }
-            if !diagnostics.trim().is_empty() {
+            if print_output && !diagnostics.trim().is_empty() {
                 print!("{diagnostics}");
             }
-            return Ok(());
+            return Ok(captured);
         }
         if CANCELLED.load(Ordering::SeqCst) {
             failure = "Cancelled";

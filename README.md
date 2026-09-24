@@ -29,7 +29,7 @@ Com o Ollama e `gemma4:12b` disponíveis localmente, e o .NET SDK instalado:
 .\target\release\crexe.exe calculadora.crexe
 ```
 
-O perfil de intenção disponível no Windows usa C#/.NET 8 e Windows Forms. A engine fornece o projeto, pede os fontes, compila e executa o autoteste gerado antes de publicar o cache. Até duas propostas de correção podem ser solicitadas após erros de build/teste. A qualidade do programa ainda depende do modelo; um build aprovado não comprova todos os comportamentos pedidos.
+O perfil preferido no Windows usa C#/.NET 8 e Windows Forms. Há também perfis experimentais C++/Win32, Objective-C++/Cocoa e C/GTK3, conforme o host e seus SDKs. A engine fornece o plano de build, pede os fontes, compila e executa o autoteste gerado antes de publicar o cache. Até duas propostas de correção podem ser solicitadas após erros de build/teste. A qualidade do programa ainda depende do modelo; um build aprovado não comprova todos os comportamentos pedidos. [Perfis e requisitos](docs/PERFIS_V1.md).
 
 ## Provider e credenciais
 
@@ -56,7 +56,7 @@ O perfil de exemplo referencia `crexe_openai_api_key_env`. A chave pode estar no
 
 A associação aponta para `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` e habilita a janela “Creative Executable / Gerando seu programa…”. A espera fecha antes de iniciar o aplicativo; falhas aparecem em uma mensagem. Fechar a espera cancela o trabalho da engine. A invocação por terminal preserva logs; `--ui` ativa a apresentação explicitamente.
 
-O Windows pode exigir escolher CREXE como aplicativo padrão. `unassociate` remove apenas os registros desta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; a associação gráfica e os perfis desktop automáticos dessas plataformas ainda não estão implementados/validados. [Guia de plataformas](docs/platforms/README.md).
+O Windows pode exigir escolher CREXE como aplicativo padrão. `unassociate` remove apenas os registros desta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; associação gráfica e janela de espera dessas plataformas ainda não estão implementadas. [Guia de plataformas](docs/platforms/README.md).
 
 `CREXE_HOME` seleciona uma raiz absoluta para instalação, configuração e cache, útil em testes e instalações portáteis.
 
@@ -93,7 +93,7 @@ Build e aplicativo usam o **host com as permissões do usuário**. A pasta tempo
 
 Há validação de caminhos, limites de resposta/arquivos/logs, controle de subprocessos, timeout e cancelamento, sem herança das credenciais configuradas. Isso não impede um programa nativo malicioso de acessar o host. `allowNetwork: false` é rejeitado porque a engine não oferece isolamento de rede.
 
-Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na configuração local; a receita não pode ampliá-los. Ainda faltam, entre outros critérios: validação de aplicativos em toda a matriz nativa, perfil automático C++/Cocoa/GTK, triagem de compatibilidade, gestão de dependências além do SDK e preparação da release. Confira o registro de implementação antes de distribuir.
+Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na configuração local; a receita não pode ampliá-los. Ainda faltam, entre outros critérios: validação com modelos reais e uso de aplicativos em toda a matriz nativa, triagem de compatibilidade, gestão de dependências além do SDK e preparação da release. Confira o registro de implementação antes de distribuir.
 
 ## Documentação e licença
 

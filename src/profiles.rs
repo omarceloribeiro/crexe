@@ -3,22 +3,36 @@ use anyhow::{bail, Result};
 use serde_json::json;
 use serde_yaml::Value;
 
+mod native;
+
 pub(crate) fn resolve(name: &str, prompt: &str, requested: Option<&str>) -> Result<Value> {
-    let profile = requested.unwrap_or(if cfg!(windows) {
-        "dotnet-winforms"
-    } else {
-        "dotnet-console"
+    let profile = requested.unwrap_or_else(|| {
+        if cfg!(windows) {
+            // Prefer the validated .NET path when available; no compiler is installed here.
+            if super::executor::resolve_tool("dotnet").is_err()
+                && super::executor::resolve_tool("g++").is_ok()
+            {
+                "cpp-win32"
+            } else {
+                "dotnet-winforms"
+            }
+        } else if cfg!(target_os = "macos") {
+            "objc-cocoa"
+        } else if cfg!(target_os = "linux") {
+            "c-gtk"
+        } else {
+            "dotnet-console"
+        }
     });
-    if requested.is_none() && !cfg!(windows) {
-        bail!("Automatic desktop profiles for this OS are not implemented yet; use legacy YAML with an explicit native toolchain, or --profile dotnet-console for a console application");
+    if matches!(profile, "cpp-win32" | "objc-cocoa" | "c-gtk") {
+        return native::resolve(name, prompt, profile);
     }
     if !matches!(profile, "dotnet-winforms" | "dotnet-console") {
-        bail!("Unknown intent profile '{profile}'; available: dotnet-winforms (Windows), dotnet-console. Use legacy YAML for other explicit toolchains.");
+        bail!("Unknown intent profile '{profile}'; available: dotnet-winforms, dotnet-console, cpp-win32, objc-cocoa, c-gtk");
     }
     if profile == "dotnet-winforms" && !cfg!(windows) {
         bail!("dotnet-winforms requires a Windows host");
     }
-    super::executor::resolve_tool("dotnet")?;
     let gui = profile == "dotnet-winforms";
     let output = if gui { "WinExe" } else { "Exe" };
     let framework = if gui { "net8.0-windows" } else { "net8.0" };
@@ -56,17 +70,32 @@ pub(crate) fn scaffold(spec: &Value, workspace: &std::path::Path) -> Result<()> 
 pub(crate) fn preflight(
     spec: &Value,
     workspace: &std::path::Path,
-    secret_names: &[String],
+    settings: &super::config::Settings,
 ) -> Result<()> {
-    if super::get_path(spec, &["engine_profile"]).is_some() {
-        // Resolve the target SDK before spending model tokens. Build remains authoritative.
-        super::executor::run(
+    let Some(profile) = super::get_path(spec, &["engine_profile"]).and_then(Value::as_str) else {
+        return Ok(());
+    };
+    if profile.starts_with("dotnet-") {
+        settings.execution.authorize("dotnet")?;
+        let sdks = super::executor::output(
             &["dotnet".into(), "--list-sdks".into()],
             workspace,
-            Some(std::time::Duration::from_secs(15)),
-            true,
-            secret_names,
+            &settings.secret_names,
         )?;
+        if !sdks.lines().any(|line| line.starts_with("8.")) {
+            bail!("This profile requires the .NET 8 SDK; install it before generating. A runtime alone is insufficient.");
+        }
+    } else {
+        native::preflight(profile, workspace, settings)?;
     }
     Ok(())
+}
+
+pub(crate) fn materialize(
+    spec: &Value,
+    workspace: &std::path::Path,
+    files: &[super::GeneratedFile],
+    ctx: &std::collections::BTreeMap<String, String>,
+) -> Result<Value> {
+    native::materialize(spec, workspace, files, ctx)
 }

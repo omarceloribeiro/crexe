@@ -11,6 +11,7 @@
 - Vários fontes, build, correções limitadas, autoteste do perfil e ZIP com scripts.
 - Manifesto de projeto e comandos build/test/run/publish/export sem chamadas ao modelo.
 - Política local de ferramentas, shells opt-in e orçamento de chamadas/saída/tempo.
+- Perfis experimentais C++/Win32, Objective-C++/Cocoa e C/GTK3, com SDKs do host e ensaio nativo separado.
 - Testes offline, verificação nativa Windows e CI aprovada em Windows/Linux/macOS.
 
 `docs/IMPLEMENTACAO_V1.md` distingue resultados medidos e pendências. O número do pacote foi preservado do baseline; não indica release estável já distribuída.

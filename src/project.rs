@@ -75,6 +75,9 @@ impl Project {
                 .collect()]
             });
         }
+        if get_path(spec, &["engine_profile"]).and_then(Value::as_str) == Some("c-gtk") {
+            sources.push("CrexeBuild.mk".into());
+        }
         for steps in commands.values_mut() {
             for cmd in steps {
                 for argument in cmd {
@@ -288,6 +291,13 @@ pub(crate) fn operate(
     let result = (|| -> Result<()> {
         plan.copy_sources(&root, &workspace)?;
         if operation != "export" {
+            if plan.profile != "legacy" {
+                super::profiles::preflight(
+                    &serde_yaml::to_value(serde_json::json!({"engine_profile": plan.profile}))?,
+                    &workspace,
+                    settings,
+                )?;
+            }
             plan.execute("build", &workspace, settings)?;
             if operation == "test" || plan.commands.contains_key("test") {
                 plan.execute("test", &workspace, settings)?;

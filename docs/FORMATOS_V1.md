@@ -6,7 +6,7 @@ Todos usam `.crexe`, UTF-8 (BOM opcional) e LF ou CRLF. Arquivo vazio, documento
 
 `gerar uma calculadora de regra de 3` é uma entrada completa. Nenhuma seção ou palavra-chave é obrigatória. O nome vem do arquivo sem extensão. O texto inteiro constitui a intenção. Uma frase com dois-pontos continua sendo texto puro.
 
-O Windows resolve atualmente `dotnet-winforms`. `--profile dotnet-console` é uma opção explícita para console. A seleção automática de perfil desktop em Linux/macOS ainda não está implementada; nesses sistemas use YAML com toolchain explícita. O host não é emulado e dependências globais não são instaladas.
+O Windows prefere `dotnet-winforms` quando encontra `dotnet`; se só encontra `g++`, escolhe `cpp-win32`. Sem ambos, informa o requisito .NET antes da geração. Linux seleciona `c-gtk` e macOS `objc-cocoa`. Os três perfis C/C++/Objective-C++ estão em validação experimental. `--profile` permite a escolha explícita, inclusive `dotnet-console` para console. O host não é emulado e dependências globais não são instaladas. Veja a [matriz e os SDKs](PERFIS_V1.md).
 
 ## Markdown
 

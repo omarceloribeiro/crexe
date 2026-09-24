@@ -39,7 +39,21 @@ pub(crate) fn bundle(plan: &Project, root: &Path) -> Result<()> {
             "#!/bin/sh\nset -eu\ncd -- \"$(dirname -- \"$0\")\"\n".to_owned()
         };
         for args in steps {
-            let quoted: Result<Vec<_>> = args.iter().map(|arg| quote(arg, windows)).collect();
+            let quoted: Result<Vec<_>> = args
+                .iter()
+                .enumerate()
+                .map(|(index, arg)| {
+                    if !windows
+                        && index == 0
+                        && arg == &plan.commands["run"][0][0]
+                        && !Path::new(arg).is_absolute()
+                    {
+                        quote(&format!("./{arg}"), false)
+                    } else {
+                        quote(arg, windows)
+                    }
+                })
+                .collect();
             if windows {
                 script.push_str("call ");
             }

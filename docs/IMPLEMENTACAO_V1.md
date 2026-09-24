@@ -37,8 +37,10 @@ Os autotestes são produzidos pelo modelo, portanto não substituem revisão ou 
 
 ## Critérios que continuam abertos
 
+Em andamento: perfis experimentais `cpp-win32`, `objc-cocoa` e `c-gtk`, com ensaio de múltiplos fontes/build/teste/ZIP/publish por SDK nativo na CI. O teste é separado da geração por modelo real e da interação com GUI. A suíte local agora tem 29 testes aprovados; o teste de SDK nativo é explicitamente ignorado quando suas ferramentas não foram preparadas.
+
 1. Robustez e qualidade da geração local de apps desktop, contratos de testes independentes, contabilização de consumo efetivo e opção de correção granular; streaming não é tratado como solução comprovada de sintaxe.
-2. Perfis automáticos C++/Win32, Cocoa/macOS e GTK/Linux, seleção por inventário mais completo, triagem neutra de requisitos e diagnóstico de dependências/arquitetura física do host. Hoje `ARCH` informa a arquitetura da engine.
+2. Validação dos perfis experimentais C++/Win32, Cocoa/macOS e GTK/Linux, seleção por inventário mais completo, triagem neutra de requisitos e diagnóstico de dependências/arquitetura física do host. Hoje `ARCH` informa a arquitetura da engine.
 3. Validação de campos restantes do YAML, dependências além da biblioteca padrão/.NET, retenção/limpeza de cache e relatórios completos de execução.
 4. Expansão do contrato de projetos para outros perfis/dependências e distribuição, sem prometer portabilidade implícita de binários.
 5. Matriz de apps/arquiteturas, instalação a partir de sessão normal do usuário, clique manual no Explorer, máquina limpa e recuperação após interrupção abrupta. Há virtualização de caminhos AppData no ambiente do Codex; testes feitos por ele não substituem a verificação fora do app.
