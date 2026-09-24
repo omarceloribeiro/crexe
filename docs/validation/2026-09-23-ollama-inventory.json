@@ -1,0 +1,41 @@
+{
+  "collected_at": "2026-09-23T22:46:16.7540390-03:00",
+  "endpoint": "http://127.0.0.1:11434",
+  "context": "Windows host",
+  "requests": ["GET /api/version", "GET /api/tags", "GET /api/ps"],
+  "ollama_version": "0.34.2",
+  "models": [
+    {
+      "name": "gemma4:12b",
+      "size_bytes": 7556508396,
+      "digest": "4eb23ef187e2c5462566d6a1d3bbbc2f1346d0b4327cbb66d58fffbcc9b2b05c",
+      "parameter_size": "11.9B",
+      "quantization_level": "Q4_K_M"
+    },
+    {
+      "name": "embeddinggemma:latest",
+      "size_bytes": 621875917,
+      "digest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1",
+      "parameter_size": "307.58M",
+      "quantization_level": "BF16"
+    },
+    {
+      "name": "qwen3-embedding:0.6b",
+      "size_bytes": 639150858,
+      "digest": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+      "parameter_size": "595.78M",
+      "quantization_level": "Q8_0"
+    },
+    {
+      "name": "gemma4:26b",
+      "size_bytes": 17987581215,
+      "digest": "5571076f3d70050487b26b341705799e0ab29b808164f90d20d4cf84f699d251",
+      "parameter_size": "25.8B",
+      "quantization_level": "Q4_K_M"
+    }
+  ],
+  "loaded_models": [],
+  "generation_performed": false,
+  "model_or_service_changes_performed": false,
+  "scope": "Read-only inventory; no inference, memory benchmark, compilation or hardware tests. This is a point-in-time observation."
+}

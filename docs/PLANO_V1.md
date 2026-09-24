@@ -12,6 +12,8 @@ O baseline desta entrega é exclusivamente o pacote atual em `src/`, conforme a 
 
 Decisão do autor: **a própria engine CREXE gerencia o sandbox e o ciclo de geração, build, correção e testes, sem depender de um sandbox ou de uma plataforma de agentes do fornecedor do modelo**. OpenAI e Ollama são providers intercambiáveis de geração de código. O funcionamento completo com Ollama local deve ser possível sem conta, chave ou serviço OpenAI.
 
+**Restrição explícita do autor: não usar o produto Windows Sandbox em hipótese alguma nesta fase.** Não instalar, habilitar, iniciar, testar ou invocá-lo como fallback, inclusive por `.wsb`, `WindowsSandbox.exe` ou comandos gerados. Uma possível feature futura exige uma nova decisão; não autoriza seu uso agora. Essa proibição não impede execução nativa no Windows nem isolamento de processos por outros mecanismos devidamente validados.
+
 Recomendo que a meta da v1 contemple **YAML, Markdown e texto puro**, implementados em etapas após estabilizar o caminho YAML. Os três formatos usam a extensão `.crexe` e alimentam o mesmo fluxo de execução. Essa é uma proposta de escopo, não uma afirmação de suporte existente.
 
 A primeira versão deve fechar um percurso verificável: escrever ou obter uma intenção, resolver o ambiente, gerar um projeto completo, compilar em ambiente controlado, corrigir falhas dentro de limites, testar minimamente, empacotar os fontes e executar. Cache e regeneração após uma edição completam o percurso. O ciclo de correção de build/testes está dentro da v1; Studio, marketplace, monetização e ações autônomas fora desse ciclo permanecem fora do escopo.
@@ -29,7 +31,8 @@ Foram examinados o código completo das duas variantes, seus manifests, exemplos
 - O exemplo do baseline usa C++/Win32 com MinGW no Windows, Objective-C++/Cocoa no macOS e C/GTK3 no Linux. O handoff descreve incorretamente C/MSVC como caminho atual do Windows.
 - Rust/Cargo e `g++` não foram encontrados no PATH Windows desta sessão nem nos locais usuais consultados. O baseline foi posteriormente compilado em contêiner Linux, sem alterar os fontes, e passou por uma auditoria de 27 cenários: 13 aprovados e 14 requisitos de robustez não atendidos. A CLI não contém testes Rust próprios (`cargo test`: zero testes). O relatório de validação distingue testes locais, evidências da outra máquina e pendências Windows.
 - Nesta máquina, não há associação `.crexe` configurada nem `OPENAI_API_KEY` nos escopos processo, usuário e máquina. Não houve compra de créditos ou chamadas à OpenAI.
-- Ollama está instalado e responde localmente. O modelo encontrado inicialmente foi `gemma4:26b` (25,8B, Q4_K_M); a chamada mínima retornou HTTP 500. A pedido do autor, foi instalado `gemma4:12b`, que respondeu ao probe local. A geração de uma calculadora pelo baseline excedeu 180 segundos; um teste menor recebeu JSON incompleto e foi rejeitado antes do build. O suporte completo a Ollama ainda exige o adaptador planejado e validação real de saída, contexto e tempo de carregamento.
+- Na avaliação inicial do Ollama, uma chamada mínima ao `gemma4:26b` retornou HTTP 500. Foi instalado `gemma4:12b`, que respondeu ao probe; a calculadora pelo baseline excedeu 180 segundos e um teste menor recebeu JSON incompleto. A [análise adicional do autor](ANALISE_OLLAMA_LOCAL_2026-09-23.md) registra que o 26B depois carregou e respondeu com memória disponível, inclusive a pedidos maiores. Portanto, a falha inicial não significa incompatibilidade permanente do 26B com esta máquina. Os projetos dessa análise não foram compilados e o exemplo Blazor continha erros; ainda falta comprovar o contrato de arquivos e o ciclo completo pela engine.
+- Uma [consulta de inventário](validation/2026-09-23-ollama-inventory.json) ao host às 22:46 de 23/09/2026 confirmou Ollama 0.34.2, `gemma4:12b`, `gemma4:26b`, `embeddinggemma:latest` e `qwen3-embedding:0.6b` instalados. Nenhum modelo estava carregado naquele instante. A consulta foi somente de leitura, sem nova geração ou alteração do serviço.
 - `docs/legado/TestesDeOutraMaquina/ArquivosCrExe/` é apenas contexto histórico. Foram observados três builds da calculadora com executável, marcador de sucesso e fontes com variações de cor. Não usar esses arquivos como fonte canônica nem incorporar caches de aplicações, dados de navegador ou binários ao projeto público.
 
 ### Percurso validado pelo autor na máquina original
@@ -70,15 +73,17 @@ O fingerprint atual já cobre os bytes completos da receita. Portanto, editar qu
 ### Dentro da v1
 
 - CLI Rust e especificação versionada, com YAML legado compatível, Markdown e texto puro.
+- Uma base Rust compartilhada entre Windows, Linux e macOS, com especializações selecionadas por `#[cfg]` e dependências por target no Cargo, sem remover arquivos para compilar em outro sistema.
 - `crexe exec arquivo.crexe` e `crexe arquivo.crexe`, preservando a associação e o drag-and-drop do Windows.
 - Instalação por usuário em caminho estável para a linha v1, independente do checkout, usada pela associação da extensão e pelos testes de distribuição.
 - Janela simples de espera ao abrir pelo desktop, inicialmente no Windows, com “Creative Executable — Gerando seu programa…”, progresso por fase, fechamento ao iniciar o aplicativo e erro visível quando houver falha.
 - Descoberta de OS, arquitetura e toolchains; diagnóstico anterior à chamada ao modelo.
+- Triagem curta de requisitos por IA quando necessária, neutra em relação ao sistema operacional, integrada ao planejamento quando possível e sem impor uma chamada extra a toda execução. Evitar duplicação de builds/testes entre ambientes.
 - Perfis de geração/build mantidos pela engine e selecionados deterministicamente.
 - Texto puro como prompt livre, inclusive uma única frase, sem seções ou metadados obrigatórios.
 - Projetos com múltiplos fontes, recursos, dependências, scripts de build e testes, com exportação de um ZIP utilizável.
 - Contrato de entrega completa aplicado pela engine, mesmo quando a intenção não pede um ZIP; operações padronizadas de build, run, test, publish e export, com scripts portáveis dentro de cada target.
-- Orquestração e sandbox gerenciados pela própria engine para gerar, compilar, observar falhas, corrigir e testar, com backend compatível com o target e limites explícitos de tempo, tentativas e consumo. Nenhum sandbox do provider é necessário.
+- Orquestração e execução gerenciadas pela própria engine para gerar, compilar, observar falhas, corrigir e testar, com backend compatível com o target e limites explícitos de tempo, tentativas e consumo. Suportar isolamento e um modo host selecionado por configuração local, identificando suas garantias diferentes. Nenhum sandbox do provider é necessário; Windows Sandbox é proibido.
 - Configuração local de provider, endpoint, modelo e credenciais; **OpenAI e Ollama local como providers da v1**. Preservar Chat Completions no caminho atual e implementar o adaptador Ollama com controle de recursos locais.
 - Etapas inspecionáveis, cache confiável, erros claros e limites realmente aplicados ou explicitamente não suportados.
 - Exemplos dos três formatos, testes offline, demonstração real documentada e binários para as plataformas efetivamente verificadas.
@@ -88,6 +93,7 @@ O fingerprint atual já cobre os bytes completos da receita. Portanto, editar qu
 
 - Recuperar a tentativa com Responses/GPT Pro. Pode voltar como transporte separado depois, com testes e documentação própria; não bloqueia a v1.
 - Integração com sandboxes hospedados por fornecedores de modelos. A v1 usa o ciclo e a camada de execução gerenciados pelo CREXE.
+- Windows Sandbox: proibido em toda a fase atual, inclusive para desenvolvimento, testes, instalação e fallback. Não oferecer como backend opcional da v1.
 - Studio visual, marketplace, contas, assinaturas de receitas, instalação automática de compiladores no host e atualização automática. A preparação de dependências dentro do sandbox faz parte do build controlado. Modelos locais por Ollama estão dentro do escopo; integração com outros runtimes locais pode vir depois.
 - Suporte irrestrito a qualquer linguagem, sistema ou arquitetura; cross-compilation implícita; reparo ilimitado de código por novas chamadas ao modelo.
 - Promessa de resultados idênticos a cada geração. Cache reutilizável é diferente de geração e builds reproduzíveis.
@@ -122,7 +128,10 @@ crexe/
     progress.rs
     presentation/
       mod.rs
+      console.rs
       windows.rs
+      linux.rs
+      macos.rs
     format/
       mod.rs
       yaml.rs
@@ -164,6 +173,7 @@ crexe/
     README.md
     getting-started.md
     architecture.md
+    platforms/README.md
     configuration.md
     compatibility.md
     roadmap.md
@@ -175,6 +185,14 @@ crexe/
 ```
 
 Criar os módulos conforme forem extraídos, sem arquivos vazios só para cumprir a árvore. Os perfis oficiais podem ser recursos embutidos no binário para manter a distribuição da CLI simples; a pasta guarda suas fontes versionadas.
+
+### Base compartilhada e especializações por sistema
+
+Usar o mecanismo padrão de Rust/Cargo para manter uma única implementação: `#[cfg(target_os = "windows")]`, `#[cfg(target_os = "linux")]` e `#[cfg(target_os = "macos")]` selecionam os módulos no build, e as seções de dependências por target mantêm as bibliotecas específicas no destino correto. Não exigir que o usuário apague arquivos ou comente código para compilar em outra plataforma. A organização, exemplos e instruções ficam no [README de plataformas](platforms/README.md), com links para a documentação oficial.
+
+O núcleo de interpretação, configuração, providers, projetos, cache e pipeline é compartilhado. Isolar as integrações específicas de janela/console, associação, instalação e sandbox nos módulos correspondentes. `progress.rs` define eventos comuns; `presentation/mod.rs` apresenta uma interface comum para os módulos de console e UI. Evitar tipos Windows na interface usada pelo núcleo. Uma biblioteca de UI multiplataforma pode compartilhar ainda mais código, mantendo separadas as integrações do sistema.
+
+Entregar inicialmente a janela Windows sem impedir a compilação da CLI Linux/macOS. Só declarar módulos quando seus arquivos existirem; interfaces ainda indisponíveis retornam diagnóstico explícito. Se a UI introduzir dependências gráficas, usar features/dependências opcionais do Cargo para permitir um build apenas de CLI em ambiente sem desktop. A documentação de suporte deve distinguir engine compilável, CLI validada, janela disponível e backend de sandbox validado por sistema. Não confundir portabilidade dos fontes com um único executável universal ou com cross-compilation já preparada.
 
 ### Destino dos arquivos atuais
 
@@ -244,6 +262,8 @@ Adicionar um indicador indeterminado discreto, sem porcentagens ou previsões de
 
 A janela pertence à engine e usa mensagens mantidas pelo CREXE; funciona com qualquer formato e provider, inclusive Ollama. O pipeline emite eventos de fase, falha, cancelamento e início do app; uma camada de apresentação os consome sem bloquear sua thread de interface. A CLI em terminal continua com saída textual e códigos de saída, e execução em container/headless não exige desktop. Solicitar `--ui` onde não há suporte deve produzir diagnóstico claro.
 
+Manter o código específico de Windows em `presentation/windows.rs`, protegido por compilação condicional e com dependências declaradas apenas para esse target. O pipeline e o contrato de progresso permanecem compartilhados; Linux/macOS recebem implementações próprias ou uma apresentação multiplataforma conforme forem validados. Seguir o README de plataformas em vez de instruções para remover arquivos manualmente.
+
 No Windows, validar o modo de inicialização/console da distribuição para que a abertura pelo Explorer mostre somente a janela de espera e, depois, o app, sem terminais extras da engine ou dos subprocessos de build. Preservar o funcionamento da CLI e de aplicativos de console, que podem precisar de seu próprio terminal. A implementação da janela e os ajustes de inicialização ainda fazem parte do trabalho da v1; não estão presentes no baseline. A interface mínima não altera o escopo de Studio ou editor visual.
 
 ## 5. Três formatos e uma representação interna
@@ -261,7 +281,7 @@ flowchart LR
   V --> H{Cache válido?}
   H -->|Sim| X[Executar artefato]
   H -->|Não| G[Gerar projeto completo]
-  G --> B[Validar e compilar em sandbox]
+  G --> B[Validar e compilar no backend resolvido]
   B -->|Sucesso| S[Testar]
   B -->|Falha| F{Há orçamento para corrigir?}
   S -->|Falha| F
@@ -348,6 +368,7 @@ O modo texto exige que a engine assuma responsabilidades que hoje estão escrita
 | Identificador do artefato | Derivado do nome com regras de caracteres e tamanho; separado do nome exibido. |
 | OS e arquitetura | Detecção local; distinguir arquitetura do host, processo da engine e target do compilador. |
 | Toolchain e framework disponíveis | Sondagens controladas de ferramentas conhecidas, caminhos e versões. |
+| Backend de build/teste/run | Requisitos do perfil e de cada fase, capacidades comprovadas dos ambientes disponíveis e política local. O prompt/modelo não concede acesso ao host. |
 | Perfil/language | Preferência explícita compatível, configuração local ou tabela oficial da engine. |
 | Organização do projeto e dependências | Planejamento da engine com proposta do gerador, validada contra o perfil e resolvida por ferramentas de build/pacotes no ambiente de execução. Não exige campos no plaintext. |
 | Provider/modelo | Perfil local de geração; a receita pode sugerir opções compatíveis, sem acessar segredos. |
@@ -369,11 +390,57 @@ Normalizar aliases de arquitetura (`x86`/`i686`, `x64`/`x86_64`, `arm64`/`aarch6
 
 Tratar essa tabela como decisão do projeto, baseada nos exemplos existentes. C#/.NET é uma ampliação proposta, ainda sem implementação entregue. Recomendo incluí-la como segundo perfil Windows após fechar o primeiro percurso com C++.
 
-A ordem é determinística e visível em `inspect`. Considerar tanto as ferramentas instaladas quanto os ambientes de sandbox disponíveis para o target. Se só um perfil compatível está disponível, usá-lo. Se vários existem, usar a preferência/configuração ou a ordem oficial; se nenhum existe, explicar o requisito faltante antes de consumir tokens. Não instalar compiladores no host silenciosamente. Comandos e dependências propostos pelo modelo passam por uma representação estruturada e pela política da engine; sua mera presença no texto não os autoriza.
+A ordem é determinística e visível em `inspect`. Considerar tanto as ferramentas instaladas quanto os ambientes de sandbox disponíveis para o target. Se só um perfil compatível está disponível, usá-lo. Se vários existem, usar a preferência/configuração ou a ordem oficial; se os requisitos já conhecidos não podem ser atendidos, explicar a falta antes de consumir tokens. Quando a intenção ainda precisar de interpretação, a triagem curta descrita abaixo pode anteceder a resolução final, sem iniciar a geração completa de código. Não instalar compiladores no host silenciosamente. Comandos e dependências propostos pelo modelo passam por uma representação estruturada e pela política da engine; sua mera presença no texto não os autoriza.
 
 O target é o ambiente onde o aplicativo será usado. Identificá-lo no host antes de entrar no sandbox: uma engine no Windows não deve selecionar Linux apenas porque seu worker de build usa um contêiner Linux. Toolchain, ABI, bibliotecas e capacidade de testar esse target precisam estar explícitas no perfil.
 
 O perfil precisa declarar a classe de aplicação que suporta. No primeiro ciclo, os perfis são de utilitários desktop simples; uma receita que exija capacidades fora deles deve receber diagnóstico claro, sem promessa de atender qualquer aplicativo.
+
+### Escolha entre host nativo e sandbox Linux
+
+Selecionar o ambiente por regras verificáveis, evitando uma escolha livre do modelo entre “host” e “Linux”. A configuração local pode fixar o backend por perfil; no modo automático, resolver os requisitos e filtrar os candidatos compatíveis e permitidos. O target do aplicativo continua sendo o target solicitado ou, na ausência dele, o host do usuário; a presença de um contêiner Linux não muda essa intenção.
+
+| Necessidade resolvida | Regra de seleção |
+|---|---|
+| Aplicativo Windows com Win32, .NET Windows ou ferramentas que só estão no Windows do usuário | Backend Windows nativo que disponha dos requisitos. Usar isolamento nativo validado quando compatível; o modo host depende da política local que o permite. |
+| Aplicativo macOS com frameworks/ferramentas Apple | Backend macOS compatível; não substituir por Linux para declarar o app nativamente testado. |
+| Projeto Linux ou fase comprovadamente independente do OS/dispositivos | Sandbox Linux disponível, preparado e permitido, se sua capacidade for suficiente para essa fase. |
+| Integração com dispositivo e driver do host | Teste de integração no ambiente com acesso ao equipamento; testes de lógica podem usar mocks em outro backend. Registrar separadamente cada resultado. |
+| Requisito desconhecido, ferramenta ausente ou nenhum backend permitido | Diagnosticar o requisito ou a configuração faltante, sem trocar de target nem reduzir o isolamento silenciosamente. |
+
+Procedimento proposto:
+
+1. Interpretar a intenção e resolver target/perfil. Usar regras locais quando suficientes e uma triagem curta por IA quando houver requisitos a esclarecer. O modelo pode sugerir requisitos estruturados, mas a engine os valida contra perfis conhecidos e o inventário local; não aceitar comandos de sondagem arbitrários.
+2. Para build, testes de lógica, integração e execução final, listar requisitos de OS/arquitetura, toolchain/versão, SDK/bibliotecas, sessão gráfica, serviços e dispositivos. “Driver instalado” não substitui a verificação do SDK/API necessário para desenvolver a integração.
+3. Comparar com as capacidades observadas em cada ambiente, não apenas com o PATH do host. Algo instalado no Windows não é considerado automaticamente disponível dentro de Linux.
+4. Aplicar a restrição absoluta de Windows Sandbox e a política local. Uma preferência explícita por backend incompatível falha com diagnóstico; não é silenciosamente substituída. Em modo automático, escolher pelo perfil e por uma ordem documentada, respeitando a permissão local para host e o isolamento exigido em cada fase.
+5. Registrar em `inspect` qual ambiente será usado, por quê e quais limites se aplicam. Quando a configuração local já resolve a escolha, continuar sem solicitar a mesma decisão a cada execução. Se faltar uma decisão indispensável, indicar exatamente a configuração pendente.
+6. Fazer preflight dos requisitos conhecidos antes de geração evitável. Se o planejamento revelar novas dependências/capacidades, revalidar antes de executar; não ampliar acesso ao host ou migrar para ele só porque um build isolado falhou.
+
+Exemplo futuro: um perfil Unity pode selecionar o Editor do Windows já configurado; um teste de impressão pode precisar do host mesmo que testes de lógica rodem em Linux. São exemplos da regra de resolução, não promessas de suporte a Unity ou a qualquer dispositivo na v1. Registrar “compilou”, “passou em mocks” e “validado no equipamento real” separadamente. Trocas entre backends transferem somente artefatos declarados e validados, sem compartilhar pastas pessoais ou credenciais implicitamente.
+
+### Triagem curta de requisitos e tempo até abrir o aplicativo
+
+Diretriz do autor: separar etapas e ambientes somente quando isso acrescentar uma verificação necessária, sem aumentar desnecessariamente o tempo de geração. Usar um único ambiente compatível como percurso padrão; não iniciar Linux, recompilar ou repetir a mesma suíte no host apenas por existir mais de um backend. Preservar o build real e os testes mínimos exigidos pelo perfil. Quando houver uma integração física, testar a lógica sem hardware pode ser útil, mas isso não obriga usar outro ambiente nem duplicar o build.
+
+Para intenções que precisem de análise semântica, prever uma chamada inicial curta ao provider configurado. Sua função é classificar requisitos, sem gerar o projeto inteiro ou decidir permissões. Pergunta interna proposta:
+
+> Esta intenção exige um sistema operacional específico, APIs nativas, SDKs, ferramentas, serviços ou dispositivos do ambiente do usuário? Identifique o sistema e os requisitos por etapa: compilação, testes e execução. Diferencie o que foi explicitamente pedido do que você inferiu; se não houver informação suficiente, indique a dúvida. Responda somente com a classificação estruturada solicitada, sem código nem comandos.
+
+O resultado identifica: restrição de SO (`identificada`, `não identificada` ou `desconhecida`), sistemas aplicáveis, requisitos com sua etapa e origem (explícita/inferida), recursos necessários do host e pendências. A triagem deve tratar Windows, macOS, Linux e requisitos independentes de SO; não reduzir a pergunta a “precisa de Windows?”. Uma resposta “não identificada” não significa compatibilidade comprovada com Linux e não muda o target padrão do usuário.
+
+Percurso para reduzir chamadas e tempo:
+
+1. Verificar cache de aplicativo válido antes da triagem. Reabrir uma versão válida não chama o modelo para reclassificar a mesma intenção.
+2. Usar dados explícitos e perfis conhecidos quando forem suficientes; não fazer uma chamada só para confirmar uma decisão já resolvida. Se houver análise inicial necessária e nenhum resultado reutilizável, fazer no máximo uma chamada de triagem por resolução.
+3. Se uma chamada de planejamento antes da geração já for necessária, incluir a classificação nessa mesma resposta, sem uma segunda etapa de IA equivalente. Não juntar essa classificação à geração completa de código quando a escolha do ambiente ainda depende dela.
+4. Pedir resposta pequena e validá-la contra um schema. Limitar tokens, tempo e tamanho da resposta; contabilizar a chamada no orçamento total. Timeout, saída truncada ou inválida produzem estado de requisito desconhecido e diagnóstico, sem uma cadeia automática de reparos do classificador.
+5. Usar por padrão o provider/modelo já configurado, aproveitando o carregamento existente quando disponível. Não carregar um segundo modelo Ollama só para essa etapa sem medir o efeito em tempo e memória; uma resposta curta não elimina o custo de carregar o modelo.
+6. Guardar a classificação junto do plano, vinculada à intenção, target/contexto relevante, versão do contrato de classificação e identidade do classificador. Revalidar os fatos atuais e a política local antes de reutilizá-la; esse cache não concede permissões e não substitui a validação do cache de aplicativo.
+
+O inventário enviado à triagem deve ser um resumo mínimo de capacidades relevantes, sem credenciais nem conteúdo pessoal. A engine compara a classificação com as ferramentas e recursos realmente disponíveis e aplica a política local. Uma sugestão da IA não permite acesso ao host nem uso de Windows Sandbox. Se os arquivos/manifests gerados introduzirem requisitos adicionais, revalidar antes do build, sem depender apenas da classificação inicial.
+
+Medir tempo de carregamento do modelo, triagem, planejamento/geração, preparo do ambiente, build, testes e abertura, além de chamadas/tokens e reutilização de cache. Comparar uma geração simples, uma intenção com requisito explícito de Windows, outra de macOS, uma integração com hardware e uma reabertura por cache. Usar essas medições para ajustar os limites; não prometer uma duração fixa antes de testar os providers e a máquina. Otimizar removendo chamadas e trabalho redundantes, sem retirar verificações necessárias nem afrouxar o isolamento.
 
 ### Providers intercambiáveis: OpenAI e Ollama
 
@@ -420,6 +487,32 @@ O exemplo acima é do adaptador nativo proposto: endpoint-base sem `/v1` e opç�
 
 Detectar término por limite de tokens, resposta incompleta, texto de thinking separado e JSON inválido antes de tocar nos arquivos. Um teste real do baseline recebeu um JSON incompleto; a rejeição funcionou, mas o diagnóstico deve distinguir truncamento de erro de sintaxe e não gastar novas chamadas automaticamente sem limite.
 
+### Evidência adicional do Ollama e implicações para a engine
+
+Usar a [análise local de 23/09/2026](ANALISE_OLLAMA_LOCAL_2026-09-23.md) como evidência complementar, preservando os resultados anteriores em `docs/validation/`. O relatório descreve um host com aproximadamente 32 GB de RAM e RTX 3060 Laptop de 6 GB de VRAM. Seus números são observações de outra sequência de testes, não um benchmark controlado nem uma validação funcional de aplicações.
+
+| Modelo disponível | Evidência e papel possível |
+|---|---|
+| `gemma4:12b` | Respondeu a Hello World em C/Java. Naquelas amostras, contexto de 16.384 tokens e carregamento dividido em 55% CPU / 45% GPU. Candidato a geração/triagem configurável; código não compilado nesses testes. |
+| `gemma4:26b` | Depois de liberar memória, respondeu a Hello World, FastAPI e Blazor. É uma opção utilizável observada nesta máquina, com carregamento sensível à pressão de memória e saída de código ainda sujeita a erros. Não transferir para ele a divisão CPU/GPU medida no 12B. |
+| `embeddinggemma:latest` | Gerou embeddings de 768 dimensões; não é substituto de um gerador de código ou classificador conversacional. |
+| `qwen3-embedding:0.6b` | Gerou embeddings de 1.024 dimensões; capacidade distinta de geração de texto, sem avaliação de qualidade de busca. |
+
+Requisitos decorrentes desses resultados:
+
+- Manter 12B e 26B selecionáveis por configuração. O `model = "gemma4:12b"` do exemplo é ilustrativo, não uma conclusão de superioridade ou de impossibilidade de usar 26B. Não trocar o modelo automaticamente para recuperar uma falha sem política local explícita.
+- Separar disponibilidade do serviço, modelo instalado, modelo carregado, conclusão de uma resposta e projeto realmente compilado/testado. `doctor` consulta metadados por padrão; um diagnóstico comum não deve carregar o 26B silenciosamente apenas para verificar sua existência.
+- Distinguir memória em repouso de pico de carregamento. O autor relatou sucesso do 26B após reduzir o uso prévio de RAM para cerca de 9 GB e consumo total de até aproximadamente 25 GB depois de carregado. Não transformar esses valores em limites fixos ou garantias; considerar também a memória da engine, ferramentas de build e ambientes de execução.
+- Registrar separadamente carregamento, processamento de prompt e geração. No Java do 26B, o relatório observou 41,19 s no cliente com carregamento de 24,53 s reportado pela API e, depois, 8,07 s totais da API com o modelo já carregado. Isso não isola a influência de streaming e não constitui comparação controlada entre 12B e 26B.
+- Reaproveitar o mesmo modelo durante triagem, geração e reparo quando possível, com permanência configurável e respeito ao orçamento de memória. Avaliar o `keep_alive` em relação ao intervalo real de compilação/testes para evitar recargas desnecessárias; não manter modelos indefinidamente nem alternar modelos só para uma triagem curta sem medir o custo. Começar a validação local com uma geração por vez, sem inferir suporte a concorrência a partir desses testes.
+- Não encerrar processos do Ollama, descarregar modelos de outras atividades ou fechar aplicativos do usuário como recuperação automática de falta de memória. Diagnosticar a condição e permitir que o usuário ajuste o ambiente/modelo. Cancelar uma execução CREXE não deve matar o serviço Ollama externo.
+- Diferenciar falha de acesso ao endpoint a partir de um ambiente isolado de falha do serviço no host. O cliente do provider pertence à orquestração da engine, separado do backend que compila/executa o código gerado. Não expor o endpoint de loopback à rede como correção automática de conectividade.
+- A análise adicional usou `/api/generate`, sem ajustes de contexto, thinking ou distribuição GPU/CPU enviados pelo agente. Os resultados não validam automaticamente `/api/chat`, o transporte compatível nem os parâmetros de exemplo deste plano. Validar o adaptador escolhido com o contrato estruturado real, término da resposta e arquivos de projeto.
+- Conservar compilação e reparo limitado como parte do ciclo: a resposta Blazor concluiu normalmente, mas tinha erros de sintaxe e foi produzida com `stream: false`, como destacou o autor. Esse teste avaliou uma resposta completa sem feedback de ferramentas; não avaliou geração incremental com build e ajuste. Não atribuir os erros à ausência de streaming sem comparação controlada, nem usar esse resultado para concluir que o modelo falharia no fluxo iterativo da engine. Ausência de erro HTTP e texto completo não permitem marcar o projeto como pronto. A saída FastAPI tampouco foi executada.
+- Não introduzir embeddings ou RAG no percurso de geração/triagem apenas porque esses modelos estão instalados. Se usados futuramente, preservar a identidade do modelo e a dimensão dos vetores; nenhum resultado aqui valida qualidade semântica ou recuperação.
+
+Próxima evidência necessária: usar prompts, contrato de arquivos, versão de modelo e parâmetros registrados, distinguir partidas a frio e modelo já carregado, e executar de fato geração → build → testes → reparo quando necessário. Medir tempo e memória por fase. Não repetir toda a investigação de hardware nem instalar outros modelos para apenas reler esta análise.
+
 Não fazer fallback silencioso de Ollama para OpenAI: isso enviaria conteúdo e consumiria créditos sem corresponder à escolha do usuário. Downloads de modelos e mudanças de modelo devem ser explícitos. Para esta investigação, o autor autorizou um Gemma menor que 16B caso o maior apresentasse problemas. A biblioteca oficial oferece [Gemma 4 12B](https://ollama.com/library/gemma4:12b); tamanho dos pesos não equivale à memória total necessária.
 
 ## 7. Correção do fluxo, cache e limites
@@ -430,7 +523,28 @@ Evoluir o contrato já existente `files[]` para representar um projeto real. O g
 
 Remover dos perfis a obrigação de concentrar todo o código em um arquivo. O perfil define a família de ferramentas e os requisitos do target; o plano de projeto enumera fontes, recursos, dependências, artefatos e comandos de build/teste. Por exemplo, um projeto C++ pode conter `main.cpp`, `calculator.cpp`, `calculator.h`, recursos e testes; um projeto .NET pode conter `.csproj`, múltiplas classes, UI e recursos. O build precisa abranger o projeto, não apenas compilar o primeiro arquivo recebido.
 
-Definir um manifesto interno de projeto que descreva arquivos, entrypoint, perfil, dependências, passos de build/teste e artefatos esperados. Validá-lo separadamente da intenção e das permissões. Scripts gerados fazem parte do resultado, mas só podem executar dentro da política e do sandbox selecionado. Para projeto maior, permitir geração em lotes e correções por arquivo com controle de revisão, em vez de exigir uma resposta JSON gigantesca ou aceitar conteúdo truncado.
+Definir um manifesto interno de projeto que descreva arquivos, entrypoint, perfil, dependências, passos de build/teste e artefatos esperados. Validá-lo separadamente da intenção e das permissões. Scripts gerados fazem parte do resultado, mas só podem executar no backend permitido e dentro da política local. Para projeto maior, avaliar geração em lotes e correções por arquivo com controle de revisão para lidar com os limites de resposta. Suportar múltiplos arquivos é requisito; a divisão desses arquivos entre chamadas ao modelo é decisão de implementação. Nunca aceitar conteúdo truncado como projeto completo.
+
+### Hipótese a avaliar: streaming e geração incremental
+
+O autor esclareceu que receber arquivo por arquivo e intercalar builds era uma suposição sobre um possível fluxo, não uma especificação técnica nem conhecimento do funcionamento interno de um agente em sandbox. A descrição abaixo é uma alternativa proposta para investigação, não uma arquitetura aprovada ou requisito adicional da v1. Cabe à implementação da engine definir a divisão das chamadas, o uso de streaming e os momentos de build com base em testes de qualidade, tempo, custo e memória. Permanecem os requisitos de entregar projetos completos com múltiplos arquivos, compilar/testar de verdade e corrigir falhas dentro dos limites definidos.
+
+Separar três mecanismos: streaming entrega fragmentos da resposta enquanto o modelo gera; geração incremental divide o trabalho em arquivos ou lotes coerentes; o ciclo de ferramentas executa verificações e devolve resultados ao modelo em uma nova rodada. Na [API do Ollama](https://docs.ollama.com/api/streaming), os fragmentos do transporte não representam necessariamente arquivos completos. Habilitar streaming não divide o projeto automaticamente, não reduz por si só a quantidade de código solicitada e não faz a geração em andamento incorporar um erro que o compilador acabou de encontrar. O feedback entra no contexto da próxima chamada.
+
+Uma alternativa a comparar com a geração do projeto completo seguida de build e reparo é este percurso, sem depender de function calling nativo do modelo:
+
+1. Resolver uma estrutura de projeto e interfaces compartilhadas, junto do planejamento já necessário, evitando uma chamada extra apenas para enumerar arquivos em projetos pequenos.
+2. Solicitar um arquivo ou pequeno lote coerente por rodada, incluindo o contexto necessário para manter referências, tipos e dependências consistentes. Um projeto pequeno pode caber em um único lote; não obrigar uma chamada por arquivo.
+3. Receber a resposta, com streaming quando suportado pelo adaptador, para progresso e cancelamento. Aplicar somente operações completas, com caminhos, contrato, revisão e término validados; uma conexão interrompida ou saída truncada não altera a última revisão aceita. Fragmentos ficam em buffer temporário e nunca são tratados como código pronto para executar.
+4. Compilar em marcos com os arquivos e dependências necessários disponíveis. Arquivo recebido não implica projeto compilável: não disparar build a cada token/arquivo nem consumir reparos por dependências que ainda estão planejadas para o próximo lote. Fazer verificações locais mais baratas quando úteis. Começar com geração e build sequenciais, considerando a pressão de memória observada no Ollama.
+5. Diante de falha real nesse marco, enviar diagnóstico e fontes relevantes ao modelo na rodada seguinte, corrigir os arquivos necessários e repetir a verificação. Manter o estado do projeto e a versão dos contratos compartilhados; não reenviar ou regenerar todo o projeto sem necessidade.
+6. Concluir com build e testes mínimos do projeto completo antes de exportar, publicar o cache de sucesso e abrir o app. Um marco parcial aprovado não comprova a entrega final.
+
+O sandbox oferece o ambiente das ferramentas; a orquestração da engine cria esse ciclo, também no modo host permitido. A mesma divisão em lotes e retorno de diagnósticos pode funcionar sem streaming. Todas as rodadas entram no orçamento global de chamadas, tokens, tempo e correções; o limite não reinicia a cada arquivo. “Uma geração” significa a fase inicial, que pode conter vários lotes, e não necessariamente uma única chamada HTTP.
+
+Na investigação dessa alternativa, validar transporte e estratégia separadamente: comparar streaming ligado/desligado com o mesmo pedido e parâmetros; depois comparar geração completa e incremental com os mesmos requisitos e critérios de aceitação. Registrar estado frio/quente, tempo total até app validado, chamadas, tokens, falhas e reparos. O pedido Blazor do relatório pode servir como caso comparativo quando houver um perfil compatível, sem ampliar os perfis prometidos para a v1. A hipótese é que feedback intermediário e correções localizadas melhorem a entrega; ainda não há medição de ganho de qualidade ou tempo nesta máquina. Não impor lotes extras quando a geração inicial já for pequena e satisfatória. A v1 não precisa implementar ambas as estratégias apenas para atender a esta hipótese; registrar a decisão e a evidência obtida na implementação.
+
+### Exportação do projeto validado
 
 A entrega bem-sucedida inclui uma árvore de fontes e um ZIP com fontes, recursos, scripts de build do target, manifests/lockfiles, instruções de dependências e relatório do build/teste. A engine cria o ZIP a partir do conjunto validado; não é necessário pedir ao modelo que devolva um ZIP em base64. Credenciais, caminhos privados, caches de provider e dados temporários ficam fora do pacote. Binários gerados são artefatos identificados por target e podem ser distribuídos separadamente dos fontes.
 
@@ -471,9 +585,9 @@ O ZIP deve ter uma pasta raiz identificável e incluir todos os arquivos do proj
 
 Esse ciclo passa a ser uma responsabilidade central da engine, funcionando com OpenAI e Ollama:
 
-1. Resolver intenção, nome, target, perfil, capacidades do sandbox e orçamento da execução.
-2. Preparar um workspace isolado e um plano de projeto; gerar arquivos e dependências declaradas.
-3. Validar destinos/contrato e preparar dependências no sandbox com versões registradas e acesso de rede controlado para os repositórios necessários.
+1. Verificar reutilização válida e resolver intenção, nome, target, perfil, backend e política de cada fase, suas capacidades e orçamento. Triagem de requisitos por IA só ocorre quando necessária e pode integrar o planejamento inicial.
+2. Preparar um workspace próprio no ambiente permitido e um plano de projeto; gerar arquivos e dependências declaradas. No modo isolado, aplicar também o isolamento do backend.
+3. Validar destinos/contrato e preparar dependências no backend resolvido, com versões registradas e a política de acesso à rede. O modo host não autoriza instalar ou alterar ferramentas globais silenciosamente.
 4. Compilar de verdade, capturando comando, versões, exit code, stdout/stderr e artefatos. A afirmação do modelo de que “compilou” não é evidência de sucesso.
 5. Se houver falha de código/build, enviar ao provider apenas os diagnósticos e arquivos relevantes, aplicar a correção validada e recompilar. Erros de credencial, falta de SDK, política ou recursos exigem diagnóstico próprio, sem consumir tentativas cegas de correção de código.
 6. Executar os testes mínimos do perfil e do projeto. Falhas também podem alimentar a correção; não aceitar que o modelo remova o critério de aceitação para fazer o teste passar.
@@ -481,7 +595,7 @@ Esse ciclo passa a ser uma responsabilidade central da engine, funcionando com O
 
 Se a primeira geração compilar e passar nas verificações, concluir a entrega imediatamente, sem uma chamada obrigatória ao modelo para “revisar” ou reescrever código correto. O reparo só ocorre diante de falha observada. O relato de sucesso do exemplo SMTP orienta esse percurso, mas não permite inferir quantas chamadas ou operações ocorreram internamente no chat. Registrar separadamente geração inicial, tentativas de reparo e verificações executadas.
 
-Proposta inicial: uma geração e até duas rodadas de correção, além de limites configuráveis de chamadas totais, tokens, duração, memória, processos, disco e tamanho de logs. Planejamento, geração por lotes e retries de transporte também contam no orçamento total; não esconder chamadas adicionais. Esses defaults devem ser medidos com os modelos locais e remotos antes da release. O usuário pode cancelar, e o estado deve permitir diagnóstico/retomada sem perder a última versão boa.
+Proposta inicial: uma geração e até duas rodadas de correção, além de limites configuráveis de chamadas totais, tokens, duração, memória, processos, disco e tamanho de logs. Triagem quando necessária, planejamento, geração por lotes e retries de transporte também contam no orçamento total; não esconder chamadas adicionais. A classificação não exige um modelo ou uma chamada separados quando o planejamento já a fornece. Esses defaults devem ser medidos com os modelos locais e remotos antes da release. O usuário pode cancelar, e o estado deve permitir diagnóstico/retomada sem perder a última versão boa.
 
 Ao esgotar o limite, entregar um relatório e preservar os fontes para diagnóstico, identificados como incompletos. Não marcar o app como pronto, não publicar cache de sucesso nem executar um build antigo como se fosse o novo. Um pacote parcial exportado para diagnóstico deve informar que falhou.
 
@@ -491,36 +605,36 @@ Testes gerados pelo mesmo modelo são apoio. Manter também critérios independe
 
 **Decisão de arquitetura: o CREXE gerencia o sandbox e toda a orquestração, independentemente do provider.** A engine cria o ambiente, prepara os arquivos, executa o build/testes, captura erros, solicita correções ao modelo e encerra o ambiente. O provider recebe prompts/diagnósticos e devolve código ou alterações; ele não precisa oferecer shell, execução de código, sandbox hospedado ou um SDK de agentes.
 
-Gerenciar o próprio sandbox não significa implementar um sistema de virtualização do zero. O CREXE usa mecanismos de isolamento do sistema operacional, contêineres ou máquinas virtuais por meio de adaptadores sob seu controle. O ambiente local e suas toolchains são independentes da escolha do modelo. A implementação concreta continua sendo trabalho da v1, não uma capacidade que o baseline já possua.
+Gerenciar o próprio sandbox não significa implementar um sistema de virtualização do zero. O CREXE usa mecanismos existentes de isolamento por meio de adaptadores sob seu controle e pode oferecer execução host explicitamente configurada, com garantias diferentes. Windows Sandbox permanece proibido em toda a fase atual. O ambiente local e suas toolchains são independentes da escolha do modelo. A implementação concreta continua sendo trabalho da v1, não uma capacidade que o baseline já possua.
 
 Separar os contratos internos:
 
 | Componente | Responsabilidade |
 |---|---|
 | `Generator` | Gerar projeto ou correções usando o provider configurado e normalizar a resposta. Não executa o projeto. |
-| `SandboxBackend` | Preparar ambiente, escrever arquivos validados, executar comandos autorizados, limitar recursos, coletar resultados e destruir o ambiente. Não conhece chaves ou protocolos de providers. |
+| `ExecutionBackend` | Preparar ambiente, escrever arquivos validados, executar comandos autorizados, aplicar os limites suportados, coletar resultados e encerrar os próprios recursos. Abrange implementações isoladas e nativas/host, declarando suas garantias; não conhece chaves ou protocolos de providers. |
 | `Pipeline` | Coordenar as fases, manter estado/orçamento, interpretar resultados e decidir se solicita outra correção ou conclui. |
 | `ArtifactStore` | Preservar versões, manifestos, logs, cache e pacote final validado. |
 
 A troca de OpenAI por Ollama altera o adaptador/configuração de geração, preservando o backend de sandbox e a lógica de build/teste. Não obrigar providers a implementar function calling: o contrato estruturado de arquivos/correções, validado pela engine, deve bastar para o ciclo básico. Capacidades extras de um provider podem melhorar a geração sem se tornar requisito da engine.
 
-Na v1, o sandbox executa na máquina do usuário e não depende de infraestrutura do fornecedor do modelo. Depois de preparar modelo local, toolchains e dependências necessárias, o percurso com Ollama deve poder funcionar sem internet. Downloads e resolução de dependências ainda podem exigir rede durante o preparo; essa necessidade precisa ser explícita. Trocar para geração remota não transfere automaticamente o sandbox para a nuvem.
+Na v1, os backends executam na máquina do usuário e não dependem de infraestrutura do fornecedor do modelo. Depois de preparar modelo local, toolchains e dependências necessárias, o percurso com Ollama deve poder funcionar sem internet. Downloads e resolução de dependências ainda podem exigir rede durante o preparo; essa necessidade precisa ser explícita. Trocar para geração remota não transfere automaticamente a execução para a nuvem.
 
 Sandboxes hospedados por providers ficam fora do escopo da v1. Um eventual worker remoto futuro teria de respeitar o mesmo contrato independente, sem acoplar execução e geração. A tentativa antiga com Responses continua não canônica. Nenhum upload adicional de projeto ou troca para provider pago deve acontecer silenciosamente.
 
-Um diretório temporário mais `Command::spawn` não atende ao requisito de sandbox. O backend precisa restringir escrita/leitura, rede, processos e recursos, e manter credenciais da engine fora do ambiente do código gerado. A fase de dependências pode ter rede restrita; build/teste devem operar com as permissões declaradas. Importar projetos e extrair pacotes também exige validação contra traversal.
+Um diretório temporário mais `Command::spawn` não atende ao requisito de sandbox. Um backend anunciado como isolado precisa restringir escrita/leitura, rede, processos e recursos, e manter credenciais da engine fora do ambiente do código gerado. Execução host pode aplicar controles de subprocessos, ambiente e duração, mas não recebe a mesma garantia de contenção. Em qualquer modo, não injetar credenciais do provider no processo gerado; no host sem isolamento, limpar variáveis não impede todo acesso possível aos dados do usuário. Importar projetos e extrair pacotes também exige validação contra traversal.
 
-Definir a implementação concreta por target numa etapa técnica antes de prometer cobertura: começar pelo backend de contêiner Linux para projetos Linux e CI, e validar um worker isolado Windows com toolchain Windows para o percurso principal do produto. Não declarar um contêiner Linux, local ou hospedado, como validação de Win32/.NET Windows ou Cocoa. Cross-compilation pode produzir um binário, mas os testes nativos exigem um ambiente compatível. A forma de isolamento Windows/macOS ainda precisa ser escolhida e provada; é um entregável da v1, não uma capacidade existente.
+Definir a implementação concreta por target numa etapa técnica antes de prometer cobertura: backend de contêiner Linux para projetos/fases compatíveis e CI; execução nativa no Windows com toolchain local, modo host configurável e prova técnica dos controles de isolamento suportados, sem usar Windows Sandbox. Não declarar um contêiner Linux, local ou hospedado, como validação de Win32/.NET Windows ou Cocoa. Cross-compilation pode produzir um binário, mas os testes nativos exigem um ambiente compatível. A forma de isolamento Windows/macOS ainda precisa ser escolhida e provada; é um entregável da v1, não uma capacidade existente.
 
-`doctor` identifica backend disponível, toolchain, target e limites efetivamente aplicados. Se um modo exige isolamento e ele não está disponível, falhar antes da geração com instruções de preparo; não cair silenciosamente em execução irrestrita. Um modo explícito para receitas confiáveis pode continuar existindo para desenvolvimento, identificado como não isolado.
+`doctor` identifica backend disponível, toolchain, target e limites efetivamente aplicados. Se um modo exige isolamento e ele não está disponível, falhar antes da geração evitável com instruções de preparo; não cair silenciosamente em execução irrestrita. O modo host configurado localmente permite aproveitar ferramentas e dispositivos do usuário, identificado como execução local sem a garantia de um sandbox. Não oferecer Windows Sandbox como solução para um diagnóstico, mesmo que já esteja instalado.
 
 ### Execução e diagnóstico
 
 - Extrair as fases parse, resolve, validate, plan, generate, write, build, repair, test, package e run, com erros que identifiquem a fase e preservem o diagnóstico útil.
 - Resolver e verificar o executável final por caminho absoluto, inclusive em cache hit e quando o CWD é diferente do local da receita.
-- Fazer preflight de esquema, target, ferramentas/backend, credenciais e destino antes da chamada ao modelo. Dependências específicas propostas depois passam por validação antes da preparação/build. Em cache hit válido, não exigir credencial nem compilador que não serão utilizados.
+- Fazer preflight local dos requisitos conhecidos de esquema, target, ferramentas/backend, credenciais e destino antes de chamar o modelo. Quando necessária para resolver requisitos, a triagem curta antecede a geração completa; sua resposta passa por validação local. Dependências específicas propostas depois passam por validação antes da preparação/build. Em cache hit válido, não exigir credencial nem compilador que não serão utilizados, e não executar triagem remota.
 - Aceitar comandos como listas de argumentos. O formato string baseado em `split_whitespace` precisa ser descontinuado ou rejeitado com instrução de migração.
-- Perfis oficiais usam operações internas para criar diretórios e ferramentas de build declaradas, com argumentos estruturados. Scripts do projeto e shells necessários ao build executam sob a política do sandbox; o YAML legado recebe regras de compatibilidade e confiança documentadas.
+- Perfis oficiais usam operações internas para criar diretórios e ferramentas de build declaradas, com argumentos estruturados. Scripts do projeto e shells necessários ao build executam sob a política do backend selecionado; o YAML legado recebe regras de compatibilidade e confiança documentadas.
 - Validar placeholders ausentes, ciclos/limite de expansão e nomes de arquivo, sem interpolar dados do usuário em um comando de shell sem tratamento.
 - Aplicar timeout de build e cancelar a árvore de processos. Distinguir duração normal de uma aplicação GUI de timeout de compilação; qualquer limite de run deve ter semântica explícita.
 - Retornar código de saída estável e guardar logs por execução com cuidado para não registrar segredos.
@@ -543,9 +657,9 @@ Há duas responsabilidades diferentes: impedir que a **engine** escreva/execute 
 
 Para qualquer publicação: corrigir contenção de caminhos, links/junctions, nomes reservados, arquivos de controle, limites de saída, origem das políticas, seleção de ferramentas e isolamento das credenciais do gerador em relação aos processos filhos. Restrições declaradas e não suportadas devem falhar explicitamente.
 
-O ciclo automático de build, correção e teste exige o backend de isolamento descrito acima. A execução final da aplicação na máquina do usuário tem uma política separada: testar em sandbox não torna o binário seguro para executar com todas as permissões do usuário. `inspect` deve permitir verificar o plano e os modos de build/run; uma receita não concede confiança a si mesma. A associação de arquivos deve respeitar a mesma política e apresentar erros/progresso de forma acessível quando iniciada sem terminal.
+O ciclo automático de build, correção e teste usa o backend e o nível de isolamento resolvidos pela política local. Se ela exige isolamento, execução host não satisfaz o requisito. A execução final da aplicação tem uma política separada: testar em sandbox não torna o binário seguro para executar com todas as permissões do usuário. `inspect` deve permitir verificar o plano e os modos de build/run; uma receita não concede confiança a si mesma. A associação de arquivos deve respeitar a mesma política e apresentar erros/progresso de forma acessível quando iniciada sem terminal.
 
-O isolamento de build/teste exigido nesta v1 não autoriza apresentar a execução final como segura para qualquer `.crexe` recebido da internet. Conter também o aplicativo entregue exige um modo de run isolado por OS, com testes de acesso a rede, arquivos, subprocessos e persistência. Se a release prometer essa garantia ao público geral, ela é um bloqueador adicional de publicação, não um simples campo de YAML.
+O isolamento disponível em build/teste não autoriza apresentar a execução final como segura para qualquer `.crexe` recebido da internet. Conter também o aplicativo entregue exige um modo de run isolado por OS, com testes de acesso a rede, arquivos, subprocessos e persistência. A existência do modo host deve ficar clara na documentação; se a release prometer contenção ao público geral, ela precisa ser verificada no modo anunciado, não deduzida de um campo de YAML.
 
 Assinaturas, scanners e revisão de código podem complementar esse trabalho depois, mas não substituem isolamento. As RFCs e o site devem refletir exatamente qual modelo foi entregue.
 
@@ -577,8 +691,8 @@ As etapas abaixo são unidades de trabalho e revisão. Não precisam aparecer co
 |---|---|---|
 | 0 — Preservar e caracterizar | Snapshot recuperável dos arquivos copiados; inventário do baseline; ambiente de build; execução documentada do YAML atual. | Compilar a engine e registrar o comportamento real do exemplo ou o primeiro bloqueio reproduzível. Nenhuma dependência da variante experimental. |
 | 1 — Organizar e instalar | Pacote na raiz, exemplos/scripts realocados, arquivo histórico único, README inicial, licença/versão coerentes, lockfile, ignore e instalador por OS com destino `releases/v1`. | Build a partir da raiz; engine instalada fora do checkout; associação aponta ao caminho padrão e é diagnosticável; conteúdo original preservado. |
-| 2 — Estabilizar YAML | Correção do caminho absoluto, validação antecipada, extração gradual de módulos, escrita segura, políticas locais, cache transacional, timeouts e janela de espera sobre eventos do executor. | Testes offline cobrem os defeitos identificados; duplo clique informa espera/falha e fecha a janela ao iniciar o app; comandos antigos continuam utilizáveis com migrações explícitas. |
-| 3 — Formalizar a resolução | RFC de formatos/versões, spec tipada, ambiente, configuração local, providers OpenAI/Ollama, perfis, `inspect`, `doctor` e prova técnica dos backends de sandbox por target. | Plano resolvido previsível; troca de provider por configuração; Ollama sem chave; host distinto do ambiente de build; estratégia de isolamento Windows/Linux definida e testável. |
+| 2 — Estabilizar YAML | Correção do caminho absoluto, validação antecipada, extração gradual de módulos compartilhados/especializações com `cfg`, escrita segura, políticas locais, cache transacional, timeouts e janela de espera sobre eventos do executor. | Testes offline cobrem os defeitos identificados; UI Windows isolada sem impedir builds CLI de outros sistemas; duplo clique informa espera/falha e fecha a janela ao iniciar o app; comandos antigos continuam utilizáveis com migrações explícitas. |
+| 3 — Formalizar a resolução | RFC de formatos/versões, spec tipada, ambiente, configuração local, providers OpenAI/Ollama, perfis, triagem curta de requisitos quando necessária, `inspect`, `doctor`, seleção de backend por fase e prova técnica dos controles por target. | Resolução por requisitos/capacidades/política, com classificação estruturada validada; casos já resolvidos/cache não fazem chamadas extras; host distinto do sandbox Linux; Windows Sandbox rejeitado; troca de provider por configuração; Ollama sem chave; garantias de isolamento definidas e testáveis. |
 | 4 — Entregar os três formatos | Parsers/adaptadores, nome por arquivo, Markdown, texto puro, exemplos equivalentes e segundo perfil Windows se incluído. | As duas frases simples da seção de plaintext funcionam como intenção completa sem metadados; os formatos compartilham pipeline; YAML legado passa. |
 | 5 — Gerar projetos completos | Manifesto de projeto e operações, múltiplos fontes/recursos, dependências, scripts de build/run/publish, sandbox, correção limitada, testes mínimos e ZIP exportável. | Projeto com mais de um fonte compila; sucesso inicial não pede reparo; falha deliberada é corrigida; limite encerra falha persistente; ZIP recompila e scripts operam fora do workspace da engine. |
 | 6 — Validar a distribuição | CI, binários, checksums, instalação limpa/atualização 1.x e smoke tests por plataforma declarada. | Engine baixada funciona sem Rust, executa pelo caminho padrão e por associação no Windows; janela de espera responsiva sem terminais extras; pipeline e cache funcionam; sandbox/target e pré-requisitos estão verificados. |
@@ -596,14 +710,20 @@ Usar testes de comportamento nos pontos de falha, sem atrelar os testes à organ
 | Intenção livre | Arquivos contendo apenas “gerar uma calculadora simples” ou “gerar uma calculadora de regra de 3”; sem seções, tecnologia ou campos obrigatórios. A engine deriva nome/target/perfil e prepara build/dependências. |
 | Resolução | Nome pelo arquivo, overrides, OS/arquitetura, mais de uma toolchain, nenhuma disponível, preferência impossível e plataforma não suportada. |
 | Geração | Contrato JSON válido, conteúdo truncado/inválido, recusa/erro HTTP, fallback de parâmetros existente e limite de saída; não depender de disponibilidade atual de um modelo específico. |
-| Projeto completo | Vários fontes, headers, recursos, manifests, scripts e testes; build usa todos os módulos; dependências/versões ficam registradas; geração por lotes mantém revisão consistente. |
+| Projeto completo | Vários fontes, headers, recursos, manifests, scripts e testes; build usa todos os módulos; dependências/versões ficam registradas; se adotada geração por lotes, ela mantém revisão consistente. |
+| Streaming e geração incremental, se adotados | Conforme a estratégia implementada: fragmentos dividindo JSON/caracteres/arquivos, término truncado, desconexão e cancelamento não aplicam lote parcial; arquivos relacionados mantêm interfaces; build aguarda conjunto compilável; diagnóstico alimenta a rodada seguinte; reparo localizado respeita revisão e orçamento global; projeto completo passa por validação final. Esta linha não obriga implementar a alternativa; na investigação, comparar transporte separado da estratégia de geração. |
 | Entrega completa por padrão | Intenção sem pedido de ZIP ainda produz projeto exportável com instruções e scripts; resposta inicial válida passa por build/testes sem chamadas extras de reparo. |
 | Operações do projeto | CLI e scripts usam o mesmo plano; build/run/publish em diretório com espaços/acentos e CWD externo; falhas propagadas; publish identifica target/modo e não faz deploy; export não exige CREXE para recompilar. |
 | Referência SMTP | Futuro cenário WPF com campos de SMTP, autenticação, remetente e mensagem; build e publish locais. Testes automatizados de envio usam servidor SMTP de teste local e credenciais fictícias, sem emails externos ou credenciais padrão do usuário. |
 | Correção | Compilador falha e diagnóstico alimenta reparo; testes falham e são corrigidos sem remover critérios; limite de tentativas/tokens/tempo interrompe; interrupção preserva último build válido. |
 | Sandbox | Backend/target compatíveis, limites efetivos, credenciais ausentes nos filhos, cancelamento da árvore de processos, rede separada por fase e erro explícito quando o isolamento requerido não existe. |
+| Escolha do backend | Inventários/perfis controlados selecionam host ou Linux conforme requisitos e política; pedido Windows não vira Linux; dependência do host não aparece magicamente no contêiner; ausência/ambiguidade produz diagnóstico; novas dependências não ampliam permissões; falha isolada não causa fallback silencioso para host. |
+| Triagem e latência | Requisitos Windows, macOS, Linux, independentes de SO e desconhecidos; origem explícita/inferida; schema inválido/timeout sem loop; resposta não concede permissões; cache válido faz zero chamadas; perfil resolvido dispensa classificação; planejamento evita chamada duplicada; modelo e tempos de carregamento contabilizados; testes/builds não são repetidos em outro backend sem necessidade. |
+| Proibição de Windows Sandbox | Seleção, configuração, receita, comandos gerados e rotinas de teste não instalam, habilitam nem iniciam Windows Sandbox; backend proibido é rejeitado sem invocá-lo. Verificar com fixtures, sem executar o produto. |
+| Testes por fase | Build, lógica simulada e integração com equipamento recebem resultados separados; uma fase aprovada em Linux não afirma que driver/dispositivo do host foi testado; modo host registra suas garantias reais. |
 | Empacotamento | ZIP contém fontes/scripts/recursos necessários, sem segredos ou caminhos privados; extração em diretório limpo e build pelo script; relatório distingue projeto validado de exportação parcial. |
 | Providers | OpenAI e Ollama pelo mesmo contrato, sem chave no Ollama, modelo inexistente, serviço parado, timeout de carregamento, troca de configuração invalidando cache e ausência de fallback pago automático. |
+| Ollama e recursos locais | Separar partidas a frio de modelo carregado e serviço inacessível de modelo sem memória; não inferir saúde do modelo só por estar instalado; usar contrato estruturado real; medir carga/geração/build com parâmetros registrados; não encerrar o serviço externo ao cancelar ou falhar; não trocar modelos nem expor loopback automaticamente. |
 | Independência do provider | Ciclo completo com Ollama e backend local sem credenciais OpenAI nem acesso a seus serviços; após preparo das dependências, repetir sem internet. Trocar provider mantendo o backend e a suíte de build/teste. |
 | Caminhos | Absolutos, traversal, separadores Windows/Unix, links/junctions, destino final que é link, tentativa de sobrescrever manifesto, duplicatas e diferenças de caixa. Validar sem criar diretórios externos. |
 | Execução | Diretório com espaços/acentos, CWD externo, forma direta e subcomando, falha do compilador, saída não zero, timeout e cancelamento de subprocessos. |
@@ -612,6 +732,7 @@ Usar testes de comportamento nos pontos de falha, sem atrelar os testes à organ
 | Compartilhamento da intenção | Reproduzir o ciclo original da calculadora e da edição para verde; reabrir sem nova geração; copiar somente o `.crexe` para um segundo ambiente sem cache, resolver seus requisitos e gerar localmente, sem depender de caminhos ou artefatos da máquina de origem. |
 | Scripts/instalação | Instalação em perfil com espaço/acento, CWD externo, caminho `releases/v1`, erro propagado, registro idempotente, “Abrir com”, duplo clique real, atualização 1.x mantendo associação, reinstalação em outra máquina e remoção sem apagar associação alheia. |
 | Janela de espera | Duplo clique mostra janela antes de geração lenta; fases reais sem congelamento; cache hit sem geração fictícia; erro visível inclusive antes do build; fechar cancela a preparação; sucesso fecha a janela ao iniciar o app, sem esperar seu encerramento; sem terminais extras no fluxo GUI; CLI/headless preservados; escala de texto/DPI. |
+| Base multiplataforma | Mesmo commit compilado nos sistemas anunciados sem apagar arquivos; dependências/imports Windows ausentes do build Linux/macOS; núcleo compartilhado testado; modos CLI sem desktop e GUI validados separadamente, com suporte explícito quando ainda não houver janela. |
 
 CI proposta: formatação, lint e testes; build da CLI nas plataformas suportadas; compilação de fixtures nativas quando houver toolchain. Separar esses testes determinísticos dos smoke tests que chamam um modelo real.
 
@@ -651,6 +772,7 @@ O `.gitignore` da raiz exclui a cópia contextual da outra máquina e arquivos l
 
 - [ ] O repositório tem uma única implementação ativa, baseada em `src/`, e histórico claramente separado.
 - [ ] O pacote Rust compila e os testes passam nas plataformas anunciadas.
+- [ ] Uma única base atende aos sistemas anunciados com `cfg` e dependências por target; a especialização Windows não exige remoção manual para compilar a CLI Linux/macOS, e há instruções no README de plataformas.
 - [ ] A CLI distribuída funciona sem exigir Rust do usuário final; os requisitos para gerar apps estão documentados e diagnosticados.
 - [ ] O executável da linha v1 ocupa o caminho padrão do OS, e a associação do Windows aponta para ele sem depender do checkout ou do nome de usuário de outra máquina.
 - [ ] Instalação limpa, atualização 1.x, “Abrir com”, duplo clique e desassociação têm verificação real no Windows.
@@ -660,6 +782,9 @@ O `.gitignore` da raiz exclui a cópia contextual da outra máquina e arquivos l
 - [ ] Um projeto com múltiplos fontes, recursos e dependências é gerado, compilado e testado sem concentrar todo o código em um arquivo.
 - [ ] A engine corrige falhas de build/testes dentro de um orçamento definido e encerra com relatório ao esgotá-lo.
 - [ ] O backend de sandbox é compatível com o target e suas restrições são demonstradas; validação Linux não é apresentada como teste nativo Windows/macOS.
+- [ ] A escolha de backend por fase segue requisitos, capacidades verificadas e política local; o modo host é explícito e não resulta de fallback silencioso.
+- [ ] A triagem por IA é curta, neutra quanto ao SO e usada somente quando necessária; seu custo é medido, cache/perfis evitam chamadas redundantes e a separação de ambientes não duplica builds/testes sem justificativa.
+- [ ] Windows Sandbox não é instalado, habilitado, iniciado nem usado em desenvolvimento, testes, geração ou execução nesta fase, inclusive por comandos gerados.
 - [ ] O ZIP exportado contém o projeto completo e recompila em ambiente limpo compatível usando os scripts e pré-requisitos documentados.
 - [ ] A entrega completa independe de o usuário pedir um ZIP; build/run/publish compartilham contrato com a engine, e sucesso inicial não exige reparo por LLM.
 - [ ] Provider/credenciais e políticas vêm de configuração local apropriada; OpenAI e Ollama são intercambiáveis sem editar a intenção, e Ollama local funciona sem chave de API.
