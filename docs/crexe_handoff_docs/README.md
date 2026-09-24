@@ -1,6 +1,6 @@
 # CREXE Handoff Documentation Index
 
-Generated for continuation with Codex Desktop.
+Historical documents preserved from the baseline. For the current implementation, see [the repository README](../../README.md), [formats](../FORMATOS_V1.md) and [implementation status](../IMPLEMENTACAO_V1.md). Claims about isolation, the experimental executor, transports and licensing require reconciliation before release.
 
 - [00_HANDOFF.md](./00_HANDOFF.md) — CREXE Project Handoff
 - [01_RFC_CREXE_SPEC_DRAFT.md](./01_RFC_CREXE_SPEC_DRAFT.md) — CREXE — Creative Executable Specification

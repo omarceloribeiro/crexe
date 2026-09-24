@@ -1,0 +1,7 @@
+---
+crexe: 1
+name: Calculadora de regra de três
+---
+# Regra de três
+
+Crie uma calculadora desktop para resolver A/B = C/X. Permita informar A, B e C, mostre X, valide números e divisão por zero. Use rótulos em português e uma interface simples.

@@ -1,0 +1,22 @@
+version = 1
+default_provider = "local"
+
+[providers.local]
+kind = "ollama"
+base_url = "http://127.0.0.1:11434"
+model = "gemma4:12b"
+timeout_seconds = 900
+max_output_tokens = 4500
+context_tokens = 8192
+thinking = false
+keep_alive = "2m"
+
+# Selected only by --provider openai or an explicit change to default_provider.
+# There is no automatic paid fallback.
+[providers.openai]
+kind = "openai"
+base_url = "https://api.openai.com/v1"
+model = "gpt-4o-mini"
+api_key_env = "crexe_openai_api_key_env"
+timeout_seconds = 180
+max_output_tokens = 6000

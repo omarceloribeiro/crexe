@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "real_window": true,
+  "labels": [
+    "Creative Executable",
+    "Gerando seu programa…",
+    ""
+  ],
+  "real_rust_build": true,
+  "provider": "local HTTP fixture",
+  "window_closed_after_build": true,
+  "cancel_seconds": 0.11,
+  "previous_cache_preserved": true,
+  "screenshot": "2026-09-24-progress-windows.png",
+  "paid_api_calls": 0,
+  "installed_engine_sha256": "86cbad7147287b7b988fa74a6f77030dfcb06a4756d3a0ad7db8922527056889"
+}

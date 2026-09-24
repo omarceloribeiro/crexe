@@ -1,0 +1,155 @@
+//! Provider adapters return data only; build and file operations belong to CREXE.
+use super::{
+    config::{Kind, Settings},
+    GeneratedOutput,
+};
+use anyhow::{bail, Context, Result};
+use reqwest::blocking::Client;
+use serde_json::{json, Value};
+use std::{io::Read, time::Duration};
+
+const MAX_RESPONSE: u64 = 20 * 1024 * 1024;
+
+pub(crate) fn generate(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOutput> {
+    if super::executor::cancelled() {
+        bail!("Cancelled");
+    }
+    let (send, receive) = std::sync::mpsc::sync_channel(1);
+    let settings = settings.clone();
+    let system = system.to_owned();
+    let user = user.to_owned();
+    std::thread::spawn(move || {
+        let _ = send.send(request(&settings, &system, &user));
+    });
+    loop {
+        if super::executor::cancelled() {
+            bail!("Cancelled; generation was not published");
+        }
+        match receive.recv_timeout(Duration::from_millis(100)) {
+            Ok(result) => return result,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+            Err(_) => bail!("Provider request worker stopped unexpectedly"),
+        }
+    }
+}
+
+fn request(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOutput> {
+    let p = &settings.provider;
+    let key = settings.api_key()?;
+    let client = Client::builder()
+        .timeout(Duration::from_secs(p.timeout_seconds))
+        .connect_timeout(Duration::from_secs(15))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
+    let messages = json!([
+        {"role": "system", "content": format!("{system}\nReturn only a JSON object with files: an array of objects with path and content (strings). Include every required source file. No prose outside JSON.")},
+        {"role": "user", "content": user}
+    ]);
+    let (endpoint, payload) = match p.kind {
+        Kind::Ollama => (
+            "api/chat",
+            json!({
+                "model": p.model, "messages": messages, "stream": false,
+                "format": {"type": "object", "required": ["files"], "properties": {"files": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["path", "content"], "properties": {"path": {"type": "string"}, "content": {"type": "string"}}}}}},
+                "think": p.thinking, "keep_alive": p.keep_alive,
+                "options": {"num_ctx": p.context_tokens, "num_predict": p.max_output_tokens, "temperature": 0.2}
+            }),
+        ),
+        Kind::Openai => {
+            let mut payload = json!({"model": p.model, "messages": messages, "response_format": {"type": "json_object"}});
+            let reasoning = p.model.starts_with("gpt-5")
+                || p.model.starts_with("o1")
+                || p.model.starts_with("o3")
+                || p.model.starts_with("o4");
+            payload[if reasoning {
+                "max_completion_tokens"
+            } else {
+                "max_tokens"
+            }] = json!(p.max_output_tokens);
+            if !reasoning {
+                payload["temperature"] = json!(0.2);
+            }
+            ("chat/completions", payload)
+        }
+    };
+    println!(
+        "Generating with provider={}, model={}",
+        settings.profile, p.model
+    );
+    let url = format!("{}/{endpoint}", p.base_url.trim_end_matches('/'));
+    let mut request = client.post(url).json(&payload);
+    if let Some(key) = key {
+        request = request.bearer_auth(key);
+    }
+    let response = request.send().map_err(|error| {
+        if error.is_timeout() {
+            anyhow::anyhow!("Provider timed out; no automatic fallback was attempted")
+        } else {
+            anyhow::anyhow!("Provider connection failed; check the configured service and endpoint")
+        }
+    })?;
+    let status = response.status();
+    // Do not echo arbitrary HTTP error bodies: gateways can include Authorization.
+    if !status.is_success() {
+        bail!("Provider returned HTTP {status}; check model availability, service and credentials. No automatic fallback was attempted.");
+    }
+    let mut body = Vec::new();
+    response
+        .take(MAX_RESPONSE + 1)
+        .read_to_end(&mut body)
+        .context("Cannot read provider response")?;
+    if body.len() as u64 > MAX_RESPONSE {
+        bail!("Provider response exceeded 20 MiB");
+    }
+    decode(p.kind, &body)
+}
+
+fn decode(kind: Kind, body: &[u8]) -> Result<GeneratedOutput> {
+    let response: Value = serde_json::from_slice(body).context("Invalid provider response JSON")?;
+    let content = match kind {
+        Kind::Ollama => {
+            if response["done"] != true || response["done_reason"] != "stop" { bail!("Ollama response incomplete (token limit or interrupted generation); increase local limits or choose another local model"); }
+            response["message"]["content"].as_str()
+        }
+        Kind::Openai => {
+            let choice = &response["choices"][0];
+            if choice["finish_reason"] != "stop" || choice["message"]["refusal"].is_string() { bail!("OpenAI response incomplete or refused; no files were accepted"); }
+            choice["message"]["content"].as_str()
+        }
+    }.context("Provider response has no message content")?;
+    serde_json::from_str(&super::extract_json(content))
+        .context("Provider did not return the required files JSON object")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn truncated_or_refused_responses_never_become_projects() {
+        let content = json!({"files": [{"path": "main.c", "content": "int main(){}"}]}).to_string();
+        for reason in ["length", "content_filter", "tool_calls"] {
+            assert!(decode(Kind::Openai, &serde_json::to_vec(&json!({"choices": [{"finish_reason": reason, "message": {"content": content}}]})).unwrap()).is_err());
+        }
+        assert!(decode(
+            Kind::Ollama,
+            &serde_json::to_vec(
+                &json!({"done": true, "done_reason": "length", "message": {"content": content}})
+            )
+            .unwrap()
+        )
+        .is_err());
+        assert_eq!(
+            decode(
+                Kind::Ollama,
+                &serde_json::to_vec(
+                    &json!({"done": true, "done_reason": "stop", "message": {"content": content}})
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .files
+            .len(),
+            1
+        );
+    }
+}

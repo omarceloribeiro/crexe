@@ -1,6 +1,6 @@
 # Plano de organização e entrega do CREXE v1
 
-Data inicial: 2026-09-23. Atualização de escopo: 2026-09-24. Status: proposta de execução baseada na leitura do repositório e nas decisões do autor.
+Data inicial: 2026-09-23. Atualização de escopo: 2026-09-24. Status: execução iniciada em `feature/v1`; resultados e pendências em [IMPLEMENTACAO_V1.md](IMPLEMENTACAO_V1.md). As observações de baseline abaixo permanecem históricas, não descrevem todas as mudanças posteriores.
 
 Ponto de partida preservado: commit de baseline identificado pela tag `baseline/pre-v1`, na branch `feature/v1`, antes da implementação deste plano. O [registro do baseline](BASELINE.md) descreve conteúdo, backup local, exclusões do remoto e comandos de comparação.
 

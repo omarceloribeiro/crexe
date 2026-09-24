@@ -1,6 +1,6 @@
 # Auditoria do baseline
 
-Esta bateria caracteriza o pacote Rust original em `src/`. Ela não altera a engine, não usa OpenAI, não faz downloads de modelos e não lê segredos locais. Um servidor HTTP falso devolve fontes C mínimos, que são compilados e executados dentro de um contêiner descartável.
+Esta bateria caracteriza o pacote Rust original da tag `baseline/pre-v1`, cujo diretório era `src/`. O pacote ativo foi reorganizado; a suíte atual roda com `cargo test --locked` na raiz. Esta auditoria histórica não altera a engine, não usa OpenAI, não faz downloads de modelos e não lê segredos locais. Um servidor HTTP falso devolve fontes C mínimos, que são compilados e executados dentro de um contêiner descartável.
 
 Os cenários de contenção usam exclusivamente arquivos sentinela dentro do contêiner. **Não execute `audit.py` diretamente no host.** Há testes que deliberadamente verificam escrita e execução fora do workspace da engine, mas dentro do espaço descartável do contêiner.
 
@@ -14,8 +14,10 @@ Requer Docker com contêineres Linux. Em PowerShell, a partir da raiz atual do r
 $repoRoot = (Get-Location).Path
 $reportDir = Join-Path ([IO.Path]::GetTempPath()) ('crexe-audit-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $reportDir | Out-Null
+git archive --format=zip --output="$reportDir\baseline.zip" baseline/pre-v1 src
+Expand-Archive -LiteralPath "$reportDir\baseline.zip" -DestinationPath "$reportDir\snapshot"
 docker run --rm `
-  --mount "type=bind,source=$repoRoot\src,target=/baseline,readonly" `
+  --mount "type=bind,source=$reportDir\snapshot\src,target=/baseline,readonly" `
   --mount "type=bind,source=$repoRoot\tests\baseline-audit,target=/audit,readonly" `
   --mount "type=bind,source=$reportDir,target=/qa" `
   rust:1-slim-bookworm@sha256:ff521445a372125ed4f76e1453a1f8098f2d05332d1601d30db1c1f62757e730 `

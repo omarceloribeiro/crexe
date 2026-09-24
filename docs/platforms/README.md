@@ -1,6 +1,6 @@
 # Uma base Rust para Windows, Linux e macOS
 
-Status: orientação de implementação da v1, atualizada em 24/09/2026. A engine original continua em `src/`; os módulos abaixo ainda serão extraídos conforme o [plano](../PLANO_V1.md). O baseline fixo `baseline/pre-v1` permanece inalterado.
+Status: implementação iniciada em 24/09/2026. O pacote Cargo ativo está na raiz; `src/presentation/windows.rs`, `src/installation/windows.rs` e os ramos por plataforma de `executor.rs` já usam compilação condicional. A organização abaixo continua sendo a direção do [plano](../PLANO_V1.md), não uma lista exata dos módulos entregues. O baseline fixo `baseline/pre-v1` permanece inalterado.
 
 **Decisão atual do autor: o “sandbox” da v1 é apenas uma pasta temporária no host do usuário, sem isolamento de processos.** A engine usa ferramentas locais e não exige Docker, WSL ou VMs. Isolamento real fica para uma evolução futura.
 
@@ -73,16 +73,16 @@ Isolamento real e seus backends ficam para o futuro. Docker usado em auditorias 
 
 ## Compilação e verificação
 
-Na organização atual, o comando de build do pacote a partir da raiz é:
-
-```sh
-cargo build --release --manifest-path src/Cargo.toml
-```
-
-Após mover o manifest para a raiz e versionar `Cargo.lock`, o comando previsto é:
+O pacote ativo já está na raiz. Compilar a partir dela com:
 
 ```sh
 cargo build --release --locked
+```
+
+O lockfile está versionado. Para testar:
+
+```sh
+cargo test --locked
 ```
 
 Executar o build em cada sistema com Rust e as ferramentas nativas necessárias. O mesmo checkout deve servir para todos, sem remover especializações. O Cargo permite selecionar outro destino com `--target`, mas a disponibilidade de linker, SDKs e bibliotecas para esse destino precisa ser preparada e verificada. Usar builds nativos em CI como percurso inicial; não prometer que uma única máquina já produz e testa os três executáveis. Referência: [`cargo build`](https://doc.rust-lang.org/cargo/commands/cargo-build.html).
