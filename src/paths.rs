@@ -62,6 +62,11 @@ pub(crate) fn reject_links(path: &Path) -> Result<()> {
                 #[cfg(target_os = "macos")]
                 if matches!(ancestor.to_str(), Some("/var" | "/tmp"))
                     && fs::read_link(ancestor).ok().is_some_and(|target| {
+                        let target = if target.is_absolute() {
+                            target
+                        } else {
+                            ancestor.parent().unwrap().join(target)
+                        };
                         target == Path::new("/private").join(ancestor.strip_prefix("/").unwrap())
                     })
                 {
