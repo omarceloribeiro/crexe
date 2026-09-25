@@ -27,11 +27,14 @@ Com o Ollama e `gemma4:12b` disponíveis localmente, e o .NET SDK instalado:
 
 ```powershell
 .\target\release\crexe.exe doctor
+.\target\release\crexe.exe doctor --check
 .\target\release\crexe.exe inspect calculadora.crexe
 .\target\release\crexe.exe calculadora.crexe
 ```
 
 O perfil preferido no Windows usa C#/.NET 8 e Windows Forms. Há também perfis experimentais C++/Win32, Objective-C++/Cocoa e C/GTK3, conforme o host e seus SDKs. A engine fornece o plano de build, pede os fontes, compila e executa o autoteste gerado antes de publicar o cache. Até duas propostas de correção podem ser solicitadas após erros de build/teste. A qualidade do programa ainda depende do modelo; um build aprovado não comprova todos os comportamentos pedidos. [Perfis e requisitos](docs/PERFIS_V1.md).
+
+`doctor` informa arquitetura da engine/host, perfil, requisitos e caminhos. Com `--check`, consulta o SDK local antes da geração, sem chamar a IA. `inspect` mostra os requisitos do perfil junto da intenção resolvida; não executa SDKs.
 
 ## Provider e credenciais
 

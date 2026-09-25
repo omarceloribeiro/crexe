@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 
 mod cache;
 mod config;
+mod environment;
 mod executor;
 mod format;
 mod generator;
@@ -82,8 +83,12 @@ enum Commands {
     Unassociate,
     /// Read format and resolve the local profile without generation or execution
     Inspect { file: PathBuf },
-    /// Show local configuration and available tool paths without reading secrets
-    Doctor,
+    /// Show local configuration, host architecture and tools without reading secrets
+    Doctor {
+        /// Probe the selected profile's SDK locally; no provider or generation call
+        #[arg(long)]
+        check: bool,
+    },
     /// Build a generated project without using a model; write a new project directory
     Build {
         project: PathBuf,
@@ -160,7 +165,7 @@ pub fn run() -> Result<()> {
         Commands::Associate => installation::associate()?,
         Commands::Unassociate => installation::unassociate()?,
         Commands::Inspect { file } => inspect(file, &cli)?,
-        Commands::Doctor => doctor(&cli)?,
+        Commands::Doctor { check } => doctor(&cli, *check)?,
         Commands::Build { project, output } => {
             project_operation("build", project, Some(output), &cli)?
         }
@@ -187,7 +192,7 @@ fn project_operation(operation: &str, root: &Path, output: Option<&Path>, cli: &
     project::operate(operation, root, output, &settings)
 }
 
-fn doctor(cli: &Cli) -> Result<()> {
+fn doctor(cli: &Cli, check: bool) -> Result<()> {
     let settings = config::Settings::load(
         cli.config.as_deref(),
         cli.provider.as_deref(),
@@ -199,6 +204,12 @@ fn doctor(cli: &Cli) -> Result<()> {
         RUNTIME_VERSION,
         env::consts::OS,
         env::consts::ARCH
+    );
+    let architecture = environment::architecture();
+    println!(
+        "Host architecture: {} ({})",
+        architecture.host.as_deref().unwrap_or("unknown"),
+        architecture.source
     );
     println!("Installation: {}", installation::executable()?.display());
     println!(
@@ -213,11 +224,33 @@ fn doctor(cli: &Cli) -> Result<()> {
         settings.profile, settings.provider.model
     );
     println!("Workspace: temporary directory on this host; no process isolation");
-    for tool in ["dotnet", "g++", "clang++", "gcc", "pkg-config"] {
+    let profile = cli
+        .profile
+        .as_deref()
+        .unwrap_or_else(|| profiles::default_profile());
+    let spec = profiles::resolve("doctor", "SDK verification only", Some(profile))?;
+    let requirements = profiles::requirements(profile)?;
+    println!(
+        "Intent profile: {profile}; language: {}",
+        requirements.language
+    );
+    println!("Required SDK: {}", requirements.sdk);
+    for tool in ["dotnet", "g++", "clang++", "gcc", "make", "pkg-config"] {
         match executor::resolve_tool(tool) {
             Ok(path) => println!("{tool}: {}", path.display()),
             Err(_) => println!("{tool}: not found in PATH"),
         }
+    }
+    if check {
+        let workspace = tempfile::Builder::new().prefix("crexe-doctor-").tempdir()?;
+        paths::reject_links(workspace.path())?;
+        profiles::preflight(&spec, workspace.path(), &settings)
+            .with_context(|| format!("SDK verification failed for {profile}"))?;
+        println!("SDK verification passed for {profile}; no application was generated or built.");
+    } else {
+        println!(
+            "SDK compatibility: not checked; use doctor --check (runs local SDK queries only)."
+        );
     }
     Ok(())
 }
@@ -266,6 +299,8 @@ fn inspect(file: &Path, cli: &Cli) -> Result<()> {
             "format": format, "name": name, "target": target,
             "engine_profile": get_path(&spec, &["engine_profile"]),
             "os": env::consts::OS, "engine_architecture": env::consts::ARCH,
+            "architecture": environment::architecture(),
+            "requirements": get_path(&spec, &["engine_profile"]).and_then(Value::as_str).map(profiles::requirements).transpose()?,
             "provider": settings.profile, "model": settings.provider.model,
             "build": get_build_steps(&spec, &target)?, "run": get_cmd(&spec, &["targets", &target, "run", "cmd"])?,
             "execution": "temporary host workspace (not security isolation)"

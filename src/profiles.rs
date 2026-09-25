@@ -5,25 +5,62 @@ use serde_yaml::Value;
 
 mod native;
 
-pub(crate) fn resolve(name: &str, prompt: &str, requested: Option<&str>) -> Result<Value> {
-    let profile = requested.unwrap_or_else(|| {
-        if cfg!(windows) {
-            // Prefer the validated .NET path when available; no compiler is installed here.
-            if super::executor::resolve_tool("dotnet").is_err()
-                && super::executor::resolve_tool("g++").is_ok()
-            {
-                "cpp-win32"
-            } else {
-                "dotnet-winforms"
-            }
-        } else if cfg!(target_os = "macos") {
-            "objc-cocoa"
-        } else if cfg!(target_os = "linux") {
-            "c-gtk"
+pub(crate) fn default_profile() -> &'static str {
+    if cfg!(windows) {
+        // Finding a command does not prove SDK compatibility; preflight verifies it.
+        if super::executor::resolve_tool("dotnet").is_err()
+            && super::executor::resolve_tool("g++").is_ok()
+        {
+            "cpp-win32"
         } else {
-            "dotnet-console"
+            "dotnet-winforms"
         }
-    });
+    } else if cfg!(target_os = "macos") {
+        "objc-cocoa"
+    } else if cfg!(target_os = "linux") {
+        "c-gtk"
+    } else {
+        "dotnet-console"
+    }
+}
+
+#[derive(serde::Serialize)]
+pub(crate) struct Requirements {
+    pub language: &'static str,
+    pub tools: &'static [&'static str],
+    pub sdk: &'static str,
+}
+
+pub(crate) fn requirements(profile: &str) -> Result<Requirements> {
+    let (language, tools, sdk): (_, &[_], _) = match profile {
+        "dotnet-winforms" => ("C#", &["dotnet"], ".NET 8 SDK / Windows Forms"),
+        "dotnet-console" => ("C#", &["dotnet"], ".NET 8 SDK"),
+        "cpp-win32" => (
+            "C++17",
+            &["g++"],
+            "MinGW-w64 / Win32, matching the engine architecture",
+        ),
+        "objc-cocoa" => (
+            "Objective-C++17",
+            &["clang++"],
+            "Apple Clang / Cocoa SDK, matching the engine architecture",
+        ),
+        "c-gtk" => (
+            "C17",
+            &["gcc", "make", "pkg-config"],
+            "GTK3 development headers and libraries, matching the engine architecture",
+        ),
+        _ => bail!("Unknown intent profile '{profile}'"),
+    };
+    Ok(Requirements {
+        language,
+        tools,
+        sdk,
+    })
+}
+
+pub(crate) fn resolve(name: &str, prompt: &str, requested: Option<&str>) -> Result<Value> {
+    let profile = requested.unwrap_or_else(|| default_profile());
     if matches!(profile, "cpp-win32" | "objc-cocoa" | "c-gtk") {
         return native::resolve(name, prompt, profile);
     }

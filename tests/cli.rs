@@ -189,6 +189,104 @@ fn success(output: Output) -> String {
 }
 
 #[test]
+fn diagnostics_are_offline_and_sdk_probes_are_explicit_and_policy_controlled() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let tools = temp.path().join("tools");
+    fs::create_dir(&tools).unwrap();
+    let marker = temp.path().join("sdk-queried");
+    let source = temp.path().join("sdk.rs");
+    fs::write(
+        &source,
+        r#"
+fn main() {
+    assert_eq!(std::env::args().nth(1).as_deref(), Some("--list-sdks"));
+    assert!(std::env::var_os("CREXE_TEST_KEY").is_none());
+    std::fs::write(std::env::var("CREXE_QUERY_MARKER").unwrap(), "queried").unwrap();
+    println!("{} [fixture]", std::env::var("CREXE_SDK_VERSION").unwrap());
+}
+"#,
+    )
+    .unwrap();
+    let compiler = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".into());
+    success(
+        Command::new(compiler)
+            .arg(&source)
+            .arg("-o")
+            .arg(tools.join(if cfg!(windows) {
+                "dotnet.exe"
+            } else {
+                "dotnet"
+            }))
+            .output()
+            .unwrap(),
+    );
+    let recipe = temp.path().join("intenção.crexe");
+    fs::write(&recipe, "Mostrar uma saudação.").unwrap();
+    let invoke = || {
+        let mut cmd = Command::new(engine());
+        cmd.current_dir(temp.path())
+            .env("CREXE_HOME", &home)
+            .env("PATH", &tools)
+            .env("CREXE_QUERY_MARKER", &marker)
+            .env("CREXE_SDK_VERSION", "8.0.425")
+            .env("CREXE_TEST_KEY", "synthetic-do-not-display-or-inherit")
+            .args(["--profile", "dotnet-console"]);
+        cmd
+    };
+    let doctor = success(invoke().arg("doctor").output().unwrap());
+    assert!(doctor.contains("Host architecture:") && doctor.contains(".NET 8 SDK"));
+    assert!(!doctor.contains("synthetic-do-not-display-or-inherit"));
+    let inspected: Value = serde_json::from_str(&success(
+        invoke().arg("inspect").arg(&recipe).output().unwrap(),
+    ))
+    .unwrap();
+    assert_eq!(inspected["engine_profile"], "dotnet-console");
+    assert_eq!(inspected["architecture"]["engine"], std::env::consts::ARCH);
+    assert!(inspected["architecture"]["host"]
+        .as_str()
+        .is_some_and(|value| !value.is_empty()));
+    assert_eq!(inspected["requirements"]["tools"], json!(["dotnet"]));
+    assert!(
+        !marker.exists(),
+        "Read-only diagnostics must not execute the SDK"
+    );
+    assert!(
+        success(invoke().args(["doctor", "--check"]).output().unwrap())
+            .contains("SDK verification passed")
+    );
+    assert!(marker.exists());
+
+    let wrong_sdk = invoke()
+        .args(["doctor", "--check"])
+        .env("CREXE_SDK_VERSION", "9.0.100")
+        .output()
+        .unwrap();
+    assert!(!wrong_sdk.status.success());
+    assert!(String::from_utf8_lossy(&wrong_sdk.stderr).contains("requires the .NET 8 SDK"));
+    let missing = invoke()
+        .args(["doctor", "--check"])
+        .env("PATH", "")
+        .output()
+        .unwrap();
+    assert!(!missing.status.success());
+    assert!(String::from_utf8_lossy(&missing.stderr).contains("not found in PATH"));
+
+    fs::remove_file(&marker).unwrap();
+    let config_path = home.join("config.toml");
+    let config = fs::read_to_string(&config_path).unwrap() + "\n[execution]\nallowed_tools = []\n";
+    fs::write(config_path, config).unwrap();
+    let denied = invoke().args(["doctor", "--check"]).output().unwrap();
+    assert!(!denied.status.success());
+    assert!(String::from_utf8_lossy(&denied.stderr).contains("not approved"));
+    assert!(!marker.exists(), "Denied SDK queries must not run");
+    assert_eq!(provider.count.load(Ordering::SeqCst), 0);
+    assert!(!home.join("cache").exists());
+}
+
+#[test]
 fn installed_engine_runs_from_other_cwd_regenerates_and_reuses_cache() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("usuário com espaços");
