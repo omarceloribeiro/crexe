@@ -4,6 +4,8 @@ Data inicial: 2026-09-23. Atualização de escopo: 2026-09-24. Status: execuçã
 
 Ponto de partida preservado: commit de baseline identificado pela tag `baseline/pre-v1`, na branch `feature/v1`, antes da implementação deste plano. O [registro do baseline](BASELINE.md) descreve conteúdo, backup local, exclusões do remoto e comandos de comparação.
 
+Complemento de 25/09/2026 após testes do autor: [plano de abertura, configuração visual e cliques repetidos](PLANO_UX_V1.md). Esse incremento está planejado, ainda não implementado.
+
 ## 1. Objetivo e direção
 
 CREXE significa **Creative Executable**. O arquivo `.crexe` carrega a intenção de um aplicativo; a engine interpreta essa intenção no contexto da máquina, gera código, compila, armazena o resultado e executa o aplicativo. Para a comunidade, isso oferece uma especificação aberta e implementável. Para o usuário comum, oferece um documento que pode ser escrito, compartilhado e personalizado sem descrever toda a infraestrutura de compilação.
