@@ -63,6 +63,7 @@ def main():
             install = '#!/bin/sh\nset -eu\ncd -- "$(dirname -- "$0")"\nexec ./crexe install\n'
             files['install.sh'] = (install.encode(), 0o755)
             install_help = 'Execute ./install.sh no terminal. A associação gráfica e a janela de espera ainda não estão implementadas neste OS; use a CLI.'
+        invocation = '.\\crexe.exe' if system == 'windows' else './crexe'
         readme = f'''# CREXE — snapshot de desenvolvimento
 
 Versão do pacote: {version}; commit: {revision}; destino: {system}/{arch}.
@@ -77,8 +78,18 @@ Para gerar programas, prepare o provider e o SDK do perfil:
 - macOS: Apple Clang/SDK Cocoa; perfil experimental objc-cocoa.
 - Linux: GCC, Make, pkg-config e GTK3 development; perfil experimental c-gtk.
 
-Use crexe doctor para consultar caminhos; crexe inspect examples/calculadora.crexe para ler a intenção.
-Use crexe examples/calculadora.crexe para gerar/compilar/executar. Sem instalação, use ./{binary.name} (ou .\\crexe.exe no PowerShell).
+Na pasta extraída do pacote, execute:
+
+```
+{invocation} doctor
+{invocation} doctor --check
+{invocation} inspect examples/calculadora.crexe
+{invocation} examples/calculadora.crexe
+```
+
+Os três primeiros comandos não chamam a IA. O último gera, compila e executa o programa.
+A instalação não adiciona a engine ao PATH. Os comandos acima usam o binário extraído;
+para chamar a cópia instalada, use o caminho completo mostrado por doctor.
 Editar a intenção gera outra revisão; reabrir sem alterações usa o cache validado.
 
 Provider/modelo/credenciais e limites são configurados localmente, usando config.example.toml como modelo.

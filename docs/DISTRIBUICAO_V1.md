@@ -16,4 +16,8 @@ O build Windows MSVC usa `crt-static`, conforme a [referência de Rust](https://
 
 O pacote da engine não inclui Ollama/modelos ou SDKs dos aplicativos. Instalar a engine dispensa Rust e Python; gerar um app continua exigindo o provider e o SDK de seu [perfil](PERFIS_V1.md). O script Windows instala em `releases/v1` e associa a extensão; Linux/macOS têm instalação por CLI, sem associação gráfica implementada.
 
+O checkpoint `845e1bc` produziu e verificou os três pacotes na [CI 36096064360](https://github.com/omarceloribeiro/crexe/actions/runs/36096064360): Windows/x86_64, Linux/x86_64 e macOS/aarch64. Os arquivos baixados tiveram checksum e todos os hashes internos conferidos neste host. O binário Windows produzido no GitHub foi instalado em uma raiz de teste e executou `--version`, `doctor` e `inspect` com PATH vazio, a partir de outra pasta. [Registro dos pacotes](validation/2026-09-25-engine-packages.json).
+
+A instalação não altera o PATH. No PowerShell, use `.\crexe.exe` dentro da pasta extraída ou o caminho completo da instalação. Para concluir os ensaios fora do Codex, siga o [roteiro Windows](VALIDACAO_INSTALACAO_WINDOWS.md).
+
 Antes de uma release pública, ainda é necessário validar instalação/atualização fora do ambiente do Codex, primeira execução em máquina limpa, requisitos mínimos de OS/arquitetura, políticas de assinatura/distribuição e os cenários de app declarados estáveis. O ambiente do Codex pode virtualizar caminhos AppData; testes feitos nele não comprovam a instalação percebida pelo Explorer em uma sessão normal.
