@@ -2,6 +2,7 @@
 # Adopt formatting/line-ending conventions in a separate implementation change.
 * -text
 /.github/** text eol=lf
+/.cargo/** text eol=lf
 /src/** text eol=lf
 /*.toml text eol=lf
 /Cargo.lock text eol=lf
@@ -12,6 +13,7 @@
 /config.example.toml text eol=lf
 /scripts/windows/** text eol=crlf
 /scripts/unix/** text eol=lf
+/scripts/*.py text eol=lf
 /examples/** text eol=lf
 /tests/*.rs text eol=lf
 /tests/*.py text eol=lf
@@ -21,6 +23,7 @@
 /docs/FORMATOS_V1.md text eol=lf
 /docs/PROJETOS_V1.md text eol=lf
 /docs/PERFIS_V1.md text eol=lf
+/docs/DISTRIBUICAO_V1.md text eol=lf
 /docs/platforms/README.md text eol=lf
 /docs/crexe_handoff_docs/README.md text eol=lf
 /docs/validation/*.json text eol=lf

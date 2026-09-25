@@ -11,5 +11,9 @@ if errorlevel 1 (
     exit /b 1
   )
 )
-"%CARGO_EXE%" build --release --locked --manifest-path "%~dp0..\..\Cargo.toml"
-exit /b %errorlevel%
+pushd "%~dp0..\.."
+if errorlevel 1 exit /b 1
+"%CARGO_EXE%" build --release --locked
+set "CREXE_BUILD_EXIT=%errorlevel%"
+popd
+exit /b %CREXE_BUILD_EXIT%

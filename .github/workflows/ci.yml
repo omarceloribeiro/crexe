@@ -46,3 +46,23 @@ jobs:
         run: cargo +1.98.1 test --locked --test native_profiles -- --ignored --nocapture
       - name: Release build
         run: cargo +1.98.1 build --release --locked
+      - name: Verify Windows runtime dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $crexeVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $crexeDumpbin = & $crexeVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC/Tools/MSVC/**/bin/Hostx64/x64/dumpbin.exe' | Select-Object -First 1
+          if (-not $crexeDumpbin) { throw 'dumpbin not found' }
+          $crexeImports = & $crexeDumpbin /DEPENDENTS target/release/crexe.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect PE imports' }
+          $crexeImports | Select-String -Pattern '\.dll'
+          if ($crexeImports -match 'VCRUNTIME|MSVCP\d+\.dll') { throw 'Engine still depends on VC++ redistributable DLLs' }
+      - name: Prepare and verify development snapshot (no release publication)
+        run: python scripts/package-engine.py
+      - name: Keep development package and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: crexe-development-${{ matrix.os }}
+          path: target/packages/*
+          if-no-files-found: error
+          retention-days: 14

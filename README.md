@@ -15,6 +15,8 @@ cargo test --locked
 
 No Windows, `scripts\windows\build-executor.cmd` também funciona a partir de outra pasta. Compilar a engine usa o linker do Visual C++. O binário distribuído não exige Rust do usuário; os aplicativos gerados precisam do SDK do seu perfil.
 
+O build MSVC inclui o runtime C estaticamente; a CI inspeciona o executável para evitar dependência das DLLs redistribuíveis do Visual C++. DLLs do próprio Windows continuam necessárias. `scripts/package-engine.py` prepara snapshots de desenvolvimento com binário, exemplos, configuração de exemplo, licença, origem do código e SHA-256. Os pacotes da CI servem para validação e ainda não são releases estáveis. [Guia de distribuição](docs/DISTRIBUICAO_V1.md).
+
 Crie `calculadora.crexe` com apenas:
 
 ```text
