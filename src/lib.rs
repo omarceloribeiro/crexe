@@ -315,12 +315,17 @@ fn exec_crexe(
             )?
         }
     };
-    let settings = config::Settings::load(
+    let mut settings = config::Settings::load(
         cli.config.as_deref(),
         cli.provider.as_deref(),
         cli.model.as_deref(),
         cli.env_file.as_deref(),
     )?;
+    if let Some(seconds) =
+        get_path(&spec, &["policies", "timeoutSeconds", "generate"]).and_then(Value::as_u64)
+    {
+        settings.provider.timeout_seconds = settings.provider.timeout_seconds.min(seconds);
+    }
     if get_path(&spec, &["generator"]).is_some() {
         println!("Legacy generator settings are ignored; provider and credentials come from local configuration.");
     }
@@ -346,7 +351,18 @@ fn exec_crexe(
     let build_steps = get_build_steps(&spec, &target)?;
     let run_cmd = get_cmd(&spec, &["targets", &target, "run", "cmd"])?;
     // Catch missing template values before contacting a provider.
-    for cmd in build_steps.iter().chain(std::iter::once(&run_cmd)) {
+    let mut all_commands = build_steps.clone();
+    all_commands.push(run_cmd.clone());
+    for operation in ["test", "publish"] {
+        if let Some(steps) =
+            get_path(&spec, &["targets", &target, operation, "steps"]).and_then(Value::as_sequence)
+        {
+            for step in steps {
+                all_commands.push(value_to_cmd(get_path(step, &["cmd"]).unwrap_or(step))?);
+            }
+        }
+    }
+    for cmd in &all_commands {
         for argument in cmd {
             check_template(&render_template(argument, &spec, &ctx))?;
         }
@@ -524,6 +540,95 @@ fn validate_spec(spec: &Value) -> Result<()> {
     let version = get_path(spec, &["version"]).context("Missing recipe version")?;
     if version.as_f64() != Some(1.0) && version.as_str() != Some("1.0") {
         bail!("Unsupported recipe version; expected 1.0");
+    }
+    for field in [
+        "meta",
+        "inputs",
+        "workspace",
+        "policies",
+        "selectors",
+        "prompt_core",
+        "prompt",
+        "targets",
+    ] {
+        if let Some(value) = get_path(spec, &[field]) {
+            if !value.is_mapping() {
+                bail!("Recipe field '{field}' must be a mapping");
+            }
+        }
+    }
+    if let Some(policies) = get_mapping(spec, &["policies"]) {
+        for key in policies.keys() {
+            if !matches!(
+                key.as_str(),
+                Some("allowNetwork" | "timeoutSeconds" | "commandAllowlist")
+            ) {
+                bail!("Unsupported recipe policy; only allowNetwork, timeoutSeconds and commandAllowlist are implemented");
+            }
+        }
+    }
+    if let Some(network) = get_path(spec, &["policies", "allowNetwork"]) {
+        if !network.is_bool() {
+            bail!("allowNetwork must be a boolean; string values do not enforce isolation");
+        }
+    }
+    if let Some(timeouts) = get_path(spec, &["policies", "timeoutSeconds"]) {
+        for (phase, seconds) in timeouts
+            .as_mapping()
+            .context("timeoutSeconds must be a mapping")?
+        {
+            if !matches!(
+                phase.as_str(),
+                Some("generate" | "build" | "test" | "publish" | "run")
+            ) || seconds.as_u64().is_none_or(|n| n == 0 || n > 604800)
+            {
+                bail!("Timeouts require supported phase names and integer seconds between 1 and 604800");
+            }
+        }
+    }
+    if let Some(allowlist) = get_path(spec, &["policies", "commandAllowlist"]) {
+        for (os, tools) in allowlist
+            .as_mapping()
+            .context("commandAllowlist must be a mapping")?
+        {
+            if os.as_str().is_none() {
+                bail!("commandAllowlist OS keys must be strings");
+            }
+            let tools = tools
+                .as_sequence()
+                .context("commandAllowlist entries must be lists")?;
+            if tools.len() > 64
+                || tools
+                    .iter()
+                    .any(|tool| tool.as_str().is_none_or(str::is_empty))
+            {
+                bail!("commandAllowlist entries must contain at most 64 nonempty tool names");
+            }
+        }
+    }
+    if let Some(targets) = get_mapping(spec, &["targets"]) {
+        for (name, target) in targets {
+            let name = name.as_str().context("Target names must be strings")?;
+            if !target.is_mapping() {
+                bail!("Target '{name}' must be a mapping");
+            }
+            for operation in ["build", "test", "publish"] {
+                if let Some(value) = get_path(target, &[operation]) {
+                    let steps = get_path(value, &["steps"])
+                        .and_then(Value::as_sequence)
+                        .context("Build/test/publish require a steps list")?;
+                    if steps.is_empty() || steps.len() > 32 {
+                        bail!("Operations require between 1 and 32 steps");
+                    }
+                    for step in steps {
+                        value_to_cmd(get_path(step, &["cmd"]).unwrap_or(step))?;
+                    }
+                }
+            }
+            if let Some(run) = get_path(target, &["run"]) {
+                value_to_cmd(get_path(run, &["cmd"]).context("run requires cmd")?)?;
+            }
+        }
     }
     if get_path(spec, &["policies", "allowNetwork"]).and_then(Value::as_bool) == Some(false) {
         bail!(
@@ -960,7 +1065,7 @@ fn check_allowlist(
         .collect();
 
     if allowed.is_empty() {
-        return Ok(());
+        bail!("Command not allowed by recipe policy: empty allowlist for {os_name}");
     }
 
     let exe = Path::new(&cmd[0])
@@ -1182,6 +1287,11 @@ mod tests {
             "{}",
             "version: 2",
             "version: 1.0\npolicies:\n  allowNetwork: false",
+            "version: 1.0\npolicies:\n  allowNetwork: 'false'",
+            "version: 1.0\npolicies:\n  isolation: true",
+            "version: 1.0\npolicies:\n  timeoutSeconds: {build: nope}",
+            "version: 1.0\npolicies:\n  commandAllowlist: {windows: dotnet}",
+            "version: 1.0\ntargets:\n  native:\n    test: {steps: nope}",
             "version: 1.0\nworkspace:\n  cache:\n    layout: '../outside'",
         ] {
             assert!(validate_spec(&serde_yaml::from_str::<Value>(text).unwrap()).is_err());

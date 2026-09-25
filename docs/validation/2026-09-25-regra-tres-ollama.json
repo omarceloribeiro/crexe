@@ -1,0 +1,142 @@
+{
+  "generation_date": "2026-09-24",
+  "gui_package_validation_date": "2026-09-25",
+  "engine_commit": "7fff749187a1c6e13935d132af2ae5ce8444df29",
+  "platform": "Windows x64",
+  "input": "examples/markdown/regra-de-tres.crexe",
+  "profile": "dotnet-winforms",
+  "provider": "Ollama /api/chat",
+  "model": "gemma4:12b",
+  "stream": false,
+  "provider_requests": 2,
+  "repairs_used": 1,
+  "max_repairs": 2,
+  "elapsed_generation_build_seconds": 336.772,
+  "timeout_seconds_per_request": 900,
+  "max_output_tokens_per_request": 4500,
+  "context_tokens": 8192,
+  "generated_sources": [
+    "Program.cs",
+    "CalculatorLogic.cs"
+  ],
+  "engine_supplied_project": "CrexeApp.csproj",
+  "build_errors": 0,
+  "build_warnings": 2,
+  "generated_self_test": "PASS",
+  "gui": {
+    "result": "PASS",
+    "real_gui": true,
+    "cache_hit_without_generation": true,
+    "checks": [
+      {
+        "inputs": [
+          "10",
+          "2",
+          "5"
+        ],
+        "expected": 1,
+        "actual": 1.0,
+        "result": "PASS"
+      },
+      {
+        "inputs": [
+          "4",
+          "8",
+          "3"
+        ],
+        "expected": 6,
+        "actual": 6.0,
+        "result": "PASS"
+      },
+      {
+        "inputs": [
+          "-2",
+          "4",
+          "3"
+        ],
+        "expected": -6,
+        "actual": -6.0,
+        "result": "PASS"
+      },
+      {
+        "inputs": [
+          "0",
+          "8",
+          "3"
+        ],
+        "validation_message": "OK  Erro: O valor de A ou B não pode ser zero.",
+        "result": "PASS"
+      },
+      {
+        "inputs": [
+          "4",
+          "0",
+          "3"
+        ],
+        "validation_message": "OK  Erro: O valor de A ou B não pode ser zero.",
+        "result": "PASS"
+      },
+      {
+        "inputs": [
+          "abc",
+          "8",
+          "3"
+        ],
+        "validation_message": "OK  Por favor, insira apenas números válidos.",
+        "result": "PASS"
+      },
+      {
+        "inputs": [
+          "",
+          "8",
+          "3"
+        ],
+        "validation_message": "OK  Por favor, insira apenas números válidos.",
+        "result": "PASS"
+      }
+    ],
+    "paid_api_calls": 0,
+    "scope": "Basic finite integer inputs, zero denominators, invalid and empty input. Not exhaustive."
+  },
+  "package": {
+    "result": "PASS",
+    "checks": [
+      {
+        "operation": "build.bat",
+        "result": "PASS"
+      },
+      {
+        "operation": "test.bat",
+        "result": "PASS"
+      },
+      {
+        "operation": "publish.bat",
+        "result": "PASS"
+      },
+      {
+        "operation": "CLI build",
+        "result": "PASS"
+      },
+      {
+        "operation": "CLI publish",
+        "result": "PASS"
+      },
+      {
+        "operation": "CLI export",
+        "result": "PASS"
+      }
+    ],
+    "host": "same Windows host, not a clean machine",
+    "additional_provider_requests": 0
+  },
+  "source_zip_sha256": "c43d676de90838d85cdff8c60529f37d814ddeb7cf024b806232b43e717b825c",
+  "screenshot": "2026-09-25-regra-tres-ollama.png",
+  "paid_api_calls": 0,
+  "credit_purchases": 0,
+  "limitations": [
+    "Same host; no clean-machine install or manual Explorer test.",
+    "Tests are not exhaustive; GUI checks used finite integer inputs.",
+    "No comparison of streaming versus non-streaming was performed.",
+    "First response failed build; only the corrected snapshot was published."
+  ]
+}

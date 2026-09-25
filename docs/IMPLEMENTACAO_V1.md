@@ -37,7 +37,15 @@ Os autotestes são produzidos pelo modelo, portanto não substituem revisão ou 
 
 ## Critérios que continuam abertos
 
-Em andamento: perfis experimentais `cpp-win32`, `objc-cocoa` e `c-gtk`, com ensaio de múltiplos fontes/build/teste/ZIP/publish por SDK nativo na CI. O teste é separado da geração por modelo real e da interação com GUI. A suíte local agora tem 29 testes aprovados; o teste de SDK nativo é explicitamente ignorado quando suas ferramentas não foram preparadas.
+Em andamento: perfis experimentais `cpp-win32`, `objc-cocoa` e `c-gtk`, com ensaio de múltiplos fontes/build/teste/ZIP/publish por SDK nativo na CI. O teste é separado da geração por modelo real e da interação com GUI. A suíte local agora tem 31 testes aprovados (23 unitários e 8 de integração); o teste de SDK nativo é explicitamente ignorado quando suas ferramentas não foram preparadas.
+
+Atualização de 25/09/2026:
+
+- **Ollama real / regra de três:** Markdown gerou dois fontes C#, precisou de uma correção de build e concluiu em 336,772 s. Build final com zero erros e dois avisos, autoteste aprovado. GUI verificada com três resultados conhecidos (incluindo negativo), A/B zero, texto inválido e campo vazio. Reabertura usou cache. ZIP recompilou e executou test/publish; operações CLI build/publish/export passaram sem novas chamadas. Foram duas requisições locais, nenhuma chamada paga. [Relatório](validation/2026-09-25-regra-tres-ollama.json) e [captura](validation/2026-09-25-regra-tres-ollama.png).
+- Associação ShellExecute e janela de espera repetidas no binário do commit `7fff749`: WHITE/WHITE/GREEN/GREEN, duas gerações controladas, cancelamento em 0,125 s e preservação do cache. Não substitui clique manual no Explorer.
+- No ensaio nativo do commit `7fff749`, Ubuntu/GTK e macOS/Cocoa passaram. O job Windows foi cancelado após prender no novo teste. A fixture C++ foi corrigida para interpretar argumentos com `CommandLineToArgvW`, inclusive aspas do BAT; etapas agora imprimem progresso e têm timeout de 120 s, além do limite do job. A validação da correção está em execução.
+- Leituras do `.crexe` agora são limitadas antes e durante a leitura, com UTF-8 obrigatório. Logs acima do limite também são rejeitados quando o processo termina rapidamente; o teste verifica que nenhum cache é publicado nesse caso.
+- Tipos de políticas/estruturas YAML foram reforçados: políticas desconhecidas, string no lugar de booleano e operações test/publish inválidas falham antes da geração. `generate` limita a chamada de acordo com o menor prazo local/receita; allowlist vazia não libera ferramentas.
 
 1. Robustez e qualidade da geração local de apps desktop, contratos de testes independentes, contabilização de consumo efetivo e opção de correção granular; streaming não é tratado como solução comprovada de sintaxe.
 2. Validação dos perfis experimentais C++/Win32, Cocoa/macOS e GTK/Linux, seleção por inventário mais completo, triagem neutra de requisitos e diagnóstico de dependências/arquitetura física do host. Hoje `ARCH` informa a arquitetura da engine.

@@ -27,6 +27,8 @@ Chave reservada na raiz (`version`, `targets`, `selectors` ou `prompt_core`), ou
 
 `build.steps`, `run.cmd` e `test.steps` opcional usam listas de argumentos. O build exige ao menos um comando; o artefato esperado precisa existir no workspace. Não se escolhe outro executável automaticamente. Templates não resolvidos e inputs inválidos falham antes da geração. `generator` legado é ignorado com aviso: migre provider/modelo para configuração local. `workspace.cache.root` não controla o cache. Marcadores/layout personalizados e restrição de rede não implementada são rejeitados.
 
+Os campos principais exigem mappings. Operações usam de 1 a 32 steps; test/publish malformados não são ignorados. `policies` aceita somente `allowNetwork`, `timeoutSeconds` e `commandAllowlist`, com tipos validados. Isso ainda não é uma validação normativa de todo campo possível dos RFCs históricos; não se devem inferir capacidades desses documentos.
+
 ## Projeto e correções
 
 Ambos os providers retornam `files: [{path, content}]`. A engine valida toda a lista antes da escrita, incluindo caminhos relativos, duplicatas, colisões arquivo/diretório, links e limites. Cada tentativa compila em uma subpasta nova; fontes/artefatos anteriores não contaminam a seguinte.
