@@ -11,8 +11,8 @@ pub(super) const MAKEFILE: &str = "CrexeBuild.mk";
 pub(super) fn resolve(name: &str, prompt: &str, profile: &str) -> Result<Value> {
     let (os, language, build): (&str, &str, Vec<&str>) = match profile {
         "cpp-win32" => (
-            "windows", "C++17 and the Win32 API (Unicode). Use wWinMain, Windows headers, user32/gdi32. Separate application logic from UI into .cpp/.h files. Check --crexe-self-test in the command line before creating windows.",
-            vec!["g++", "-std=c++17", "-O2", "-municode", "-mwindows", "-static", SOURCES, "-o", "CrexeApp.exe", "-luser32", "-lgdi32"],
+            "windows", "C++17 and the Win32 API (Unicode). Use wWinMain, Windows headers, user32/gdi32/shell32. Separate application logic from UI into .cpp/.h files. Parse GetCommandLineW with CommandLineToArgvW from shellapi.h and LocalFree the result. Check the parsed --crexe-self-test argument before creating windows; raw wWinMain command-line text may contain quotes when launched by a BAT script.",
+            vec!["g++", "-std=c++17", "-O2", "-municode", "-mwindows", "-static", SOURCES, "-o", "CrexeApp.exe", "-luser32", "-lgdi32", "-lshell32"],
         ),
         "objc-cocoa" => (
             "macos", "Objective-C++17 and Cocoa/AppKit with ARC. Use .mm/.h sources, one main(int argc, char **argv). Separate application logic and UI. Check --crexe-self-test before starting NSApplication. Build is a native executable, not a signed .app bundle.",

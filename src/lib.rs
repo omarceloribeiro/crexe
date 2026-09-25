@@ -223,7 +223,7 @@ fn doctor(cli: &Cli) -> Result<()> {
 }
 
 fn inspect(file: &Path, cli: &Cli) -> Result<()> {
-    let raw = fs::read_to_string(file)?;
+    let raw = format::read(file)?;
     let (format, name, spec) = match format::parse(&raw, file)? {
         format::Document::Yaml(spec) => (
             "yaml",
@@ -291,7 +291,7 @@ fn exec_crexe(
     let crexe_path = file
         .canonicalize()
         .with_context(|| format!("CREXE not found: {}", file.display()))?;
-    let raw = fs::read_to_string(&crexe_path)?;
+    let raw = format::read(&crexe_path)?;
     let spec = match format::parse(&raw, &crexe_path)? {
         format::Document::Yaml(spec) => {
             if get_path(&spec, &["engine_project"]).is_some()

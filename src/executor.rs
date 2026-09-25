@@ -156,6 +156,12 @@ fn execute(
             drop(job);
             #[cfg(unix)]
             kill_group(child.id());
+            if capture
+                && (stdout.metadata()?.len() > 2 * 1024 * 1024
+                    || stderr.metadata()?.len() > 2 * 1024 * 1024)
+            {
+                bail!("Command output exceeded 2 MiB: {}", args[0]);
+            }
             let captured = if capture {
                 tail(&mut stdout)?
             } else {

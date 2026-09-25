@@ -2,7 +2,25 @@
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use serde_yaml::Value;
+use std::io::Read;
 use std::path::Path;
+
+const MAX_DOCUMENT: u64 = 1024 * 1024;
+
+pub(crate) fn read(path: &Path) -> Result<String> {
+    let file = std::fs::File::open(path).context("Cannot open CREXE document")?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || metadata.len() > MAX_DOCUMENT {
+        bail!("CREXE document must be a regular file of at most 1 MiB");
+    }
+    // Bound the read too: the file could grow after its metadata was inspected.
+    let mut bytes = Vec::new();
+    file.take(MAX_DOCUMENT + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_DOCUMENT {
+        bail!("Recipe exceeds 1 MiB");
+    }
+    String::from_utf8(bytes).context("CREXE documents must use UTF-8")
+}
 
 pub(crate) enum Document {
     Yaml(Value),
@@ -23,7 +41,7 @@ struct FrontMatter {
 }
 
 pub(crate) fn parse(raw: &str, path: &Path) -> Result<Document> {
-    if raw.len() > 1024 * 1024 {
+    if raw.len() as u64 > MAX_DOCUMENT {
         bail!("Recipe exceeds 1 MiB");
     }
     let text = raw.trim_start_matches('\u{feff}').trim();
@@ -91,6 +109,18 @@ pub(crate) fn parse(raw: &str, path: &Path) -> Result<Document> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn file_reads_are_bounded_and_require_utf8() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("intent.crexe");
+        let file = std::fs::File::create(&path).unwrap();
+        file.set_len(MAX_DOCUMENT + 1).unwrap();
+        assert!(read(&path).is_err());
+        std::fs::write(&path, [0xff, 0xfe]).unwrap();
+        assert!(read(&path).is_err());
+        std::fs::write(&path, "gerar calculadora").unwrap();
+        assert_eq!(read(&path).unwrap(), "gerar calculadora");
+    }
     #[test]
     fn free_intent_needs_no_sections_or_metadata() {
         for text in [

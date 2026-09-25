@@ -117,6 +117,8 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool) {
         || (payload.to_string().contains("REPAIRME") && number == 1)
     {
         "deliberate syntax error".to_string()
+    } else if payload.to_string().contains("LOUD") {
+        "fn main() { print!(\"{}\", \"x\".repeat(3 * 1024 * 1024)); }".to_string()
     } else if payload.to_string().contains("SLOW") {
         "fn main() { std::thread::sleep(std::time::Duration::from_secs(60)); }".to_string()
     } else {
@@ -337,6 +339,27 @@ fn explicit_run_timeout_terminates_the_child() {
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("Command timed out"));
     assert!(start.elapsed() < Duration::from_secs(20));
+}
+
+#[test]
+fn fast_test_output_overflow_is_rejected_before_cache_publication() {
+    let provider = Provider::start();
+    let temp = tempfile::tempdir().unwrap();
+    let home = temp.path().join("engine");
+    configure(&provider, &home);
+    let mut spec = recipe(&provider);
+    spec["prompt"]["user_by_target"]["native"] = json!("LOUD");
+    let run = spec["targets"]["native"]["run"]["cmd"].clone();
+    spec["targets"]["native"]["test"] = json!({"steps": [{"cmd": run}]});
+    let file = temp.path().join("logs.crexe");
+    fs::write(&file, serde_json::to_vec(&spec).unwrap()).unwrap();
+    let failed = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+    assert!(!failed.status.success());
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("output exceeded 2 MiB"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
+    for entry in fs::read_dir(home.join("cache")).unwrap() {
+        assert!(!entry.unwrap().path().join("current.json").exists());
+    }
 }
 
 #[test]

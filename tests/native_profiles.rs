@@ -2,12 +2,72 @@
 use serde_json::json;
 use std::{
     fs,
-    io::{Read, Write},
+    io::{Read, Seek, SeekFrom, Write},
     net::TcpListener,
     path::Path,
-    process::{Command, Output},
-    time::Duration,
+    process::{Command, Output, Stdio},
+    time::{Duration, Instant},
 };
+
+trait CheckedOutput {
+    fn checked_output(&mut self) -> Output;
+}
+
+impl CheckedOutput for Command {
+    fn checked_output(&mut self) -> Output {
+        println!(
+            "Native fixture step: {:?} {:?}",
+            self.get_program(),
+            self.get_args().collect::<Vec<_>>()
+        );
+        let mut stdout = tempfile::tempfile().unwrap();
+        let mut stderr = tempfile::tempfile().unwrap();
+        self.stdout(Stdio::from(stdout.try_clone().unwrap()))
+            .stderr(Stdio::from(stderr.try_clone().unwrap()));
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            self.process_group(0);
+        }
+        let mut child = self.spawn().unwrap();
+        let start = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if start.elapsed() > Duration::from_secs(120) {
+                #[cfg(windows)]
+                {
+                    let _ = Command::new("taskkill")
+                        .args(["/PID", &child.id().to_string(), "/T", "/F"])
+                        .output();
+                }
+                #[cfg(unix)]
+                unsafe {
+                    libc::kill(-(child.id() as i32), libc::SIGKILL);
+                }
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!(
+                    "Native fixture step exceeded 120 seconds: {:?}",
+                    self.get_program()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        };
+        stdout.seek(SeekFrom::Start(0)).unwrap();
+        stderr.seek(SeekFrom::Start(0)).unwrap();
+        let mut out = Vec::new();
+        let mut err = Vec::new();
+        stdout.take(1024 * 1024).read_to_end(&mut out).unwrap();
+        stderr.take(1024 * 1024).read_to_end(&mut err).unwrap();
+        Output {
+            status,
+            stdout: out,
+            stderr: err,
+        }
+    }
+}
 
 fn success(output: Output) -> String {
     assert!(
@@ -24,7 +84,7 @@ fn sources() -> (&'static str, Vec<serde_json::Value>) {
         (
             "cpp-win32",
             vec![
-                json!({"path": "UI sources/main.cpp", "content": "#include <windows.h>\n#include <cwchar>\nint add(int,int);\nint WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR cmd,int){ if(wcscmp(cmd,L\"--crexe-self-test\")==0) return add(20,22)==42 && add(-3,2)==-1 ? 0:1; MessageBoxW(nullptr,L\"Fixture\",L\"CREXE\",MB_OK); return 0; }\n"}),
+                json!({"path": "UI sources/main.cpp", "content": "#include <windows.h>\n#include <shellapi.h>\n#include <cwchar>\nint add(int,int);\nint WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){ int argc=0; LPWSTR* argv=CommandLineToArgvW(GetCommandLineW(),&argc); if(!argv) return 2; bool test=argc>1 && wcscmp(argv[1],L\"--crexe-self-test\")==0; LocalFree(argv); if(test) return add(20,22)==42 && add(-3,2)==-1 ? 0:1; MessageBoxW(nullptr,L\"Fixture\",L\"CREXE\",MB_OK); return 0; }\n"}),
                 json!({"path": "logic/soma.cpp", "content": "int add(int a,int b){return a+b;}\n"}),
             ],
         )
@@ -114,8 +174,7 @@ fn native_profile_builds_multiple_sources_exports_rebuilds_and_publishes() {
             ])
             .arg(&zip_path)
             .env("CREXE_HOME", &home)
-            .output()
-            .unwrap(),
+            .checked_output(),
     );
     server.join().unwrap(); // The only provider request is complete; the server no longer exists.
     assert!(generated.contains("Validated revision:"));
@@ -125,8 +184,7 @@ fn native_profile_builds_multiple_sources_exports_rebuilds_and_publishes() {
             .args(["--profile", profile, "--no-run"])
             .env("CREXE_HOME", &home)
             .env("PATH", "")
-            .output()
-            .unwrap(),
+            .checked_output(),
     );
     assert!(
         cached.contains("Cache hit"),
@@ -146,14 +204,14 @@ fn native_profile_builds_multiple_sources_exports_rebuilds_and_publishes() {
     } else {
         build.arg("build.sh");
     }
-    success(build.current_dir(&extracted).output().unwrap());
+    success(build.current_dir(&extracted).checked_output());
     let mut script_test = Command::new(command);
     if cfg!(windows) {
         script_test.args(["/c", "test.bat"]);
     } else {
         script_test.arg("test.sh");
     }
-    success(script_test.current_dir(&extracted).output().unwrap());
+    success(script_test.current_dir(&extracted).checked_output());
     let app = if cfg!(windows) {
         "CrexeApp.exe"
     } else {
@@ -162,8 +220,7 @@ fn native_profile_builds_multiple_sources_exports_rebuilds_and_publishes() {
     success(
         Command::new(extracted.join(app))
             .arg("--crexe-self-test")
-            .output()
-            .unwrap(),
+            .checked_output(),
     );
     let published = temp.path().join("published");
     success(
@@ -173,8 +230,7 @@ fn native_profile_builds_multiple_sources_exports_rebuilds_and_publishes() {
             .arg("--output")
             .arg(&published)
             .env("CREXE_HOME", &home)
-            .output()
-            .unwrap(),
+            .checked_output(),
     );
     let artifact = if cfg!(windows) {
         "CrexeApp-publish.exe"
@@ -185,8 +241,7 @@ fn native_profile_builds_multiple_sources_exports_rebuilds_and_publishes() {
     success(
         Command::new(published.join(artifact))
             .arg("--crexe-self-test")
-            .output()
-            .unwrap(),
+            .checked_output(),
     );
     println!("{profile}: multi-file compile, self-test, cache without compiler, ZIP rebuild and local publish passed (one fixture request, no real model)");
 }
