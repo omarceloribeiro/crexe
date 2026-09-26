@@ -49,6 +49,8 @@ Validação local deste incremento: 40 testes Rust aprovados (29 unitários e 11
 
 `tests/windows_configuration.ps1` usou acessibilidade nativa para acionar **Salvar** na janela real, após importar um TOML, e confirmou pela CLI o novo provider/modelo. Passou também no binário release. A geração mantém em memória a chave da primeira requisição para seus reparos, mesmo se a configuração rotacionar/remover essa entrada no cofre durante a chamada.
 
+O commit `2000f4d` passou em Windows, Linux e macOS na [CI 36208001411](https://github.com/omarceloribeiro/crexe/actions/runs/36208001411), incluindo fmt, clippy, suíte Rust, fixture nativa, release e pacotes. Os três artefatos foram baixados e tiveram checksum/hashes internos conferidos; os lançadores de configuração estão presentes. [Registro dos pacotes](validation/2026-09-25-desktop-packages.json). O Windows release passou novamente nos testes de abertura e configuração, sem nova dependência de redistribuível VC++. A cópia de desenvolvimento instalada foi atualizada com os mesmos bytes e preservação das preferências.
+
 A compilação/empacotamento da tela nos três OS e a aceitação visual em macOS/Linux são verificações distintas. A aceitação nesses desktops, em máquina limpa e fora do Codex, continua pendente.
 
 Em andamento: perfis experimentais `cpp-win32`, `objc-cocoa` e `c-gtk`, com ensaio de múltiplos fontes/build/teste/ZIP/publish por SDK nativo na CI. O teste é separado da geração por modelo real e da interação com GUI. A suíte local agora tem 31 testes aprovados (23 unitários e 8 de integração); o teste de SDK nativo é explicitamente ignorado quando suas ferramentas não foram preparadas.

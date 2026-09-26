@@ -1,0 +1,35 @@
+{
+  "source_commit": "2000f4d25650623188707e24c75ddd64632261e7",
+  "ci_run": "https://github.com/omarceloribeiro/crexe/actions/runs/36208001411",
+  "ci_result": "SUCCESS Windows/Linux/macOS",
+  "packages": [
+    {
+      "os": "macos",
+      "arch": "aarch64",
+      "package": "crexe-1.0.0-dev.2000f4d-macos-aarch64.tar.gz",
+      "sha256": "60712e0a8898912c5e25b8a82227cfdb5005045808f1f13241f7d1771462a300",
+      "internal_hashes": "PASS",
+      "settings_launcher": "configure.command"
+    },
+    {
+      "os": "linux",
+      "arch": "x86_64",
+      "package": "crexe-1.0.0-dev.2000f4d-linux-x86_64.tar.gz",
+      "sha256": "74cc0c68f376f130cd322f996575623bdba8ad3c51798fe9b5d0e70a9ded2879",
+      "internal_hashes": "PASS",
+      "settings_launcher": "configure.sh"
+    },
+    {
+      "os": "windows",
+      "arch": "x86_64",
+      "package": "crexe-1.0.0-dev.2000f4d-windows-x86_64.zip",
+      "sha256": "2a57147db6c7a44b39834826b7b2d68820ce7077011cbf2258ff191b47e40e2e",
+      "internal_hashes": "PASS",
+      "settings_launcher": "configure.cmd"
+    }
+  ],
+  "local_windows_zip_sha256": "c491932e8910f552dc250060bd030e5da790866a8fb5626361f632b64ea5eb24",
+  "local_windows_binary_sha256": "3b16108fe4bddff4c9bbefa0e326ca5d84f9165e06877ea8b9ef908aedb288e7",
+  "real_paid_api_calls": 0,
+  "manual_desktop_acceptance_pending": true
+}
