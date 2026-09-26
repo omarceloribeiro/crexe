@@ -5,7 +5,8 @@
 - Pacote Cargo na raiz, baseline com referência fixa e implementação histórica arquivada.
 - Instalação por usuário, associação Windows e janela de espera separada por plataforma.
 - YAML legado, Markdown com marcador e prompt livre; perfil C#/.NET no host.
-- Configuração local; Ollama e OpenAI sem fallback pago automático.
+- Configuração local; Ollama, OpenAI e DeepSeek sem fallback pago automático.
+- DeepSeek na tela de configuração, chave no cofre/ambiente, catálogo de modelos e raciocínio opcional.
 - Workspace temporário, timeout/cancelamento e remoção de credenciais do ambiente dos filhos.
 - Cache transacional com hashes e revisões imutáveis.
 - Vários fontes, build, correções limitadas, autoteste do perfil e ZIP com scripts.

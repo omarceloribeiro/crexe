@@ -4,7 +4,9 @@ Data inicial: 2026-09-23. Atualização de escopo: 2026-09-24. Status: execuçã
 
 Ponto de partida preservado: commit de baseline identificado pela tag `baseline/pre-v1`, na branch `feature/v1`, antes da implementação deste plano. O [registro do baseline](BASELINE.md) descreve conteúdo, backup local, exclusões do remoto e comandos de comparação.
 
-Complemento de 25/09/2026 após testes do autor: [plano de abertura, configuração visual e cliques repetidos](PLANO_UX_V1.md). Esse incremento está planejado, ainda não implementado.
+Complemento de 25/09/2026 após testes do autor: [plano de abertura, configuração visual e cliques repetidos](PLANO_UX_V1.md). Esse incremento foi implementado; evidências e aceitação manual pendente estão no registro de implementação.
+
+Incremento de 26/09/2026: [suporte ao provider DeepSeek](PLANO_DEEPSEEK_V1.md), com seleção na UI/CLI, cofre do sistema e validação do fluxo completo. Implementação e evidências no registro de implementação.
 
 ## 1. Objetivo e direção
 

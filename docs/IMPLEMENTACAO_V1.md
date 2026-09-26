@@ -35,6 +35,18 @@ O ambiente de desenvolvimento usa Rust 1.98.1 em `%LOCALAPPDATA%/CREXE/devtools`
 
 Os autotestes são produzidos pelo modelo, portanto não substituem revisão ou testes independentes. O teste de ZIP foi neste mesmo host, não em uma máquina limpa. O perfil C++/MinGW original não foi reproduzido aqui. Não houve envio de emails ou teste de dispositivos físicos.
 
+## Incremento DeepSeek — 26/09/2026
+
+Implementado o [plano DeepSeek](PLANO_DEEPSEEK_V1.md): adaptador próprio, preset `deepseek`, modelo inicial `deepseek-flash`, raciocínio opcional e configuração pela mesma tela/cofre. Configurações antigas oferecem o novo preset sem modificar o provider ativo até salvar. A variável `crexe_deepseek_api_key` e o alias convencional são filtrados dos subprocessos mesmo quando o perfil não está salvo. Erros HTTP são classificados sem expor seus corpos; não há fallback ou repetição automática.
+
+Validação local: fmt, clippy com warnings negados e **47 testes** aprovados (34 unitários, 13 CLI), mais o teste explícito do cofre Windows com chave sintética. Os testes controlados incluem payload/modos DeepSeek, catálogo, migração de configuração antiga, vários arquivos, reparo real pelo compilador, cache, troca de credencial, ZIP recompilável e rejeição de saídas inválidas sem publicar revisão ou repetir chamadas.
+
+Ensaio real autorizado: catálogo confirmou `deepseek-flash`; calculadora branca e alteração verde precisaram de **uma chamada cada, sem reparos**, em 16,875 s e 13,968 s incluindo build/autoteste/ZIP. As duas revisões reabriram pelo cache sem IA e expuseram uma janela nativa. Os dois ZIPs passaram por `build.bat`, `test.bat` e `publish.bat`. Um teste .NET independente confirmou seis casos aritméticos, divisão por zero, recuperação após limpar e cor real do objeto Form: branco `(255,255,255)` e verde `(0,120,60)`. Fontes gerados separados em quatro arquivos C#; houve avisos de nulidade, sem erros de build.
+
+Uso informado pela API: 703 tokens de entrada e 7490 de saída. Custo estimado pelas tarifas oficiais consultadas: US$ 0,004581 fora de pico ou US$ 0,009162 em pico; não é conferência do débito da conta. Foram usadas apenas duas das quatro chamadas autorizadas e não houve compra de créditos. Chave resolvida da variável de usuário Windows, sem persistência nos relatórios.
+
+Limitação: a ferramenta de inspeção visual não iniciou nesta sessão. A janela de configuração abriu, mas interação visual de selecionar/salvar não foi repetida neste incremento; o editor e cofre foram verificados por testes. As cores dos apps foram verificadas por código independente, não por captura de tela. Interação desktop em Linux/macOS também permanece pendente. [Relatório detalhado](validation/2026-09-26-deepseek.json). CI e pacotes deste incremento são registrados separadamente após a execução dos três runners.
+
 ## Critérios que continuam abertos
 
 ### Incremento de experiência de uso — 25/09/2026

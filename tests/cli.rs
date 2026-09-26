@@ -112,6 +112,14 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool, pause: &
         request.extend_from_slice(&buffer[..n]);
     }
     let payload: Value = serde_json::from_slice(&request[body_start..body_start + length]).unwrap();
+    let deepseek = payload["model"] == "deepseek-fixture";
+    if deepseek {
+        assert_eq!(payload["thinking"]["type"], "disabled");
+        assert_eq!(payload["stream"], false);
+        assert_eq!(payload["response_format"]["type"], "json_object");
+        assert!(payload.get("max_tokens").is_some());
+        assert!(payload.get("max_completion_tokens").is_none());
+    }
     let number = count.fetch_add(1, Ordering::SeqCst) + 1;
     let started = std::time::Instant::now();
     while pause.load(Ordering::SeqCst) && started.elapsed() < Duration::from_secs(20) {
@@ -131,10 +139,21 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool, pause: &
     } else if payload.to_string().contains("SLOW") {
         "fn main() { std::thread::sleep(std::time::Duration::from_secs(60)); }".to_string()
     } else {
-        format!("fn main() {{ assert!(std::env::var_os(\"CREXE_TEST_KEY\").is_none()); assert!(std::env::var_os(\"OPENAI_API_KEY\").is_none()); println!(\"{message}\"); }}")
+        format!("fn main() {{ for name in [\"CREXE_TEST_KEY\", \"OPENAI_API_KEY\", \"crexe_deepseek_api_key\", \"DEEPSEEK_API_KEY\"] {{ assert!(std::env::var_os(name).is_none()); }} println!(\"{message}\"); }}")
     };
-    let generated = json!({"files": [{"path": "src/main.rs", "content": source} ]});
-    let body = if ollama { json!({"done": true, "done_reason": "stop", "message": {"content": generated.to_string()}}) }
+    let generated = if deepseek {
+        json!({"files": [
+            {"path":"src/main.rs","content":"mod app; fn main() { app::run(); }"},
+            {"path":"src/app.rs","content":source.replace("fn main()", "pub fn run()")}
+        ]})
+    } else {
+        json!({"files": [{"path": "src/main.rs", "content": source} ]})
+    };
+    let body = if payload.to_string().contains("INVALID_DEEPSEEK") {
+        json!({"choices":[{"finish_reason":"stop","message":{"content":"{\"files\":[]}","reasoning_content":"not-a-source"}}]})
+    } else if payload.to_string().contains("TRUNCATED_DEEPSEEK") {
+        json!({"choices":[{"finish_reason":"length","message":{"content":generated.to_string()}}]})
+    } else if ollama { json!({"done": true, "done_reason": "stop", "message": {"content": generated.to_string()}}) }
         else { json!({"choices": [{"message": {"content": generated.to_string()}, "finish_reason": "stop"}]}) }.to_string();
     let _ = write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body);
 }
@@ -183,6 +202,8 @@ fn invoke(executable: &Path, cwd: &Path, home: &Path, file: &Path, direct: bool)
         .env("CREXE_HOME", home)
         .env("CREXE_TEST_KEY", "fake-not-a-secret")
         .env("OPENAI_API_KEY", "synthetic-do-not-inherit")
+        .env("crexe_deepseek_api_key", "synthetic-do-not-inherit")
+        .env("DEEPSEEK_API_KEY", "synthetic-do-not-inherit")
         .output()
         .unwrap()
 }
@@ -195,6 +216,142 @@ fn success(output: Output) -> String {
         String::from_utf8_lossy(&output.stderr)
     );
     String::from_utf8(output.stdout).unwrap()
+}
+
+#[test]
+fn deepseek_repairs_multifile_projects_changes_intent_reuses_cache_and_exports() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let config_path = home.join("config.toml");
+    let config = fs::read_to_string(&config_path)
+        .unwrap()
+        .replace("kind = \"openai\"", "kind = \"deepseek\"")
+        .replace("model = \"fixture\"", "model = \"deepseek-fixture\"");
+    fs::write(&config_path, &config).unwrap();
+    let mut spec = recipe(&provider);
+    spec["prompt"]["user_by_target"]["native"] = json!("REPAIRME WHITE");
+    let file = temp.path().join("calculator.crexe");
+    fs::write(&file, spec.to_string()).unwrap();
+    let output = success(
+        Command::new(engine())
+            .arg(&file)
+            .args(["--max-repairs", "1"])
+            .env("CREXE_HOME", &home)
+            .env("CREXE_TEST_KEY", "synthetic")
+            .output()
+            .unwrap(),
+    );
+    assert!(output.contains("CREXE_FIXTURE_WHITE"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 2);
+    assert!(
+        success(invoke(Path::new(engine()), temp.path(), &home, &file, true)).contains("Cache hit")
+    );
+    // Credential source changes must not invalidate the DeepSeek generation identity.
+    fs::write(
+        &config_path,
+        config.replace("CREXE_TEST_KEY", "crexe_deepseek_api_key")
+            + "\n[providers.inactive]\nkind='openai'\nbase_url='https://unused.invalid'\nmodel='unused'\napi_key_env='CREXE_TEST_KEY'\n",
+    )
+    .unwrap();
+    assert!(
+        success(invoke(Path::new(engine()), temp.path(), &home, &file, true)).contains("Cache hit")
+    );
+    assert_eq!(provider.count.load(Ordering::SeqCst), 2);
+    spec["prompt"]["user_by_target"]["native"] = json!("GREEN");
+    fs::write(&file, spec.to_string()).unwrap();
+    assert!(
+        success(invoke(Path::new(engine()), temp.path(), &home, &file, true))
+            .contains("CREXE_FIXTURE_GREEN")
+    );
+    assert!(
+        success(invoke(Path::new(engine()), temp.path(), &home, &file, true)).contains("Cache hit")
+    );
+    assert_eq!(provider.count.load(Ordering::SeqCst), 3);
+    let revision = fs::read_dir(home.join("cache"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find_map(|entry| {
+            let manifest: Value =
+                serde_json::from_slice(&fs::read(entry.join("current.json")).unwrap()).unwrap();
+            let revision = entry.join(manifest["revision"].as_str().unwrap());
+            fs::read_to_string(revision.join("src/app.rs"))
+                .unwrap()
+                .contains("GREEN")
+                .then_some(revision)
+        })
+        .unwrap();
+    let archive = temp.path().join("export.zip");
+    success(
+        Command::new(engine())
+            .arg("export")
+            .arg(&revision)
+            .arg("--output")
+            .arg(&archive)
+            .env("CREXE_HOME", &home)
+            .output()
+            .unwrap(),
+    );
+    let extracted = temp.path().join("extracted");
+    let mut zip = zip::ZipArchive::new(fs::File::open(archive).unwrap()).unwrap();
+    zip.extract(&extracted).unwrap();
+    assert!(extracted.join("src/app.rs").is_file());
+    let rebuilt = temp.path().join("rebuilt");
+    success(
+        Command::new(engine())
+            .arg("build")
+            .arg(&extracted)
+            .arg("--output")
+            .arg(&rebuilt)
+            .env("CREXE_HOME", &home)
+            .output()
+            .unwrap(),
+    );
+    assert!(success(
+        Command::new(engine())
+            .arg("run")
+            .arg(&rebuilt)
+            .env("CREXE_HOME", &home)
+            .output()
+            .unwrap()
+    )
+    .contains("CREXE_FIXTURE_GREEN"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 3);
+}
+
+#[test]
+fn invalid_deepseek_output_never_publishes_cache_or_triggers_hidden_retries() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let config = home.join("config.toml");
+    fs::write(
+        &config,
+        fs::read_to_string(&config)
+            .unwrap()
+            .replace("kind = \"openai\"", "kind = \"deepseek\""),
+    )
+    .unwrap();
+    let mut spec = recipe(&provider);
+    let file = temp.path().join("invalid.crexe");
+    for prompt in ["INVALID_DEEPSEEK", "TRUNCATED_DEEPSEEK"] {
+        spec["prompt"]["user_by_target"]["native"] = json!(prompt);
+        fs::write(&file, spec.to_string()).unwrap();
+        let result = Command::new(engine())
+            .arg(&file)
+            .args(["--max-repairs", "2"])
+            .env("CREXE_HOME", &home)
+            .env("CREXE_TEST_KEY", "synthetic")
+            .output()
+            .unwrap();
+        assert!(!result.status.success());
+        for entry in fs::read_dir(home.join("cache")).unwrap() {
+            assert!(!entry.unwrap().path().join("current.json").exists());
+        }
+    }
+    assert_eq!(provider.count.load(Ordering::SeqCst), 2);
 }
 
 #[test]

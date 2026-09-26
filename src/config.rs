@@ -33,6 +33,29 @@ pub(crate) struct Provider {
 pub(crate) enum Kind {
     Ollama,
     Openai,
+    Deepseek,
+}
+
+impl Kind {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Ollama => "Ollama",
+            Self::Openai => "OpenAI compatível",
+            Self::Deepseek => "DeepSeek",
+        }
+    }
+
+    pub fn http_error(self, status: reqwest::StatusCode) -> String {
+        let advice = match status.as_u16() {
+            401 => "Credencial inválida; confira a API key.",
+            402 => "Saldo insuficiente no provider.",
+            400 | 422 => "Parâmetros inválidos; confira o modelo e as opções de geração.",
+            429 => "Limite de requisições atingido; tente novamente mais tarde.",
+            500 | 503 => "Serviço indisponível ou sobrecarregado; tente novamente mais tarde.",
+            _ => "Confira o endereço, o modelo e as credenciais.",
+        };
+        format!("{} retornou HTTP {}. {advice} Nenhuma tentativa ou troca de provider automática foi feita.", self.label(), status.as_u16())
+    }
 }
 
 fn timeout() -> u64 {
@@ -117,7 +140,12 @@ impl Settings {
         }
         provider.validate()?;
         config.execution.validate()?;
-        let mut secret_names = vec!["OPENAI_API_KEY".into(), "crexe_openai_api_key_env".into()];
+        let mut secret_names = vec![
+            "OPENAI_API_KEY".into(),
+            "crexe_openai_api_key_env".into(),
+            "DEEPSEEK_API_KEY".into(),
+            "crexe_deepseek_api_key".into(),
+        ];
         secret_names.extend(
             config
                 .providers
@@ -188,6 +216,11 @@ impl Settings {
     pub fn identity(&self) -> Result<Vec<u8>> {
         let mut provider = self.provider.clone();
         provider.credential = None;
+        if provider.kind == Kind::Deepseek {
+            // Credential location is not a generation parameter. Preserve legacy identities.
+            provider.api_key_env = None;
+            provider.thinking = Some(provider.thinking.unwrap_or(false));
+        }
         Ok(serde_json::to_vec(
             &serde_json::json!({"provider": provider, "execution": self.execution}),
         )?)
@@ -304,6 +337,34 @@ pub(crate) fn default_path() -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn deepseek_identity_ignores_credentials_and_normalizes_default_thinking() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut settings = Settings::draft(
+            &temp.path().join("config.toml"),
+            "deepseek",
+            &parse(include_str!("../config.example.toml"))
+                .unwrap()
+                .providers["deepseek"],
+        );
+        let original = settings.identity().unwrap();
+        settings.provider.thinking = None;
+        settings.provider.api_key_env = Some("ANOTHER_SECRET_NAME".into());
+        settings.provider.credential = Some(
+            super::super::credentials::Reference::new(
+                &settings.path,
+                "deepseek",
+                &settings.provider.base_url,
+            )
+            .unwrap(),
+        );
+        assert_eq!(original, settings.identity().unwrap());
+        settings.provider.thinking = Some(true);
+        assert_ne!(original, settings.identity().unwrap());
+        settings.provider.thinking = Some(false);
+        settings.provider.model = "another-model".into();
+        assert_ne!(original, settings.identity().unwrap());
+    }
     #[test]
     fn vault_resolution_is_bound_and_explicit_env_file_overrides_it() {
         use super::super::credentials::{testing::Memory, Reference, Vault};

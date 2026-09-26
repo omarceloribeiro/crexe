@@ -81,7 +81,7 @@ Este pacote serve para validação. Não é uma release estável ou um instalado
 
 A engine compilada não precisa de Rust, Python, Docker ou WSL para executar.
 Para gerar programas, prepare o provider e o SDK do perfil:
-- Ollama local com gemma4:12b é o default. A engine não baixa modelos nem troca automaticamente para OpenAI.
+- Ollama local com gemma4:12b é o default. OpenAI e DeepSeek podem ser selecionados em Configurações, com API key no cofre. A engine não baixa modelos nem troca automaticamente de provider.
 - Windows: .NET 8 SDK no PATH para Windows Forms, ou MinGW-w64 g++ para --profile cpp-win32.
 - macOS: Apple Clang/SDK Cocoa; perfil experimental objc-cocoa.
 - Linux: GCC, Make, pkg-config e GTK3 development; perfil experimental c-gtk.

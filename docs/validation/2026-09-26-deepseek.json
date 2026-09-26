@@ -1,0 +1,222 @@
+{
+  "date": "2026-09-26",
+  "model_requested": "deepseek-flash",
+  "generation_call_limit": 4,
+  "max_output_per_call": 6000,
+  "input_byte_limit": 131072,
+  "events": [
+    {
+      "action": "generate",
+      "variant": "base",
+      "reserved_calls": 2,
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 16.875,
+      "calls": 1,
+      "cache_hit": false,
+      "responses": [
+        {
+          "completion_tokens": 4031,
+          "model": "deepseek-flash",
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 352,
+          "prompt_tokens": 352,
+          "total_tokens": 4383
+        }
+      ]
+    },
+    {
+      "action": "cache",
+      "variant": "base",
+      "reserved_calls": 0,
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.109,
+      "calls": 0,
+      "cache_hit": true,
+      "responses": []
+    },
+    {
+      "action": "generate",
+      "variant": "green",
+      "reserved_calls": 2,
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 13.968,
+      "calls": 1,
+      "cache_hit": false,
+      "responses": [
+        {
+          "completion_tokens": 3459,
+          "model": "deepseek-flash",
+          "prompt_cache_hit_tokens": 128,
+          "prompt_cache_miss_tokens": 223,
+          "prompt_tokens": 351,
+          "total_tokens": 3810
+        }
+      ]
+    },
+    {
+      "action": "cache",
+      "variant": "green",
+      "reserved_calls": 0,
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.125,
+      "calls": 0,
+      "cache_hit": true,
+      "responses": []
+    },
+    {
+      "action": "cache",
+      "variant": "base",
+      "reserved_calls": 0,
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.11,
+      "calls": 0,
+      "cache_hit": true,
+      "responses": []
+    },
+    {
+      "action": "cache",
+      "variant": "green",
+      "reserved_calls": 0,
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.11,
+      "calls": 0,
+      "cache_hit": true,
+      "responses": []
+    }
+  ],
+  "pricing": {
+    "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "usd_per_million_input_cache_miss_peak": 0.3,
+    "usd_per_million_output_peak": 1.2,
+    "conservative_estimate_usd": 0.2,
+    "authorized_available_usd": 5.0,
+    "estimate_basis": "4 calls, input <=131072 UTF-8 bytes plus 1024 token framing allowance per call, output <=6000; peak rates; no cache discount"
+  },
+  "catalog_models": [
+    "deepseek-flash",
+    "deepseek-v4-pro"
+  ],
+  "catalog_confirmed": true,
+  "independent_tests": {
+    "base": {
+      "zip_scripts": [
+        {
+          "script": "build.bat",
+          "exit_code": 0
+        },
+        {
+          "script": "test.bat",
+          "exit_code": 0
+        },
+        {
+          "script": "publish.bat",
+          "exit_code": 0
+        }
+      ],
+      "assertions": {
+        "variant": "base",
+        "passed": true,
+        "arithmetic_cases": 6,
+        "division_by_zero": true,
+        "recovery_after_error": true,
+        "form_background_rgb": [
+          255,
+          255,
+          255
+        ],
+        "controls_constructed": true,
+        "interactive_visual_review": false
+      }
+    },
+    "green": {
+      "zip_scripts": [
+        {
+          "script": "build.bat",
+          "exit_code": 0
+        },
+        {
+          "script": "test.bat",
+          "exit_code": 0
+        },
+        {
+          "script": "publish.bat",
+          "exit_code": 0
+        }
+      ],
+      "assertions": {
+        "variant": "green",
+        "passed": true,
+        "arithmetic_cases": 6,
+        "division_by_zero": true,
+        "recovery_after_error": true,
+        "form_background_rgb": [
+          0,
+          120,
+          60
+        ],
+        "controls_constructed": true,
+        "interactive_visual_review": false
+      }
+    }
+  },
+  "launch_checks": [
+    {
+      "caption": "Calculadora",
+      "main_window_observed": true,
+      "cleanup": "owned process terminated after window observation",
+      "interactive_visual_review": false,
+      "variant": "base"
+    },
+    {
+      "caption": "Calculadora",
+      "main_window_observed": true,
+      "cleanup": "owned process terminated after window observation",
+      "interactive_visual_review": false,
+      "variant": "green"
+    }
+  ],
+  "implementation_base": "b81c641",
+  "generation_calls": 2,
+  "token_totals": {
+    "prompt_tokens": 703,
+    "completion_tokens": 7490,
+    "total_tokens": 8193,
+    "prompt_cache_hit_tokens": 128,
+    "prompt_cache_miss_tokens": 575
+  },
+  "estimated_generation_cost_usd": {
+    "peak": 0.009161268,
+    "off_peak": 0.004580634,
+    "actual_account_charge_verified": false,
+    "basis": "API usage and official peak/off-peak pricing; no balance lookup"
+  },
+  "api_key_source": "Windows current-user environment: crexe_deepseek_api_key; no secret persisted or displayed",
+  "local_checks": {
+    "fmt": true,
+    "clippy_warnings_denied": true,
+    "unit_passed": 34,
+    "cli_integration_passed": 13,
+    "native_windows_vault_synthetic_passed": true
+  },
+  "desktop_configuration": {
+    "native_window_opened": true,
+    "legacy_configuration_selection_save_vault_reload": "automated editor tests passed",
+    "interactive_ui_validation": "not completed: computer-use helper initialization failed twice (kernel assets path unavailable)"
+  },
+  "limitations": [
+    "Interactive visual review pending for settings and generated apps; form color was verified by constructing the generated form in an independent .NET test, not by screenshot.",
+    "macOS/Linux desktop interaction not tested on this Windows host; native builds/tests/packages are checked separately in CI.",
+    "Generated apps built with nullable warnings (not errors).",
+    "Real repair was not needed; compiler repair and invalid-output rejection were exercised with local HTTP fixtures."
+  ],
+  "source_zip_sha256": {
+    "base": "06b4ac29af08cce38a713c93ff226bf374aa2cbfcfae0c9cb01ba0ab5cae2632",
+    "green": "bd89785f1258e0e82d1cfc8c04ec35fe99628a8dba6fdc391c62430e416e270e"
+  }
+}

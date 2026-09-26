@@ -110,8 +110,13 @@ fn request(
         .connect_timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
+    let example = if p.kind == Kind::Deepseek {
+        "\nJSON structure example: {\"files\":[{\"path\":\"src/example.txt\",\"content\":\"complete file contents\"}]}. Use the actual paths required by this project."
+    } else {
+        ""
+    };
     let messages = json!([
-        {"role": "system", "content": format!("{system}\nReturn only a JSON object with files: an array of objects with path and content (strings). Include every required source file. No prose outside JSON.")},
+        {"role": "system", "content": format!("{system}\nReturn only a JSON object with files: an array of objects with path and content (strings). Include every required source file. No prose outside JSON.{example}")},
         {"role": "user", "content": user}
     ]);
     let (endpoint, payload) = match p.kind {
@@ -140,6 +145,19 @@ fn request(
             }
             ("chat/completions", payload)
         }
+        Kind::Deepseek => {
+            let thinking = p.thinking.unwrap_or(false);
+            let mut payload = json!({
+                "model": p.model, "messages": messages, "stream": false,
+                "max_tokens": p.max_output_tokens,
+                "response_format": {"type": "json_object"},
+                "thinking": {"type": if thinking { "enabled" } else { "disabled" }}
+            });
+            if !thinking {
+                payload["temperature"] = json!(0.2);
+            }
+            ("chat/completions", payload)
+        }
     };
     println!(
         "Generating with provider={}, model={}",
@@ -160,7 +178,7 @@ fn request(
     let status = response.status();
     // Do not echo arbitrary HTTP error bodies: gateways can include Authorization.
     if !status.is_success() {
-        bail!("Provider returned HTTP {status}; check model availability, service and credentials. No automatic fallback was attempted.");
+        bail!(p.kind.http_error(status));
     }
     let mut body = Vec::new();
     response
@@ -180,19 +198,228 @@ fn decode(kind: Kind, body: &[u8]) -> Result<GeneratedOutput> {
             if response["done"] != true || response["done_reason"] != "stop" { bail!("Ollama response incomplete (token limit or interrupted generation); increase local limits or choose another local model"); }
             response["message"]["content"].as_str()
         }
-        Kind::Openai => {
+        Kind::Openai | Kind::Deepseek => {
             let choice = &response["choices"][0];
-            if choice["finish_reason"] != "stop" || choice["message"]["refusal"].is_string() { bail!("OpenAI response incomplete or refused; no files were accepted"); }
+            if choice["finish_reason"] != "stop" || choice["message"]["refusal"].is_string()
+                || choice["message"]["tool_calls"].as_array().is_some_and(|calls| !calls.is_empty()) {
+                bail!("{} response incomplete or refused; no files were accepted", kind.label());
+            }
             choice["message"]["content"].as_str()
         }
     }.context("Provider response has no message content")?;
-    serde_json::from_str(&super::extract_json(content))
-        .context("Provider did not return the required files JSON object")
+    if content.trim().is_empty() {
+        bail!("Provider returned empty content; no files were accepted");
+    }
+    let generated = serde_json::from_str(&super::extract_json(content))
+        .context("Provider did not return the required files JSON object")?;
+    if kind == Kind::Deepseek {
+        // Whitelist metadata only; never log arbitrary content, reasoning or HTTP bodies.
+        let mut metadata = serde_json::Map::new();
+        if let Some(model) = response["model"].as_str().filter(|s| {
+            s.len() <= 256
+                && s.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || "-._:/".contains(c))
+        }) {
+            metadata.insert("model".into(), json!(model));
+        }
+        for field in [
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens",
+            "prompt_cache_hit_tokens",
+            "prompt_cache_miss_tokens",
+        ] {
+            if let Some(n) = response["usage"][field].as_u64() {
+                metadata.insert(field.into(), json!(n));
+            }
+        }
+        println!("DeepSeek response metadata: {}", Value::Object(metadata));
+    }
+    Ok(generated)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{io::Write, net::TcpListener};
+
+    fn deepseek_exchange(
+        status: u16,
+        body: String,
+        thinking: Option<bool>,
+        delay: Duration,
+    ) -> (Result<GeneratedOutput>, Value) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let mut bytes = Vec::new();
+            let mut buf = [0; 4096];
+            let start = loop {
+                let n = stream.read(&mut buf).unwrap();
+                assert!(n > 0);
+                bytes.extend_from_slice(&buf[..n]);
+                if let Some(i) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                    break i + 4;
+                }
+            };
+            let header = String::from_utf8_lossy(&bytes[..start]).to_ascii_lowercase();
+            assert!(header.starts_with("post /chat/completions http/1.1"));
+            assert!(header.contains("authorization: bearer synthetic-deepseek-only"));
+            let length: usize = header
+                .lines()
+                .find_map(|s| s.strip_prefix("content-length:"))
+                .unwrap()
+                .trim()
+                .parse()
+                .unwrap();
+            while bytes.len() < start + length {
+                let n = stream.read(&mut buf).unwrap();
+                assert!(n > 0);
+                bytes.extend_from_slice(&buf[..n]);
+            }
+            let payload: Value = serde_json::from_slice(&bytes[start..start + length]).unwrap();
+            std::thread::sleep(delay);
+            let _ = write!(
+                stream,
+                "HTTP/1.1 {status} Result\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            payload
+        });
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.toml");
+        let env_file = temp.path().join(".env");
+        std::fs::write(
+            &path,
+            include_str!("../config.example.toml")
+                .replace("https://api.deepseek.com", &url)
+                .replace("crexe_deepseek_api_key", "CREXE_DEEPSEEK_SYNTHETIC_UNIT"),
+        )
+        .unwrap();
+        std::fs::write(
+            &env_file,
+            "CREXE_DEEPSEEK_SYNTHETIC_UNIT=synthetic-deepseek-only",
+        )
+        .unwrap();
+        let mut settings =
+            Settings::load(Some(&path), Some("deepseek"), None, Some(&env_file)).unwrap();
+        settings.provider.thinking = thinking;
+        settings.provider.timeout_seconds = 1;
+        // Model names must not trigger OpenAI-specific parameter inference.
+        settings.provider.model = "gpt-5-synthetic".into();
+        let mut session = Session::new(&settings);
+        let result = session.generate("Return source files", "Test program");
+        assert_eq!(session.requests, 1);
+        (result, server.join().unwrap())
+    }
+
+    #[test]
+    fn deepseek_wire_contract_modes_and_multiple_files() {
+        let files = json!({"files":[{"path":"src/main.rs","content":"mod other; fn main() {}"},{"path":"src/other.rs","content":"// module"}]}).to_string();
+        for thinking in [None, Some(false), Some(true)] {
+            let body = format!(
+                "\n\n{}",
+                json!({"model":"deepseek-flash", "usage":{"prompt_tokens":20,"completion_tokens":30,"total_tokens":50},
+                "choices":[{"finish_reason":"stop","message":{"content":files,"reasoning_content":"never-source"}}]})
+            );
+            let (result, payload) = deepseek_exchange(200, body, thinking, Duration::ZERO);
+            assert_eq!(result.unwrap().files.len(), 2);
+            assert_eq!(
+                payload["thinking"]["type"],
+                if thinking == Some(true) {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            );
+            assert_eq!(payload["max_tokens"], 6000);
+            assert_eq!(payload["stream"], false);
+            assert_eq!(payload["response_format"]["type"], "json_object");
+            assert_eq!(
+                payload["temperature"],
+                if thinking == Some(true) {
+                    Value::Null
+                } else {
+                    json!(0.2)
+                }
+            );
+            for absent in [
+                "max_completion_tokens",
+                "think",
+                "options",
+                "reasoning_effort",
+            ] {
+                assert!(payload.get(absent).is_none());
+            }
+            assert!(payload["messages"][0]["content"]
+                .as_str()
+                .unwrap()
+                .contains("JSON structure example"));
+        }
+    }
+
+    #[test]
+    fn deepseek_errors_are_bounded_sanitized_and_not_retried() {
+        for (status, message) in [
+            (401, "Credencial"),
+            (402, "Saldo"),
+            (400, "Parâmetros"),
+            (422, "Parâmetros"),
+            (429, "Limite"),
+            (500, "indisponível"),
+            (503, "indisponível"),
+        ] {
+            let (result, _) = deepseek_exchange(
+                status,
+                "private-body-synthetic-deepseek-only".into(),
+                None,
+                Duration::ZERO,
+            );
+            let error = format!("{:#}", result.unwrap_err());
+            assert!(error.contains(message));
+            assert!(error.contains(&status.to_string()));
+            assert!(!error.contains("private-body") && !error.contains("synthetic-deepseek-only"));
+        }
+        let (result, _) = deepseek_exchange(200, "{}".into(), None, Duration::from_millis(1250));
+        assert!(result.unwrap_err().to_string().contains("timed out"));
+    }
+
+    #[test]
+    fn deepseek_rejects_empty_reasoning_only_malformed_and_truncated_outputs() {
+        let good = json!({"files":[{"path":"main.c","content":"int main(){}"}]}).to_string();
+        for content in [
+            Value::Null,
+            json!(""),
+            json!(" \n\t"),
+            json!("{\"files\":"),
+            json!("not-json"),
+        ] {
+            let body = json!({"choices":[{"finish_reason":"stop","message":{"content":content,"reasoning_content":good}}]}).to_string();
+            assert!(decode(Kind::Deepseek, body.as_bytes()).is_err());
+        }
+        for reason in [
+            "length",
+            "content_filter",
+            "tool_calls",
+            "aborted",
+            "insufficient_system_resource",
+        ] {
+            let body = json!({"choices":[{"finish_reason":reason,"message":{"content":good}}]})
+                .to_string();
+            assert!(decode(Kind::Deepseek, body.as_bytes()).is_err());
+        }
+        for extra in [
+            json!({"content":good,"refusal":"refused"}),
+            json!({"content":good,"tool_calls":[{}]}),
+        ] {
+            let body = json!({"choices":[{"finish_reason":"stop","message":extra}]}).to_string();
+            assert!(decode(Kind::Deepseek, body.as_bytes()).is_err());
+        }
+    }
     #[test]
     fn repairs_keep_the_credential_captured_by_the_first_request() {
         let temp = tempfile::tempdir().unwrap();

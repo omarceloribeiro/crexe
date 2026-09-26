@@ -147,7 +147,7 @@ impl eframe::App for Window {
                 }
                 ui.horizontal(|ui| {
                     ui.label("Serviço:");
-                    ui.label(if self.editor.provider.kind == config::Kind::Ollama { "Ollama" } else { "OpenAI compatível" });
+                    ui.label(self.editor.provider.kind.label());
                 });
                 ui.label("Modelo");
                 ui.add(egui::TextEdit::singleline(&mut self.editor.provider.model).desired_width(f32::INFINITY));
@@ -183,6 +183,13 @@ impl eframe::App for Window {
                     ui.horizontal(|ui| { ui.label("Tokens de saída"); ui.add(egui::DragValue::new(&mut self.editor.provider.max_output_tokens).range(128..=65536)); });
                     if self.editor.provider.kind == config::Kind::Ollama {
                         ui.horizontal(|ui| { ui.label("Contexto"); ui.add(egui::DragValue::new(&mut self.editor.provider.context_tokens).range(512..=131072)); });
+                    }
+                    if self.editor.provider.kind == config::Kind::Deepseek {
+                        let mut thinking = self.editor.provider.thinking.unwrap_or(false);
+                        if ui.checkbox(&mut thinking, "Habilitar raciocínio").changed() {
+                            self.editor.provider.thinking = Some(thinking);
+                        }
+                        ui.small("Raciocínio pode aumentar o tempo e o uso de tokens; pode exigir mais tokens de saída.");
                     }
                 });
                 ui.collapsing("Importar configurações de um TOML", |ui| {

@@ -127,6 +127,8 @@ fn execute(
     for (key, _) in env::vars_os() {
         let name = key.to_string_lossy().to_ascii_uppercase();
         if name == "OPENAI_API_KEY"
+            || name == "CREXE_DEEPSEEK_API_KEY"
+            || name == "DEEPSEEK_API_KEY"
             || name == "ANTHROPIC_API_KEY"
             || name == "AZURE_OPENAI_API_KEY"
             || secret_names

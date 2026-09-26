@@ -40,6 +40,8 @@ O perfil preferido no Windows usa C#/.NET 8 e Windows Forms. Há também perfis 
 
 Abra `crexe configure` (ou o executável sem argumentos) para escolher provider/modelo e salvar a API key no cofre do sistema. A tela mostra o arquivo ativo e permite importar um TOML para revisão. `config.example.toml` é um exemplo: editá-lo não altera a configuração ativa. Instalar/reinstalar preserva suas escolhas; os instaladores interativos abrem a tela ao concluir.
 
+Os presets disponíveis são **Ollama**, **OpenAI** e **DeepSeek**. Para DeepSeek, selecione o perfil `deepseek`, informe a API key e salve. O preset usa `deepseek-flash`, com raciocínio desligado por padrão; a opção pode ser alterada em **Avançado**. Instalações antigas também oferecem o novo perfil na tela, sem trocar o provider ativo até salvar.
+
 O arquivo ativo fica em `%APPDATA%\CREXE\config.toml` no Windows, `~/Library/Application Support/CREXE/config.toml` no macOS ou `${XDG_CONFIG_HOME:-$HOME/.config}/crexe/config.toml` no Linux. Alternativamente, use `--config caminho.toml`. Sem arquivo, os defaults são **Ollama local**, sem chave. A CLI continua disponível em hosts sem desktop.
 
 Provider, endpoint e referência da credencial pertencem à configuração local. Os campos `generator` das receitas legadas não controlam esses valores; a CLI informa essa migração. Uma falha no Ollama nunca muda automaticamente para um serviço pago.
@@ -50,9 +52,14 @@ Provider, endpoint e referência da credencial pertencem à configuração local
 
 # Arquivo de segredos explicitamente selecionado; não é procurado ao lado da receita.
 .\target\release\crexe.exe calculadora.crexe --provider openai --env-file .env
+
+# DeepSeek: após salvar o perfil na tela, ou usando --config com seu TOML.
+.\target\release\crexe.exe calculadora.crexe --provider deepseek
 ```
 
 A configuração avançada por ambiente continua disponível: o exemplo referencia `crexe_openai_api_key_env`, no ambiente ou em uma linha do `.env` explicitamente selecionado. Uma chave salva pela tela tem prioridade sobre variáveis antigas; `--env-file` explícito pode substituí-la. O TOML guarda apenas uma referência vinculada ao destino, nunca a chave. Consulte [configuração, cofre e limites](docs/CONFIGURACAO.md).
+
+O perfil DeepSeek referencia `crexe_deepseek_api_key`, também compatível com `--env-file .env`. O saldo da API é gerenciado pelo usuário no provider; a engine não compra créditos nem troca de serviço automaticamente.
 
 ## Instalar e abrir com dois cliques
 

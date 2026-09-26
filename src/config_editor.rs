@@ -55,9 +55,15 @@ impl Editor {
             .as_table()
             .map(|t| t.iter().map(|(n, _)| n.to_string()).collect())
             .unwrap_or_default();
-        for name in ["local", "openai", &self.profile] {
-            if !names.iter().any(|n| n == name) {
-                names.push(name.to_string());
+        let defaults = config::parse(include_str!("../config.example.toml"))
+            .expect("bundled configuration is valid");
+        for name in defaults
+            .providers
+            .keys()
+            .chain(std::iter::once(&self.profile))
+        {
+            if !names.contains(name) {
+                names.push(name.clone());
             }
         }
         names
@@ -253,12 +259,13 @@ impl Editor {
         if let Some(key) = key {
             request = request.bearer_auth(key);
         }
-        let response = request.send().map_err(|_| anyhow::anyhow!("Não foi possível conectar ao provider. Verifique o endereço e se o serviço está disponível."))?;
+        let response = request.send().map_err(|error| if error.is_timeout() {
+            anyhow::anyhow!("O provider excedeu o tempo de conexão. Tente novamente mais tarde.")
+        } else {
+            anyhow::anyhow!("Não foi possível conectar ao provider. Verifique o endereço e se o serviço está disponível.")
+        })?;
         if !response.status().is_success() {
-            bail!(
-                "O provider retornou HTTP {}. Verifique o endereço e a chave.",
-                response.status().as_u16()
-            );
+            bail!(self.provider.kind.http_error(response.status()));
         }
         let mut data = Vec::new();
         response
@@ -335,6 +342,46 @@ mod tests {
     }
 
     #[test]
+    fn legacy_configuration_offers_deepseek_without_mutating_until_save() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.toml");
+        let old = "version=1\ndefault_provider='custom'\n[providers.custom]\nkind='ollama'\nbase_url='http://localhost:11434'\nmodel='my-local-model'\n";
+        fs::write(&path, old).unwrap();
+        let mut editor = Editor::load(&path).unwrap();
+        assert!(editor.profiles().contains(&"deepseek".into()));
+        editor.select("deepseek").unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), old);
+        assert_eq!(config::parse(old).unwrap().default_provider, "custom");
+        let vault = Memory::default();
+        let (editor, _) = editor
+            .save_with(
+                KeyChange::Replace("synthetic-deepseek".into()),
+                &vault,
+                publish,
+            )
+            .unwrap();
+        assert_eq!(editor.profile, "deepseek");
+        let persisted = fs::read_to_string(&path).unwrap();
+        assert!(!persisted.contains("synthetic-deepseek"));
+        let parsed = config::parse(&persisted).unwrap();
+        assert_eq!(parsed.providers["custom"].model, "my-local-model");
+        assert_eq!(parsed.providers["deepseek"].kind.label(), "DeepSeek");
+        let loaded = Editor::load(&path).unwrap();
+        assert_eq!(loaded.profile, "deepseek");
+        assert_eq!(
+            credentials::resolve(
+                loaded.provider.credential.as_ref().unwrap(),
+                &path,
+                "deepseek",
+                &loaded.provider.base_url,
+                &vault
+            )
+            .unwrap(),
+            "synthetic-deepseek"
+        );
+    }
+
+    #[test]
     fn imports_selected_provider_preserves_policy_comments_and_reinstallation() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("config.toml");
@@ -376,7 +423,7 @@ mod tests {
         assert!(fs::read_to_string(&path)
             .unwrap()
             .contains("# locally reviewed policy"));
-        assert_eq!(editor.profiles().len(), 2);
+        assert_eq!(editor.profiles().len(), 3);
     }
 
     #[test]
@@ -485,6 +532,18 @@ mod tests {
             ),
             (
                 config::Kind::Openai,
+                "do-not-show-remote-body",
+                "/models",
+                401,
+            ),
+            (
+                config::Kind::Deepseek,
+                r#"{"data":[{"id":"deepseek-flash","unknown_field":true},{"id":"deepseek-flash"}]}"#,
+                "/models",
+                200,
+            ),
+            (
+                config::Kind::Deepseek,
                 "do-not-show-remote-body",
                 "/models",
                 401,

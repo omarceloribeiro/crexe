@@ -6,7 +6,9 @@ Use `crexe configure`, o executável sem argumentos ou o lançador `configure.cm
 
 Defaults e tipos estão em `config.example.toml`; campos desconhecidos são rejeitados. O exemplo não é a configuração ativa. A primeira instalação cria o arquivo ativo se ausente; reinstalações preservam o existente. A tela e `doctor` mostram o mesmo caminho. A escrita é atômica, com lock e detecção de edições externas: use **Recarregar** em caso de conflito. Fechar sem salvar não altera o arquivo; uma geração em andamento mantém as configurações com que começou.
 
-A tela consulta `GET /api/tags` no Ollama ou `GET /models` no endpoint OpenAI compatível, apenas pelo botão **Testar conexão / atualizar modelos**. Não faz geração, tem timeout de 15 segundos e permite digitar um modelo mesmo sem listagem. Uma consulta bem-sucedida não garante que todo modelo da lista aceite o contrato de geração CREXE. Rede e cofre são acessados fora da thread gráfica.
+A tela consulta `GET /api/tags` no Ollama ou `GET /models` em OpenAI/DeepSeek, apenas pelo botão **Testar conexão / atualizar modelos**. Não faz geração, tem timeout de 15 segundos e permite digitar um modelo mesmo sem listagem. Uma consulta bem-sucedida não garante que todo modelo da lista aceite o contrato de geração CREXE. Rede e cofre são acessados fora da thread gráfica.
+
+Os presets vêm de `config.example.toml`; aparecem também ao abrir configurações antigas. Selecionar um preset ainda ausente só o grava ao salvar. A CLI `--provider deepseek` exige que esse perfil exista no TOML ativo, ou usa os defaults quando não há arquivo ativo. Atualizar/reinstalar não altera automaticamente o provider escolhido.
 
 ## Chaves no cofre do usuário
 
@@ -30,6 +32,12 @@ Segredos literais não fazem parte do schema TOML. O carregamento de `.env` é r
 Ollama usa [`POST /api/chat`](https://docs.ollama.com/api/chat), schema JSON de `files`, `stream: false`, `think`, `keep_alive`, `num_ctx` e `num_predict`. O adaptador recebe uma resposta completa; streaming e geração por arquivo são evoluções possíveis, sem promessa de corrigir sintaxe por si sós. `done: true` e `done_reason: stop` são exigidos.
 
 OpenAI usa [Chat Completions](https://developers.openai.com/api/reference/cli/resources/chat/subresources/completions/methods/create), JSON mode e Bearer quando há variável configurada. Usa `max_completion_tokens` para famílias de raciocínio reconhecidas e `max_tokens` nas demais. Recusa e término diferente de `stop` não viram arquivos. O modelo de exemplo é `gpt-4o-mini`; alterar o modelo é uma escolha local.
+
+DeepSeek usa [Chat Completions](https://api-docs.deepseek.com/api/create-chat-completion/) em `https://api.deepseek.com`, `max_tokens`, JSON mode e resposta completa (`stream: false`). O preset `deepseek-flash` tem timeout de 300 segundos e saída máxima de 6000 tokens. `thinking = false` (ou ausente) envia raciocínio desativado explicitamente; `true` habilita o modo e omite temperatura. A tela oferece esse controle em **Avançado**. Raciocínio pode aumentar latência e consumo; não é necessário para o contrato CREXE. A API key é salva no cofre ou resolvida por `api_key_env = "crexe_deepseek_api_key"`.
+
+Respostas DeepSeek vazias, truncadas, recusadas ou contendo chamadas de tools não são aceitas. Apenas o conteúdo final vira arquivos; o raciocínio não entra em fontes, logs ou ZIP. Logs de respostas JSON válidas podem incluir o modelo retornado e contagens numéricas de tokens fornecidas pela API. HTTP 401 indica chave inválida; 402 saldo insuficiente; 400/422 parâmetros inválidos; 429 limite de requisições; 500/503 indisponibilidade. Essas falhas não disparam repetição automática. Reparos de compilação/teste continuam sujeitos aos limites locais.
+
+`crexe_deepseek_api_key` e `DEEPSEEK_API_KEY` são removidas do ambiente dos processos filhos mesmo em configurações antigas ou com outro provider ativo, além dos nomes personalizados configurados. Para DeepSeek, trocar a referência/variável da chave mantém a identidade do cache; `thinking` ausente equivale a `false`. Modelo, endpoint e modo efetivo de raciocínio distinguem gerações. As identidades legadas Ollama/OpenAI permanecem preservadas.
 
 HTTPS é obrigatório fora do loopback. URLs com credenciais, query ou fragment são recusadas. Redirecionamentos HTTP são desabilitados. Corpos de erro HTTP não são reproduzidos nos logs. Nenhum adaptador compra créditos nem seleciona outro provider ao falhar.
 

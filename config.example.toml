@@ -30,3 +30,13 @@ model = "gpt-4o-mini"
 api_key_env = "crexe_openai_api_key_env"
 timeout_seconds = 180
 max_output_tokens = 6000
+
+# Select explicitly in Configurações, default_provider or --provider deepseek.
+[providers.deepseek]
+kind = "deepseek"
+base_url = "https://api.deepseek.com"
+model = "deepseek-flash"
+api_key_env = "crexe_deepseek_api_key"
+timeout_seconds = 300
+max_output_tokens = 6000
+thinking = false
