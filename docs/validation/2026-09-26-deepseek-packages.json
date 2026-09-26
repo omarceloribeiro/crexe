@@ -1,0 +1,50 @@
+{
+  "date": "2026-09-26",
+  "source_commit": "a64ab79824a57db0a545541869fbe38ee267d8e1",
+  "ci_url": "https://github.com/omarceloribeiro/crexe/actions/runs/36248882234",
+  "ci_status": "success",
+  "ci_checks": [
+    "fmt",
+    "clippy --all-targets -D warnings",
+    "47 regular tests",
+    "native SDK fixture (each platform)",
+    "native vault synthetic (Windows)",
+    "release build",
+    "package verification with empty PATH",
+    "Windows runtime DLL dependency check"
+  ],
+  "packages": [
+    {
+      "file": "crexe-1.0.0-dev.a64ab79-macos-aarch64.tar.gz",
+      "sha256": "56fe46472a0ab68e868c4db8e47329229fe86a0e09b2caaa56560c090557282c",
+      "os": "macos",
+      "arch": "aarch64",
+      "manifest_file_hashes_verified": true
+    },
+    {
+      "file": "crexe-1.0.0-dev.a64ab79-linux-x86_64.tar.gz",
+      "sha256": "1a5013665536f6c56613598c5376783afafc2de6cba6899e09c651c71624542d",
+      "os": "linux",
+      "arch": "x86_64",
+      "manifest_file_hashes_verified": true
+    },
+    {
+      "file": "crexe-1.0.0-dev.a64ab79-windows-x86_64.zip",
+      "sha256": "249c4f278ecc4d961769282c0a3b37f30ba6ce148965ee79eeda5698e076e445",
+      "os": "windows",
+      "arch": "x86_64",
+      "manifest_file_hashes_verified": true
+    }
+  ],
+  "local_windows_package": {
+    "source_commit": "a64ab79824a57db0a545541869fbe38ee267d8e1",
+    "local_package": "crexe-1.0.0-dev.a64ab79-windows-x86_64.zip",
+    "sha256": "ea6350f873d06cbe5b023ef6240d9aa47316d474e16d300d526e86e16b73c04f",
+    "manifest_file_hashes_verified": true,
+    "empty_path_installed_deepseek_doctor": true,
+    "reinstall_preserves_settings": true,
+    "default_remains_local": true,
+    "generation_calls": 0
+  },
+  "desktop_interaction_mac_linux_verified": false
+}

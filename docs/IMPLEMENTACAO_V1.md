@@ -45,7 +45,9 @@ Ensaio real autorizado: catálogo confirmou `deepseek-flash`; calculadora branca
 
 Uso informado pela API: 703 tokens de entrada e 7490 de saída. Custo estimado pelas tarifas oficiais consultadas: US$ 0,004581 fora de pico ou US$ 0,009162 em pico; não é conferência do débito da conta. Foram usadas apenas duas das quatro chamadas autorizadas e não houve compra de créditos. Chave resolvida da variável de usuário Windows, sem persistência nos relatórios.
 
-Limitação: a ferramenta de inspeção visual não iniciou nesta sessão. A janela de configuração abriu, mas interação visual de selecionar/salvar não foi repetida neste incremento; o editor e cofre foram verificados por testes. As cores dos apps foram verificadas por código independente, não por captura de tela. Interação desktop em Linux/macOS também permanece pendente. [Relatório detalhado](validation/2026-09-26-deepseek.json). CI e pacotes deste incremento são registrados separadamente após a execução dos três runners.
+Limitação: a ferramenta de inspeção visual não iniciou nesta sessão. A janela de configuração abriu, mas interação visual de selecionar/salvar não foi repetida neste incremento; o editor e cofre foram verificados por testes. As cores dos apps foram verificadas por código independente, não por captura de tela. Interação desktop em Linux/macOS também permanece pendente. [Relatório detalhado](validation/2026-09-26-deepseek.json).
+
+O commit de implementação `a64ab79` passou a [CI nos três sistemas](https://github.com/omarceloribeiro/crexe/actions/runs/36248882234): fmt, clippy, suíte, fixture com SDK nativo, build release e empacotamento; Windows também passou cofre sintético e inspeção das dependências DLL. Pacotes dos três runners baixados, SHA-256 e hashes internos conferidos. O ZIP Windows local passou instalação/reinstalação e `doctor --provider deepseek` com PATH vazio, preservando o provider local como padrão. [Relatório dos pacotes](validation/2026-09-26-deepseek-packages.json).
 
 ## Critérios que continuam abertos
 

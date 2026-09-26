@@ -30,6 +30,10 @@ Copie apenas `examples\calculadora.crexe` para outra pasta, fora do pacote e do 
 | Editar durante uma preparação e reabrir | Orientação para concluir/cancelar a preparação existente antes de reabrir. |
 | Reabrir enquanto o aplicativo já está pronto | Outra instância abre usando cache. |
 | Salvar local → OpenAI e reabrir uma nova intenção | Usa somente o provider selecionado; a chave pode ser configurada pela tela. Trocar de volta deve usar Ollama. |
+| Abrir Configurações com um TOML anterior ao suporte DeepSeek | O perfil `deepseek` aparece na lista; o provider ativo não muda antes de Salvar. |
+| Selecionar DeepSeek, informar a chave e testar conexão | Lista os modelos sem gerar programa. O campo de modelo também aceita digitação manual. Salvar e reabrir mantém a seleção e a referência no cofre, sem exibir a chave. |
+| Abrir Avançado no perfil DeepSeek | Raciocínio começa desligado; ligar/salvar/reabrir preserva a opção. Para o ensaio simples, manter desligado. |
+| Gerar uma nova intenção após salvar DeepSeek | Usa o modelo DeepSeek selecionado; chave inválida ou saldo insuficiente apresentam mensagem sem troca automática para outro provider. |
 | Editar TOML externamente com a tela aberta e tentar salvar | Detecta conflito; Recarregar permite revisar antes de salvar. |
 | Fechar Configurações sem salvar | Nenhuma preferência é alterada. Reinstalar também preserva o que estava salvo. |
 | Usar a calculadora | Quatro operações, limpar e divisão por zero apresentam comportamento adequado; anote qualquer divergência do prompt. |

@@ -1,6 +1,6 @@
 # Plano: provider DeepSeek no CREXE v1
 
-Data do plano: 25/09/2026. Base: `b81c641`, branch `feature/v1`. Atualização de 26/09/2026: **implementado**, com testes reais autorizados sobre os US$ 5 informados pelo autor. O texto abaixo preserva as decisões do plano; resultados e limitações estão em [IMPLEMENTACAO_V1.md](IMPLEMENTACAO_V1.md) e no relatório de validação DeepSeek.
+Data do plano: 25/09/2026. Base: `b81c641`, branch `feature/v1`. Atualização de 26/09/2026: **implementado** no commit `a64ab79`, com testes reais autorizados sobre os US$ 5 informados pelo autor e CI aprovada nos três sistemas. O texto abaixo preserva as decisões do plano; resultados e limitações estão em [IMPLEMENTACAO_V1.md](IMPLEMENTACAO_V1.md) e no [relatório de validação DeepSeek](validation/2026-09-26-deepseek.json).
 
 O objetivo é escolher DeepSeek na tela de configuração ou por `--provider deepseek`, usando o mesmo fluxo de projeto completo, build, correção, cache, ZIP e abertura já implementado. A integração continua usando o workspace temporário no host, independente do fornecedor da IA.
 
