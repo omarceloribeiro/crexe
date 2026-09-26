@@ -2,4 +2,5 @@
 set -eu
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 sh "$script_dir/build.sh"
-exec "$script_dir/../../target/release/crexe" install
+"$script_dir/../../target/release/crexe" install
+exec sh "$script_dir/configure.sh"

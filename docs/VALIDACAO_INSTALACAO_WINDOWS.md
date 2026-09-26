@@ -11,7 +11,7 @@ Este roteiro cobre os ensaios manuais ainda pendentes. Os testes automatizados e
 
 ## Instalação e associação
 
-Execute `.\install.cmd` nesse terminal. O destino esperado é `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe`, na conta do usuário comum, sem precisar de administrador. O script instala e registra a associação, mas não acrescenta a pasta ao PATH.
+Execute `.\install.cmd` nesse terminal. O destino esperado é `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe`, na conta do usuário comum, sem precisar de administrador. O script instala, registra a associação e abre Configurações; não acrescenta a pasta ao PATH. Configure o provider/modelo e salve. Reabra pelo `configure.cmd`. Se tiver editado o exemplo do pacote, importe esse TOML na tela, revise e salve; reinstalar não importa o exemplo automaticamente.
 
 Confirme a cópia instalada:
 
@@ -25,7 +25,13 @@ Copie apenas `examples\calculadora.crexe` para outra pasta, fora do pacote e do 
 
 | Ação | Resultado a conferir |
 |---|---|
-| Abrir a intenção pela primeira vez | Janela Creative Executable aparece, mostra a preparação e fecha antes do aplicativo abrir. Não há terminal extra no modo desktop. |
+| Abrir a intenção pela primeira vez | Janela Creative Executable aparece, mostra a preparação e fecha quando a janela do aplicativo está pronta (espera máxima de 15 s na etapa de abertura). O app deve estar restaurado; conferir foco separadamente. |
+| Clicar várias vezes durante geração/build/abertura | Uma única preparação; a janela existente volta à frente quando permitido. Sem novas gerações em fila. |
+| Editar durante uma preparação e reabrir | Orientação para concluir/cancelar a preparação existente antes de reabrir. |
+| Reabrir enquanto o aplicativo já está pronto | Outra instância abre usando cache. |
+| Salvar local → OpenAI e reabrir uma nova intenção | Usa somente o provider selecionado; a chave pode ser configurada pela tela. Trocar de volta deve usar Ollama. |
+| Editar TOML externamente com a tela aberta e tentar salvar | Detecta conflito; Recarregar permite revisar antes de salvar. |
+| Fechar Configurações sem salvar | Nenhuma preferência é alterada. Reinstalar também preserva o que estava salvo. |
 | Usar a calculadora | Quatro operações, limpar e divisão por zero apresentam comportamento adequado; anote qualquer divergência do prompt. |
 | Fechar e abrir novamente | Mesmo aplicativo reaparece por cache, sem nova geração. |
 | Editar a intenção pedindo outra cor, salvar e abrir | Uma nova geração ocorre e o aplicativo reflete a alteração. |

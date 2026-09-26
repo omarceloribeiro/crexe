@@ -59,7 +59,17 @@ pub(crate) fn run(
     capture: bool,
     secret_names: &[String],
 ) -> Result<()> {
-    execute(args, cwd, timeout, capture, true, secret_names).map(|_| ())
+    execute(args, cwd, timeout, capture, true, secret_names, None).map(|_| ())
+}
+
+pub(crate) fn launch(
+    args: &[String],
+    cwd: &Path,
+    timeout: Option<Duration>,
+    secret_names: &[String],
+    ready: &mut dyn FnMut(),
+) -> Result<()> {
+    execute(args, cwd, timeout, false, true, secret_names, Some(ready)).map(|_| ())
 }
 
 pub(crate) fn output(args: &[String], cwd: &Path, secret_names: &[String]) -> Result<String> {
@@ -70,6 +80,7 @@ pub(crate) fn output(args: &[String], cwd: &Path, secret_names: &[String]) -> Re
         true,
         false,
         secret_names,
+        None,
     )
 }
 
@@ -80,6 +91,7 @@ fn execute(
     capture: bool,
     print_output: bool,
     secret_names: &[String],
+    mut ready: Option<&mut dyn FnMut()>,
 ) -> Result<String> {
     if args.is_empty() {
         bail!("Empty command");
@@ -97,7 +109,7 @@ fn execute(
         bail!("Windows Sandbox is prohibited in this version");
     }
     let executable = resolve_tool(&args[0])?;
-    let mut command = Command::new(executable);
+    let mut command = Command::new(&executable);
     command.args(&args[1..]).current_dir(cwd);
     if super::presentation::desktop() {
         // FreeConsole invalidates inherited Windows standard handles. Supply real
@@ -149,9 +161,18 @@ fn execute(
         }
     };
     let start = Instant::now();
+    #[cfg(windows)]
+    let mut activation = super::presentation::activation(&executable, child.id(), ready.is_some());
+    #[cfg(not(windows))]
+    if let Some(callback) = ready.take() {
+        callback();
+    }
     let failure;
     loop {
         if let Some(status) = child.try_wait()? {
+            if let Some(callback) = ready.take() {
+                callback();
+            }
             #[cfg(windows)]
             drop(job);
             #[cfg(unix)]
@@ -187,6 +208,12 @@ fn execute(
         if timeout.is_some_and(|limit| start.elapsed() >= limit) {
             failure = "Command timed out";
             break;
+        }
+        #[cfg(windows)]
+        if ready.is_some() && activation.poll(&|pid| job.contains(pid)) {
+            if let Some(callback) = ready.take() {
+                callback();
+            }
         }
         if capture
             && (stdout.metadata()?.len() > 2 * 1024 * 1024
@@ -234,14 +261,27 @@ mod windows {
     use windows_sys::Win32::{
         Foundation::{CloseHandle, HANDLE},
         System::JobObjects::{
-            AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
-            SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+            AssignProcessToJobObject, CreateJobObjectW, IsProcessInJob,
+            JobObjectExtendedLimitInformation, SetInformationJobObject,
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
         },
+        System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
     };
 
     pub(super) struct Job(HANDLE);
     impl Job {
+        pub fn contains(&self, pid: u32) -> bool {
+            unsafe {
+                let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+                if process.is_null() {
+                    return false;
+                }
+                let mut belongs = 0;
+                let result = IsProcessInJob(process, self.0, &mut belongs);
+                CloseHandle(process);
+                result != 0 && belongs != 0
+            }
+        }
         pub fn assign(child: &std::process::Child) -> Result<Self> {
             unsafe {
                 let job = Self(CreateJobObjectW(std::ptr::null(), std::ptr::null()));

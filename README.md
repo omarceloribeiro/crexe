@@ -38,7 +38,9 @@ O perfil preferido no Windows usa C#/.NET 8 e Windows Forms. Há também perfis 
 
 ## Provider e credenciais
 
-Copie [config.example.toml](config.example.toml) para `%APPDATA%\CREXE\config.toml` no Windows, `~/Library/Application Support/CREXE/config.toml` no macOS ou `${XDG_CONFIG_HOME:-$HOME/.config}/crexe/config.toml` no Linux. Alternativamente, use `--config caminho.toml`. Sem arquivo, os defaults são os do exemplo: **Ollama local**, sem chave.
+Abra `crexe configure` (ou o executável sem argumentos) para escolher provider/modelo e salvar a API key no cofre do sistema. A tela mostra o arquivo ativo e permite importar um TOML para revisão. `config.example.toml` é um exemplo: editá-lo não altera a configuração ativa. Instalar/reinstalar preserva suas escolhas; os instaladores interativos abrem a tela ao concluir.
+
+O arquivo ativo fica em `%APPDATA%\CREXE\config.toml` no Windows, `~/Library/Application Support/CREXE/config.toml` no macOS ou `${XDG_CONFIG_HOME:-$HOME/.config}/crexe/config.toml` no Linux. Alternativamente, use `--config caminho.toml`. Sem arquivo, os defaults são **Ollama local**, sem chave. A CLI continua disponível em hosts sem desktop.
 
 Provider, endpoint e referência da credencial pertencem à configuração local. Os campos `generator` das receitas legadas não controlam esses valores; a CLI informa essa migração. Uma falha no Ollama nunca muda automaticamente para um serviço pago.
 
@@ -50,7 +52,7 @@ Provider, endpoint e referência da credencial pertencem à configuração local
 .\target\release\crexe.exe calculadora.crexe --provider openai --env-file .env
 ```
 
-O perfil de exemplo referencia `crexe_openai_api_key_env`. A chave pode estar no ambiente ou em uma linha `crexe_openai_api_key_env=...` do `.env`. No Windows, a engine também consulta essa variável no ambiente do usuário, permitindo usá-la antes de reiniciar o terminal. O `.env` e `/config.toml` estão ignorados pelo Git. Não coloque chaves no `.crexe` nem no exemplo versionado. Consulte [configuração e limites](docs/CONFIGURACAO.md).
+A configuração avançada por ambiente continua disponível: o exemplo referencia `crexe_openai_api_key_env`, no ambiente ou em uma linha do `.env` explicitamente selecionado. Uma chave salva pela tela tem prioridade sobre variáveis antigas; `--env-file` explícito pode substituí-la. O TOML guarda apenas uma referência vinculada ao destino, nunca a chave. Consulte [configuração, cofre e limites](docs/CONFIGURACAO.md).
 
 ## Instalar e abrir com dois cliques
 
@@ -59,7 +61,9 @@ O perfil de exemplo referencia `crexe_openai_api_key_env`. A chave pode estar no
 & "$env:LOCALAPPDATA\CREXE\releases\v1\crexe.exe" associate
 ```
 
-A associação aponta para `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` e habilita a janela “Creative Executable / Gerando seu programa…”. A espera fecha antes de iniciar o aplicativo; falhas aparecem em uma mensagem. Fechar a espera cancela o trabalho da engine. A invocação por terminal preserva logs; `--ui` ativa a apresentação explicitamente.
+A associação aponta para `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` e habilita a janela “Creative Executable / Gerando seu programa…”. A espera acompanha a abertura da janela do aplicativo (até 15 segundos), restaura janelas minimizadas e solicita foco ao Windows. Se o sistema negar foco, a barra de tarefas sinaliza a abertura. Falhas aparecem em uma mensagem; fechar a espera cancela a preparação. A invocação por terminal preserva logs; `--ui` ativa a apresentação explicitamente.
+
+Cliques repetidos durante a preparação avisam a execução existente, sem gerar ou compilar novamente. Se a intenção/opções mudaram, a espera orienta concluir ou cancelar primeiro. Depois que o aplicativo abre, outro clique pode abrir outra instância pelo cache.
 
 O Windows pode exigir escolher CREXE como aplicativo padrão. `unassociate` remove apenas os registros desta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; associação gráfica e janela de espera dessas plataformas ainda não estão implementadas. [Guia de plataformas](docs/platforms/README.md).
 

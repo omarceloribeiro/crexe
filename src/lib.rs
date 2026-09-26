@@ -12,6 +12,9 @@ use std::path::{Path, PathBuf};
 
 mod cache;
 mod config;
+mod config_editor;
+mod configure;
+mod credentials;
 mod environment;
 mod executor;
 mod format;
@@ -20,6 +23,7 @@ mod installation;
 mod package;
 mod paths;
 mod policy;
+mod preparation;
 mod presentation;
 mod profiles;
 mod project;
@@ -61,6 +65,11 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Open native provider/model/API-key settings; import only stages changes for review
+    Configure {
+        #[arg(long)]
+        import: Option<PathBuf>,
+    },
     /// Generate + build + run a .crexe file
     Exec {
         /// Path to .crexe file
@@ -137,6 +146,9 @@ struct GeneratedFile {
 pub fn run() -> Result<()> {
     executor::install_cancel_handler()?;
     let mut args: Vec<std::ffi::OsString> = env::args_os().collect();
+    if args.len() == 1 {
+        args.push("configure".into());
+    }
     if args
         .get(1)
         .is_some_and(|arg| looks_like_crexe_file(Path::new(arg)))
@@ -146,6 +158,9 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse_from(args);
 
     match &cli.command {
+        Commands::Configure { import } => {
+            configure::open(cli.config.as_deref(), import.as_deref())?
+        }
         Commands::Exec {
             file,
             set,
@@ -153,10 +168,9 @@ pub fn run() -> Result<()> {
             cache_dir,
         } => {
             let overrides = parse_set_args(set)?;
-            let mut progress = presentation::Progress::start(cli.ui)?;
             if let Err(error) = exec_crexe(file, overrides, *rebuild, cache_dir.as_deref(), &cli) {
                 if cli.ui && !executor::cancelled() {
-                    progress.error(&truncate(&format!("{error:#}"), 2000));
+                    presentation::show_error(&truncate(&format!("{error:#}"), 2000));
                 }
                 return Err(error);
             }
@@ -212,12 +226,14 @@ fn doctor(cli: &Cli, check: bool) -> Result<()> {
         architecture.source
     );
     println!("Installation: {}", installation::executable()?.display());
+    println!("Configuration: {}", settings.path.display());
     println!(
-        "Configuration: {}",
-        cli.config
-            .clone()
-            .unwrap_or(config::default_path()?)
-            .display()
+        "Configuration source: {}",
+        if settings.from_file {
+            "active file"
+        } else {
+            "built-in defaults (no active file yet)"
+        }
     );
     println!(
         "Provider: {}; model: {}",
@@ -406,6 +422,18 @@ fn exec_crexe(
     let mut identity = raw.as_bytes().to_vec();
     identity.extend(serde_yaml::to_string(&spec)?.as_bytes());
     identity.extend(settings.identity()?);
+    let mut request_identity = identity.clone();
+    request_identity.extend(serde_json::to_vec(&json!({"inputs": inputs, "rebuild": rebuild,
+        "no_run": cli.no_run, "export": cli.export, "repairs": cli.max_repairs, "cache_dir": cache_dir}))?);
+    let Some(mut preparation) = preparation::Session::acquire(&crexe_path, &request_identity)?
+    else {
+        return Ok(());
+    };
+    let _progress = presentation::Progress::start(cli.ui)?;
+    let mut ready = || {
+        presentation::finish();
+        preparation.release();
+    };
     let cache = get_cache_state(&crexe_path, &identity, &spec, &inputs, cache_dir)?;
     let lock = cache.lock()?;
     if !rebuild {
@@ -413,7 +441,6 @@ fn exec_crexe(
             println!("Cache hit: skipping generate/build");
             drop(lock);
             package::export(&revision, cli.export.as_deref())?;
-            presentation::finish();
             if !cli.no_run {
                 run_command(
                     &spec,
@@ -423,7 +450,10 @@ fn exec_crexe(
                     &runtime.os,
                     &ctx,
                     &settings,
+                    Some(&mut ready),
                 )?;
+            } else {
+                ready();
             }
             return Ok(());
         }
@@ -460,6 +490,7 @@ fn exec_crexe(
                         &runtime.os,
                         &ctx,
                         &settings,
+                        None,
                     )?;
                 }
                 if let Some(steps) = get_path(&spec, &["targets", &target, "test", "steps"])
@@ -476,6 +507,7 @@ fn exec_crexe(
                             &runtime.os,
                             &ctx,
                             &settings,
+                            None,
                         )?;
                     }
                 }
@@ -536,7 +568,6 @@ fn exec_crexe(
     drop(lock);
     println!("Validated revision: {}", revision.display());
     package::export(&revision, cli.export.as_deref())?;
-    presentation::finish();
     if !cli.no_run {
         run_command(
             &spec,
@@ -546,7 +577,10 @@ fn exec_crexe(
             &runtime.os,
             &ctx,
             &settings,
+            Some(&mut ready),
         )?;
+    } else {
+        ready();
     }
     Ok(())
 }
@@ -1001,6 +1035,7 @@ fn is_generated_run_target(cwd: &Path, cmd0: &str) -> bool {
     candidate.is_file() && is_inside(cwd, &candidate) && paths::reject_links(&candidate).is_ok()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_command(
     spec: &Value,
     cmd_raw: &[String],
@@ -1009,6 +1044,7 @@ fn run_command(
     os_name: &str,
     ctx: &BTreeMap<String, String>,
     settings: &config::Settings,
+    ready: Option<&mut dyn FnMut()>,
 ) -> Result<()> {
     let mut cmd: Vec<String> = cmd_raw
         .iter()
@@ -1038,7 +1074,11 @@ fn run_command(
         phase,
         get_path(spec, &["policies", "timeoutSeconds", phase]).and_then(Value::as_u64),
     );
-    executor::run(&cmd, cwd, timeout, phase != "run", &settings.secret_names)
+    if let Some(ready) = ready {
+        executor::launch(&cmd, cwd, timeout, &settings.secret_names, ready)
+    } else {
+        executor::run(&cmd, cwd, timeout, phase != "run", &settings.secret_names)
+    }
 }
 
 fn resolve_run_command(mut cmd: Vec<String>, cwd: &Path) -> Result<Vec<String>> {

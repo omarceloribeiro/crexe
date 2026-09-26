@@ -51,6 +51,9 @@ pub(crate) fn install() -> Result<()> {
     let source = env::current_exe()?;
     let destination = executable()?;
     install_file(&source, &destination)?;
+    let config = super::config::default_path()?;
+    super::config_editor::initialize(&config)?;
+    println!("Configuration preserved/initialized: {}", config.display());
     println!(
         "Installed CREXE {}: {}",
         env!("CARGO_PKG_VERSION"),

@@ -56,13 +56,21 @@ def main():
             'SOURCE.txt': ((source_url + '\n').encode(), 0o644),
         }
         if system == 'windows':
-            install = '@echo off\r\nsetlocal\r\n"%~dp0crexe.exe" install\r\nif errorlevel 1 exit /b %errorlevel%\r\n"%~dp0crexe.exe" associate\r\nexit /b %errorlevel%\r\n'
+            install = '@echo off\r\nsetlocal\r\n"%~dp0crexe.exe" install\r\nif errorlevel 1 exit /b %errorlevel%\r\n"%~dp0crexe.exe" associate\r\nif errorlevel 1 exit /b %errorlevel%\r\ncall "%~dp0configure.cmd"\r\nexit /b %errorlevel%\r\n'
             files['install.cmd'] = (install.encode(), 0o644)
-            install_help = 'Execute install.cmd no terminal. Instala em %LOCALAPPDATA%\\CREXE\\releases\\v1 e associa .crexe ao caminho instalado. O Windows pode pedir para escolher o aplicativo padrão.'
+            configure = '@echo off\r\nsetlocal\r\nset "CREXE_CONFIG_ENGINE=%LOCALAPPDATA%\\CREXE\\releases\\v1\\crexe.exe"\r\nif defined CREXE_HOME set "CREXE_CONFIG_ENGINE=%CREXE_HOME%\\releases\\v1\\crexe.exe"\r\nif not exist "%CREXE_CONFIG_ENGINE%" set "CREXE_CONFIG_ENGINE=%~dp0crexe.exe"\r\n"%CREXE_CONFIG_ENGINE%" configure %*\r\nexit /b %errorlevel%\r\n'
+            files['configure.cmd'] = (configure.encode(), 0o644)
+            install_help = 'Execute install.cmd. Instala em %LOCALAPPDATA%\\CREXE\\releases\\v1, associa .crexe e abre Configurações. Reinstalar preserva suas preferências. configure.cmd reabre a tela. O Windows pode pedir para escolher o aplicativo padrão.'
         else:
-            install = '#!/bin/sh\nset -eu\ncd -- "$(dirname -- "$0")"\nexec ./crexe install\n'
+            launcher = 'configure.command' if system == 'macos' else 'configure.sh'
+            default_root = '$HOME/Library/Application Support/CREXE' if system == 'macos' else '${XDG_DATA_HOME:-$HOME/.local/share}/crexe'
+            configure = f'#!/bin/sh\nset -eu\nscript_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nengine="${{CREXE_HOME:-{default_root}}}/releases/v1/crexe"\nif [ ! -x "$engine" ]; then engine="$script_dir/crexe"; fi\nexec "$engine" configure "$@"\n'
+            files[launcher] = (configure.encode(), 0o755)
+            install = f'#!/bin/sh\nset -eu\ncd -- "$(dirname -- "$0")"\n./crexe install\nexec ./{launcher}\n'
             files['install.sh'] = (install.encode(), 0o755)
-            install_help = 'Execute ./install.sh no terminal. A associação gráfica e a janela de espera ainda não estão implementadas neste OS; use a CLI.'
+            if system == 'macos':
+                files['install.command'] = (install.encode(), 0o755)
+            install_help = f'Execute ./install.sh em uma sessão gráfica. Instala e abre Configurações; {launcher} reabre a tela. Sem desktop, use ./crexe install (não abre UI). A associação gráfica e a janela de espera ainda não estão implementadas neste OS; use a CLI para abrir .crexe.'
         invocation = '.\\crexe.exe' if system == 'windows' else './crexe'
         readme = f'''# CREXE — snapshot de desenvolvimento
 
@@ -92,9 +100,11 @@ A instalação não adiciona a engine ao PATH. Os comandos acima usam o binário
 para chamar a cópia instalada, use o caminho completo mostrado por doctor.
 Editar a intenção gera outra revisão; reabrir sem alterações usa o cache validado.
 
-Provider/modelo/credenciais e limites são configurados localmente, usando config.example.toml como modelo.
---config seleciona outro arquivo. Chaves reais não pertencem ao .crexe nem ao exemplo distribuído.
-O caminho padrão da configuração aparece em crexe doctor. Nenhuma credencial foi incluída neste pacote.
+Use Configurações para escolher provider/modelo e salvar a API key no cofre do sistema.
+config.example.toml é apenas um exemplo: editá-lo não altera a configuração ativa.
+Na tela, importe o TOML editado, revise e salve. Reinstalar preserva as escolhas já salvas.
+--config seleciona outro arquivo. O caminho ativo aparece na tela e em crexe doctor.
+Nenhuma credencial foi incluída neste pacote. Em Linux sem cofre/desktop, a configuração por ambiente continua disponível.
 
 Build, testes e app rodam com as permissões do usuário. A pasta temporária não é isolamento de segurança.
 Não execute receitas/código nos quais você não confia. Windows Sandbox é proibido nesta fase.

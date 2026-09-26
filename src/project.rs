@@ -211,6 +211,7 @@ impl Project {
                 &self.os,
                 &BTreeMap::new(),
                 settings,
+                None,
             )?;
         }
         Ok(())

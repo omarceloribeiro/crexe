@@ -37,6 +37,18 @@ Os autotestes são produzidos pelo modelo, portanto não substituem revisão ou 
 
 ## Critérios que continuam abertos
 
+### Incremento de experiência de uso — 25/09/2026
+
+O [plano de UX](PLANO_UX_V1.md) foi implementado na `feature/v1`: configuração nativa por `crexe configure`/sem argumentos, importação explícita de TOML, salvamento atômico com detecção de conflito, cofre do sistema e lançadores nos pacotes. Reinstalações preservam a configuração ativa. O exemplo editado no pacote pode ser importado para revisão e salvo pela tela.
+
+A preparação agora tem uma trava por caminho canônico do `.crexe` e notificação entre processos. Dez chamadas próximas compartilham uma preparação; intenção/opções alteradas pedem concluir/cancelar antes de reabrir. A trava termina na abertura inicial, não no fechamento do app. No Windows, a engine acompanha por até 15 segundos a janela do processo/descendentes, restaura minimização, solicita foco e sinaliza na barra de tarefas se o OS negar ativação.
+
+Validação local deste incremento: 39 testes Rust aprovados (28 unitários e 11 de integração), fmt/clippy sem erros; teste adicional com chave sintética no Windows Credential Manager aprovado e entrada removida. A suíte cobre dez aberturas, alteração durante preparação, recuperação após crash, importação/preservação de regras, conflito externo, falha de escrita/cofre, rotação/remoção de chave, precedência e identidade de cache. Consultas de modelos usam GET em servidores locais controlados, sem geração paga.
+
+`tests/windows_ux.py` abriu a tela nativa e verificou cancelamento sem salvar; gerou/compilou uma fixture .NET Windows Forms com provider controlado, abriu três instâncias com uma geração, incluindo janela inicialmente minimizada e início lento. As três ficaram restauradas. Neste desktop, o Windows recusou foreground nas duas aberturas normais; a abertura inicialmente minimizada recebeu foco. A engine registrou a recusa e aplicou o sinal na barra de tarefas. Isso precisa ser revalidado no Explorer fora do Codex, sem afirmar foco garantido. `tests/windows_progress.py` confirmou cancelamento em 0,171 s e preservação da revisão anterior. Nenhuma API paga foi chamada nesses ensaios.
+
+A compilação/empacotamento da tela nos três OS e a aceitação visual em macOS/Linux são verificações distintas. A aceitação nesses desktops, em máquina limpa e fora do Codex, continua pendente.
+
 Em andamento: perfis experimentais `cpp-win32`, `objc-cocoa` e `c-gtk`, com ensaio de múltiplos fontes/build/teste/ZIP/publish por SDK nativo na CI. O teste é separado da geração por modelo real e da interação com GUI. A suíte local agora tem 31 testes aprovados (23 unitários e 8 de integração); o teste de SDK nativo é explicitamente ignorado quando suas ferramentas não foram preparadas.
 
 Atualização de 25/09/2026:

@@ -1,6 +1,6 @@
 # Plano: abertura, configuração e cliques repetidos na v1
 
-Data: 25/09/2026. Base analisada: `826c46e`, branch `feature/v1`. Status: **planejado, ainda não implementado**. Complementa o plano principal; não declara a v1 pronta para publicação.
+Data: 25/09/2026. Base analisada: `826c46e`, branch `feature/v1`. Status: **implementado, em validação integrada**. O registro de implementação e os relatórios distinguem testes automatizados de aceitação manual ainda pendente. Complementa o plano principal; não declara a v1 pronta para publicação.
 
 ## 1. Resultado esperado e decisões
 

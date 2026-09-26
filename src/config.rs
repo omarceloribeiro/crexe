@@ -14,6 +14,8 @@ pub(crate) struct Provider {
     pub base_url: String,
     pub model: String,
     pub api_key_env: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential: Option<super::credentials::Reference>,
     #[serde(default = "timeout")]
     pub timeout_seconds: u64,
     #[serde(default = "tokens")]
@@ -48,12 +50,12 @@ fn keep_alive() -> String {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct FileConfig {
-    version: u32,
-    default_provider: String,
-    providers: BTreeMap<String, Provider>,
+pub(crate) struct FileConfig {
+    pub version: u32,
+    pub default_provider: String,
+    pub providers: BTreeMap<String, Provider>,
     #[serde(default)]
-    execution: super::policy::Policy,
+    pub execution: super::policy::Policy,
 }
 
 #[derive(Clone)]
@@ -63,9 +65,22 @@ pub(crate) struct Settings {
     pub secret_names: Vec<String>,
     pub execution: super::policy::Policy,
     secrets: BTreeMap<String, String>,
+    pub path: PathBuf,
+    pub from_file: bool,
 }
 
 impl Settings {
+    pub fn draft(path: &Path, profile: &str, provider: &Provider) -> Self {
+        Self {
+            path: path.into(),
+            profile: profile.into(),
+            provider: provider.clone(),
+            secret_names: Vec::new(),
+            secrets: BTreeMap::new(),
+            execution: Default::default(),
+            from_file: path.is_file(),
+        }
+    }
     pub fn load(
         path: Option<&Path>,
         profile: Option<&str>,
@@ -84,6 +99,8 @@ impl Settings {
             }
             Err(error) => return Err(error).context("Cannot read local configuration"),
         };
+        let from_file = path.is_file();
+        let path = absolute_path(&path)?;
         // Do not print a TOML parser error: it may contain a line with a secret.
         let config: FileConfig = toml::from_str(&contents).map_err(|_| anyhow::anyhow!("Invalid local configuration; compare with config.example.toml (unknown fields are rejected)"))?;
         if config.version != 1 {
@@ -125,10 +142,37 @@ impl Settings {
             secret_names,
             execution: config.execution,
             secrets,
+            path,
+            from_file,
         })
     }
 
     pub fn api_key(&self) -> Result<Option<String>> {
+        self.api_key_with(&super::credentials::Native)
+    }
+
+    fn api_key_with(&self, vault: &dyn super::credentials::Vault) -> Result<Option<String>> {
+        if let Some(reference) = &self.provider.credential {
+            if let Some(key) = self
+                .provider
+                .api_key_env
+                .as_ref()
+                .and_then(|name| self.secrets.get(name))
+            {
+                if key.trim().is_empty() {
+                    bail!("Empty credential in --env-file");
+                }
+                return Ok(Some(key.clone()));
+            }
+            return super::credentials::resolve(
+                reference,
+                &self.path,
+                &self.profile,
+                &self.provider.base_url,
+                vault,
+            )
+            .map(Some);
+        }
         let Some(name) = &self.provider.api_key_env else {
             return Ok(None);
         };
@@ -142,14 +186,16 @@ impl Settings {
     }
 
     pub fn identity(&self) -> Result<Vec<u8>> {
+        let mut provider = self.provider.clone();
+        provider.credential = None;
         Ok(serde_json::to_vec(
-            &serde_json::json!({"provider": self.provider, "execution": self.execution}),
+            &serde_json::json!({"provider": provider, "execution": self.execution}),
         )?)
     }
 }
 
 impl Provider {
-    fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<()> {
         let url = reqwest::Url::parse(&self.base_url).context("Invalid provider URL")?;
         let local = matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"));
         if !(url.scheme() == "https" || (url.scheme() == "http" && local))
@@ -181,6 +227,42 @@ impl Provider {
         }
         Ok(())
     }
+}
+
+pub(crate) fn parse(contents: &str) -> Result<FileConfig> {
+    let config: FileConfig = toml::from_str(contents).map_err(|_| {
+        anyhow::anyhow!("Configuração TOML inválida; campos desconhecidos não são aceitos.")
+    })?;
+    if config.version != 1 || !config.providers.contains_key(&config.default_provider) {
+        bail!("Versão ou provider padrão inválido na configuração.");
+    }
+    for provider in config.providers.values() {
+        provider.validate()?;
+    }
+    config.execution.validate()?;
+    Ok(config)
+}
+
+pub(crate) fn absolute_path(path: &Path) -> Result<PathBuf> {
+    let absolute = std::path::absolute(path)?;
+    let mut ancestor = absolute.as_path();
+    let mut missing = Vec::new();
+    while !ancestor.exists() {
+        missing.push(
+            ancestor
+                .file_name()
+                .context("Invalid configuration path")?
+                .to_owned(),
+        );
+        ancestor = ancestor
+            .parent()
+            .context("Invalid configuration directory")?;
+    }
+    let mut resolved = ancestor.canonicalize()?;
+    for part in missing.into_iter().rev() {
+        resolved.push(part);
+    }
+    Ok(resolved)
 }
 
 #[cfg(windows)]
@@ -222,6 +304,45 @@ pub(crate) fn default_path() -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn vault_resolution_is_bound_and_explicit_env_file_overrides_it() {
+        use super::super::credentials::{testing::Memory, Reference, Vault};
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.toml");
+        fs::write(&path, include_str!("../config.example.toml")).unwrap();
+        let mut settings = Settings::load(Some(&path), Some("openai"), None, None).unwrap();
+        // PATH exists but must never replace the saved key. No process-global env mutation.
+        settings.provider.api_key_env = Some("PATH".into());
+        let legacy_identity = settings.identity().unwrap();
+        let reference = Reference::new(&path, "openai", &settings.provider.base_url).unwrap();
+        let vault = Memory::default();
+        vault.set(&reference.id, "synthetic-saved").unwrap();
+        settings.provider.credential = Some(reference);
+        assert_eq!(settings.identity().unwrap(), legacy_identity);
+        assert_eq!(
+            settings.api_key_with(&vault).unwrap().as_deref(),
+            Some("synthetic-saved")
+        );
+        vault.unavailable.set(true);
+        assert!(settings.api_key_with(&vault).is_err());
+        vault.unavailable.set(false);
+        settings
+            .secrets
+            .insert("PATH".into(), "synthetic-explicit-override".into());
+        assert_eq!(
+            settings.api_key_with(&vault).unwrap().as_deref(),
+            Some("synthetic-explicit-override")
+        );
+        settings.secrets.clear();
+        settings.provider.base_url = "https://different.example.invalid/v1".into();
+        assert!(settings.api_key_with(&vault).is_err());
+        settings.provider.base_url = "https://api.openai.com/v1".into();
+        settings.path = temp.path().join("copied.toml");
+        assert!(settings.api_key_with(&vault).is_err());
+        settings.path = path;
+        settings.profile = "other".into();
+        assert!(settings.api_key_with(&vault).is_err());
+    }
     #[test]
     fn explicit_env_file_does_not_mutate_process_or_identity() {
         let temp = tempfile::tempdir().unwrap();

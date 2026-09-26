@@ -16,6 +16,8 @@ O build Windows MSVC usa `crt-static`, conforme a [referência de Rust](https://
 
 O pacote da engine não inclui Ollama/modelos ou SDKs dos aplicativos. Instalar a engine dispensa Rust e Python; gerar um app continua exigindo o provider e o SDK de seu [perfil](PERFIS_V1.md). O script Windows instala em `releases/v1` e associa a extensão; Linux/macOS têm instalação por CLI, sem associação gráfica implementada.
 
+Os instaladores interativos abrem a configuração nativa ao concluir. O pacote inclui `configure.cmd` no Windows, `configure.command` no macOS ou `configure.sh` no Linux. Eles usam a cópia instalada ou, se ausente, a cópia extraída. `crexe install` continua não interativo, inclusive sem display. A GUI usa egui/eframe com OpenGL; macOS/Linux precisam de sessão gráfica e bibliotecas de desktop disponíveis. Salvar chaves usa o cofre nativo (Secret Service no Linux). Verificar requisitos reais em máquinas limpas permanece parte da aceitação; build em CI não comprova todas as sessões gráficas.
+
 O checkpoint `845e1bc` produziu e verificou os três pacotes na [CI 36096064360](https://github.com/omarceloribeiro/crexe/actions/runs/36096064360): Windows/x86_64, Linux/x86_64 e macOS/aarch64. Os arquivos baixados tiveram checksum e todos os hashes internos conferidos neste host. O binário Windows produzido no GitHub foi instalado em uma raiz de teste e executou `--version`, `doctor` e `inspect` com PATH vazio, a partir de outra pasta. [Registro dos pacotes](validation/2026-09-25-engine-packages.json).
 
 A instalação não altera o PATH. No PowerShell, use `.\crexe.exe` dentro da pasta extraída ou o caminho completo da instalação. Para concluir os ensaios fora do Codex, siga o [roteiro Windows](VALIDACAO_INSTALACAO_WINDOWS.md).

@@ -1,0 +1,51 @@
+{
+  "result": "PASS",
+  "settings_open_and_cancel": true,
+  "provider": "local HTTP fixture",
+  "paid_api_calls": 0,
+  "generation_requests": 1,
+  "later_click_opens_new_instance": true,
+  "launches": [
+    {
+      "cache_hit": false,
+      "fixture_initially_minimized": false,
+      "application_restored": true,
+      "foreground": false,
+      "activation_diagnostic": "Application restored; Windows declined foreground activation.\n",
+      "progress_closed_after_window_ready": true
+    },
+    {
+      "cache_hit": true,
+      "fixture_initially_minimized": true,
+      "application_restored": true,
+      "foreground": true,
+      "activation_diagnostic": "",
+      "progress_closed_after_window_ready": true
+    },
+    {
+      "cache_hit": true,
+      "fixture_initially_minimized": false,
+      "application_restored": true,
+      "foreground": false,
+      "activation_diagnostic": "Application restored; Windows declined foreground activation.\n",
+      "progress_closed_after_window_ready": true
+    }
+  ],
+  "scope": "owned windows in current desktop session; Explorer outside Codex still needs manual acceptance",
+  "configure_screenshot_reviewed_locally": true,
+  "rust_tests": {
+    "unit": 28,
+    "integration": 11,
+    "result": "PASS"
+  },
+  "native_windows_vault": {
+    "synthetic_only": true,
+    "created_read_rotated_deleted": true,
+    "result": "PASS"
+  },
+  "cancel": {
+    "seconds": 0.171,
+    "previous_revision_preserved": true,
+    "result": "PASS"
+  }
+}

@@ -2,7 +2,21 @@
 
 O arquivo TOML versão 1 seleciona um perfil em `providers`. `--provider` escolhe outro perfil local; `--model` substitui o modelo daquele perfil. `--config` escolhe explicitamente o arquivo. Não há seleção de endpoint, variável de credencial ou fallback pago pela receita.
 
-Defaults e tipos estão em `config.example.toml`; campos desconhecidos são rejeitados. Segredos literais não fazem parte do schema. Precedência da chave: variável do processo, arquivo `--env-file` explícito, variável do usuário Windows. O carregamento de `.env` é restrito à memória da engine, sem exportar seu conteúdo ao processo ou aos filhos. O nome referenciado precisa corresponder ao nome à esquerda de `=`.
+Use `crexe configure`, o executável sem argumentos ou o lançador `configure.cmd` / `configure.command` / `configure.sh` do pacote. A tela nativa permite escolher o perfil, editar o modelo, testar conexão, consultar modelos, salvar a API key e importar o provider padrão de outro TOML. `configure --import caminho.toml` também carrega a importação para revisão; só **Salvar** aplica a mudança. Importar preserva as regras locais de execução, outros perfis e não copia referências de cofre de outra configuração. Trocar o perfil na tela descarta as edições ainda não salvas do perfil anterior.
+
+Defaults e tipos estão em `config.example.toml`; campos desconhecidos são rejeitados. O exemplo não é a configuração ativa. A primeira instalação cria o arquivo ativo se ausente; reinstalações preservam o existente. A tela e `doctor` mostram o mesmo caminho. A escrita é atômica, com lock e detecção de edições externas: use **Recarregar** em caso de conflito. Fechar sem salvar não altera o arquivo; uma geração em andamento mantém as configurações com que começou.
+
+A tela consulta `GET /api/tags` no Ollama ou `GET /models` no endpoint OpenAI compatível, apenas pelo botão **Testar conexão / atualizar modelos**. Não faz geração, tem timeout de 15 segundos e permite digitar um modelo mesmo sem listagem. Uma consulta bem-sucedida não garante que todo modelo da lista aceite o contrato de geração CREXE. Rede e cofre são acessados fora da thread gráfica.
+
+## Chaves no cofre do usuário
+
+**Salvar** guarda a chave digitada no Windows Credential Manager (persistência local), macOS Keychain ou Secret Service no Linux. O TOML recebe somente `credential.id` e `credential.binding`, vinculados ao caminho da configuração, perfil e endpoint. Trocar o endpoint exige nova chave ou remoção explícita. A tela não preenche o campo com a chave antiga; mostra o estado da referência. Cofre bloqueado/ausente gera erro, sem salvar em texto puro ou usar outra chave silenciosamente.
+
+Uma troca grava outra entrada, publica a configuração e só então remove a entrada antiga pertencente ao CREXE. Se salvar falhar, mantém a configuração anterior e tenta remover a entrada temporária. Copiar um TOML com referência para outra máquina ou caminho exige configurar a chave novamente. Trocar apenas a chave/referência não altera a identidade do cache.
+
+Precedência quando há referência de cofre: variável correspondente em `--env-file` explícito, depois cofre. Variáveis antigas do processo/Windows não substituem a chave salva. Sem referência, mantém a compatibilidade anterior: variável do processo, arquivo `--env-file` explícito, variável do usuário Windows. Remover uma chave salva reativa essa resolução legada, quando `api_key_env` estiver configurado.
+
+Segredos literais não fazem parte do schema TOML. O carregamento de `.env` é restrito à memória da engine, sem exportar seu conteúdo ao processo ou aos filhos. O nome referenciado precisa corresponder ao nome à esquerda de `=`. CLI/doctor/inspect não requerem display; hosts sem desktop/cofre podem continuar usando ambiente ou `--env-file`. O Linux requer uma sessão Secret Service desbloqueada para salvar chaves pela tela.
 
 | Plataforma | Arquivo padrão |
 |---|---|

@@ -22,6 +22,7 @@ struct Provider {
     count: Arc<AtomicUsize>,
     stop: Arc<AtomicBool>,
     fail: Arc<AtomicBool>,
+    pause: Arc<AtomicBool>,
     worker: Option<thread::JoinHandle<()>>,
 }
 
@@ -33,12 +34,14 @@ impl Provider {
         let count = Arc::new(AtomicUsize::new(0));
         let stop = Arc::new(AtomicBool::new(false));
         let fail = Arc::new(AtomicBool::new(false));
+        let pause = Arc::new(AtomicBool::new(false));
+        let worker_pause = Arc::clone(&pause);
         let worker_fail = Arc::clone(&fail);
         let (worker_count, worker_stop) = (Arc::clone(&count), Arc::clone(&stop));
         let worker = thread::spawn(move || {
             while !worker_stop.load(Ordering::SeqCst) {
                 match listener.accept() {
-                    Ok((stream, _)) => serve(stream, &worker_count, &worker_fail),
+                    Ok((stream, _)) => serve(stream, &worker_count, &worker_fail, &worker_pause),
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(5))
                     }
@@ -51,6 +54,7 @@ impl Provider {
             count,
             stop,
             fail,
+            pause,
             worker: Some(worker),
         }
     }
@@ -59,6 +63,7 @@ impl Provider {
 impl Drop for Provider {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
+        self.pause.store(false, Ordering::SeqCst);
         if let Err(error) = self.worker.take().unwrap().join() {
             if !thread::panicking() {
                 panic!("mock provider failed: {error:?}");
@@ -67,7 +72,7 @@ impl Drop for Provider {
     }
 }
 
-fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool) {
+fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool, pause: &AtomicBool) {
     // On Windows, accepted sockets inherit the listener's nonblocking mode.
     stream.set_nonblocking(false).unwrap();
     stream
@@ -108,6 +113,10 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool) {
     }
     let payload: Value = serde_json::from_slice(&request[body_start..body_start + length]).unwrap();
     let number = count.fetch_add(1, Ordering::SeqCst) + 1;
+    let started = std::time::Instant::now();
+    while pause.load(Ordering::SeqCst) && started.elapsed() < Duration::from_secs(20) {
+        thread::sleep(Duration::from_millis(10));
+    }
     let message = if payload.to_string().contains("GREEN") {
         "CREXE_FIXTURE_GREEN"
     } else {
@@ -127,7 +136,7 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool) {
     let generated = json!({"files": [{"path": "src/main.rs", "content": source} ]});
     let body = if ollama { json!({"done": true, "done_reason": "stop", "message": {"content": generated.to_string()}}) }
         else { json!({"choices": [{"message": {"content": generated.to_string()}, "finish_reason": "stop"}]}) }.to_string();
-    write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body).unwrap();
+    let _ = write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body);
 }
 
 fn recipe(_provider: &Provider) -> Value {
@@ -186,6 +195,94 @@ fn success(output: Output) -> String {
         String::from_utf8_lossy(&output.stderr)
     );
     String::from_utf8(output.stdout).unwrap()
+}
+
+#[test]
+fn repeated_clicks_share_preparation_but_later_open_another_cached_instance() {
+    use std::process::Stdio;
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    provider.pause.store(true, Ordering::SeqCst);
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let file = temp.path().join("repeated.crexe");
+    let original = serde_json::to_string(&recipe(&provider)).unwrap();
+    fs::write(&file, &original).unwrap();
+    let spawn = || {
+        Command::new(engine())
+            .arg(&file)
+            .args(["--max-repairs", "0"])
+            .env("CREXE_HOME", &home)
+            .env("CREXE_TEST_KEY", "synthetic-only")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+    };
+    let owner = spawn();
+    let started = std::time::Instant::now();
+    while provider.count.load(Ordering::SeqCst) == 0 {
+        assert!(started.elapsed() < Duration::from_secs(10));
+        thread::sleep(Duration::from_millis(10));
+    }
+    let duplicates: Vec<_> = (0..9).map(|_| spawn()).collect();
+    for duplicate in duplicates {
+        let duplicate_output = duplicate.wait_with_output().unwrap();
+        let output = success(duplicate_output);
+        assert!(
+            output.contains("notificada"),
+            "IPC should reach existing process: {output}"
+        );
+        assert!(!output.contains("CREXE_FIXTURE_WHITE"));
+    }
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
+    fs::write(&file, original.replace("WHITE", "GREEN")).unwrap();
+    let changed = success(spawn().wait_with_output().unwrap());
+    assert!(changed.contains("alterados"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
+    fs::write(&file, &original).unwrap();
+    provider.pause.store(false, Ordering::SeqCst);
+    let output = success(owner.wait_with_output().unwrap());
+    assert_eq!(output.matches("CREXE_FIXTURE_WHITE").count(), 1);
+    assert!(success(spawn().wait_with_output().unwrap()).contains("CREXE_FIXTURE_WHITE"));
+    assert_eq!(
+        provider.count.load(Ordering::SeqCst),
+        1,
+        "reopening must reuse cache"
+    );
+}
+
+#[test]
+fn preparation_recovers_after_owner_crash_without_deleting_lock_metadata() {
+    use std::process::Stdio;
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    provider.pause.store(true, Ordering::SeqCst);
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let file = temp.path().join("recover.crexe");
+    fs::write(&file, serde_json::to_string(&recipe(&provider)).unwrap()).unwrap();
+    let mut owner = Command::new(engine())
+        .arg(&file)
+        .env("CREXE_HOME", &home)
+        .env("CREXE_TEST_KEY", "synthetic-only")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let started = std::time::Instant::now();
+    while provider.count.load(Ordering::SeqCst) == 0 {
+        assert!(started.elapsed() < Duration::from_secs(10));
+        thread::sleep(Duration::from_millis(10));
+    }
+    owner.kill().unwrap();
+    owner.wait().unwrap();
+    provider.pause.store(false, Ordering::SeqCst);
+    assert!(
+        success(invoke(Path::new(engine()), temp.path(), &home, &file, true))
+            .contains("CREXE_FIXTURE_WHITE")
+    );
+    assert_eq!(provider.count.load(Ordering::SeqCst), 2);
 }
 
 #[test]

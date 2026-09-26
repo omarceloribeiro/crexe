@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   check:
-    timeout-minutes: 25
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +23,9 @@ jobs:
         run: cargo +1.98.1 clippy --locked --all-targets -- -D warnings
       - name: Tests (local provider only)
         run: cargo +1.98.1 test --locked
+      - name: Windows vault (synthetic credential only)
+        if: runner.os == 'Windows'
+        run: cargo +1.98.1 test --locked native_vault_roundtrip_synthetic_only -- --ignored
       - name: Windows native SDK (CI runner only)
         if: runner.os == 'Windows'
         id: msys2

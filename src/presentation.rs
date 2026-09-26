@@ -10,7 +10,7 @@ pub(crate) fn desktop() -> bool {
 
 pub(crate) struct Progress {
     #[cfg(windows)]
-    inner: Option<windows::Window>,
+    _inner: Option<windows::Window>,
 }
 
 impl Progress {
@@ -19,7 +19,7 @@ impl Progress {
         #[cfg(windows)]
         {
             Ok(Self {
-                inner: if enabled {
+                _inner: if enabled {
                     Some(windows::Window::start()?)
                 } else {
                     None
@@ -32,14 +32,6 @@ impl Progress {
             Ok(Self {})
         }
     }
-    pub fn error(&mut self, message: &str) {
-        #[cfg(windows)]
-        if let Some(window) = &mut self.inner {
-            window.error(message);
-        }
-        #[cfg(not(windows))]
-        eprintln!("{message}");
-    }
 }
 
 pub(crate) fn phase(message: &str) {
@@ -51,4 +43,25 @@ pub(crate) fn phase(message: &str) {
 pub(crate) fn finish() {
     #[cfg(windows)]
     windows::finish();
+}
+
+pub(crate) fn activate(changed: bool) {
+    #[cfg(windows)]
+    windows::activate(changed);
+    #[cfg(not(windows))]
+    let _ = changed;
+}
+
+pub(crate) fn show_error(message: &str) {
+    #[cfg(windows)]
+    windows::show_error(message);
+    #[cfg(not(windows))]
+    eprintln!("{message}");
+}
+
+#[cfg(windows)]
+pub(crate) use windows::Activation;
+#[cfg(windows)]
+pub(crate) fn activation(executable: &std::path::Path, pid: u32, launch: bool) -> Activation {
+    Activation::new(executable, pid, launch && desktop())
 }
