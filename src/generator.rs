@@ -8,16 +8,19 @@ use reqwest::blocking::Client;
 use serde_json::{json, Value};
 use std::{
     io::Read,
+    sync::{Arc, OnceLock},
     time::{Duration, Instant},
 };
 
 const MAX_RESPONSE: u64 = 20 * 1024 * 1024;
+type CredentialSnapshot = Arc<OnceLock<Result<Option<String>, String>>>;
 
 pub(crate) struct Session<'a> {
     settings: &'a Settings,
     started: Instant,
     requests: u8,
     reserved_tokens: u32,
+    credential: CredentialSnapshot,
 }
 
 impl<'a> Session<'a> {
@@ -27,6 +30,7 @@ impl<'a> Session<'a> {
             started: Instant::now(),
             requests: 0,
             reserved_tokens: 0,
+            credential: Arc::new(OnceLock::new()),
         }
     }
     pub fn generate(&mut self, system: &str, user: &str) -> Result<GeneratedOutput> {
@@ -52,11 +56,16 @@ impl<'a> Session<'a> {
         let mut settings = self.settings.clone();
         settings.provider.timeout_seconds =
             settings.provider.timeout_seconds.min(remaining.as_secs());
-        generate(&settings, system, user)
+        generate(&settings, system, user, self.credential.clone())
     }
 }
 
-fn generate(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOutput> {
+fn generate(
+    settings: &Settings,
+    system: &str,
+    user: &str,
+    credential: CredentialSnapshot,
+) -> Result<GeneratedOutput> {
     if super::executor::cancelled() {
         bail!("Cancelled");
     }
@@ -65,7 +74,7 @@ fn generate(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOu
     let system = system.to_owned();
     let user = user.to_owned();
     std::thread::spawn(move || {
-        let _ = send.send(request(&settings, &system, &user));
+        let _ = send.send(request(&settings, &system, &user, &credential));
     });
     loop {
         if super::executor::cancelled() {
@@ -79,9 +88,23 @@ fn generate(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOu
     }
 }
 
-fn request(settings: &Settings, system: &str, user: &str) -> Result<GeneratedOutput> {
+fn session_key(settings: &Settings, credential: &CredentialSnapshot) -> Result<Option<String>> {
+    // Resolve on the first request, in its worker thread. Repairs use the same
+    // credential even if configuration rotates/deletes its vault entry meanwhile.
+    credential
+        .get_or_init(|| settings.api_key().map_err(|e| format!("{e:#}")))
+        .clone()
+        .map_err(anyhow::Error::msg)
+}
+
+fn request(
+    settings: &Settings,
+    system: &str,
+    user: &str,
+    credential: &CredentialSnapshot,
+) -> Result<GeneratedOutput> {
     let p = &settings.provider;
-    let key = settings.api_key()?;
+    let key = session_key(settings, credential)?;
     let client = Client::builder()
         .timeout(Duration::from_secs(p.timeout_seconds))
         .connect_timeout(Duration::from_secs(15))
@@ -170,6 +193,32 @@ fn decode(kind: Kind, body: &[u8]) -> Result<GeneratedOutput> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn repairs_keep_the_credential_captured_by_the_first_request() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.toml");
+        let env = temp.path().join(".env");
+        std::fs::write(
+            &path,
+            include_str!("../config.example.toml")
+                .replace("crexe_openai_api_key_env", "CREXE_SYNTHETIC_SNAPSHOT_TEST"),
+        )
+        .unwrap();
+        std::fs::write(&env, "CREXE_SYNTHETIC_SNAPSHOT_TEST=synthetic-session-key").unwrap();
+        let settings = Settings::load(Some(&path), Some("openai"), None, Some(&env)).unwrap();
+        let snapshot = Arc::new(OnceLock::new());
+        assert_eq!(
+            session_key(&settings, &snapshot).unwrap().as_deref(),
+            Some("synthetic-session-key")
+        );
+        // Simulate a credential source that became unavailable after request one.
+        let expired = Settings::load(Some(&path), Some("openai"), None, None).unwrap();
+        assert!(expired.api_key().is_err());
+        assert_eq!(
+            session_key(&expired, &snapshot).unwrap().as_deref(),
+            Some("synthetic-session-key")
+        );
+    }
     #[test]
     fn truncated_or_refused_responses_never_become_projects() {
         let content = json!({"files": [{"path": "main.c", "content": "int main(){}"}]}).to_string();

@@ -34,7 +34,7 @@
   "scope": "owned windows in current desktop session; Explorer outside Codex still needs manual acceptance",
   "configure_screenshot_reviewed_locally": true,
   "rust_tests": {
-    "unit": 28,
+    "unit": 29,
     "integration": 11,
     "result": "PASS"
   },
@@ -47,5 +47,13 @@
     "seconds": 0.171,
     "previous_revision_preserved": true,
     "result": "PASS"
-  }
+  },
+  "native_settings_save": {
+    "real_api_calls": 0,
+    "result": "PASS",
+    "cli_reads_saved_provider": true,
+    "accessibility_invoke": true,
+    "imported_provider_saved_by_native_button": true
+  },
+  "credential_snapshot_during_repairs": "PASS"
 }
