@@ -8,7 +8,8 @@ build_timeout_seconds = 300
 test_timeout_seconds = 60
 generation_timeout_seconds = 1800
 max_provider_requests = 3
-max_output_tokens_total = 18000
+# Optional explicit cap; by default requests * provider.max_output_tokens.
+# max_output_tokens_total = 18000
 max_prompt_bytes = 131072
 
 [providers.local]

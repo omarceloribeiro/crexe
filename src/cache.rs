@@ -152,7 +152,7 @@ pub(crate) fn copy_tree(
     Ok(())
 }
 
-fn hash(path: &Path) -> Result<String> {
+pub(crate) fn hash(path: &Path) -> Result<String> {
     let mut source = fs::File::open(path)?;
     let mut hash = Sha256::new();
     let mut buffer = [0u8; 65536];

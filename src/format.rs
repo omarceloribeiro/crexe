@@ -5,7 +5,11 @@ use serde_yaml::Value;
 use std::io::Read;
 use std::path::Path;
 
-const MAX_DOCUMENT: u64 = 1024 * 1024;
+pub(crate) const MAX_DOCUMENT: u64 = 1024 * 1024;
+
+pub(crate) fn is_empty(raw: &str) -> bool {
+    raw.trim_start_matches('\u{feff}').trim().is_empty()
+}
 
 pub(crate) fn read(path: &Path) -> Result<String> {
     let file = std::fs::File::open(path).context("Cannot open CREXE document")?;

@@ -1,6 +1,6 @@
 # CREXE — Creative Executable
 
-Um arquivo `.crexe` descreve a intenção de um aplicativo. A engine gera um projeto, compila, testa quando o perfil oferece testes, guarda uma revisão no cache e abre o programa. Editar a intenção gera uma nova revisão; reabrir sem alterações reutiliza a revisão validada.
+Um arquivo `.crexe` descreve a intenção de um aplicativo. A engine gera um projeto, compila, testa quando o perfil oferece testes, guarda uma revisão no cache e abre o programa. Editar a intenção evolui a última revisão aprovada; reabrir sem alterações reutiliza a revisão validada.
 
 **Em desenvolvimento na branch `feature/v1`; ainda não é uma release pública.** O executor original está preservado na tag `baseline/pre-v1`. Veja o [plano](docs/PLANO_V1.md) e o [registro da implementação](docs/IMPLEMENTACAO_V1.md) para distinguir funcionalidades presentes de critérios pendentes.
 
@@ -32,13 +32,13 @@ Com o Ollama e `gemma4:12b` disponíveis localmente, e o .NET SDK instalado:
 .\target\release\crexe.exe calculadora.crexe
 ```
 
-O perfil preferido no Windows usa C#/.NET 8 e Windows Forms. Há também perfis experimentais C++/Win32, Objective-C++/Cocoa e C/GTK3, conforme o host e seus SDKs. A engine fornece o plano de build, pede os fontes, compila e executa o autoteste gerado antes de publicar o cache. Até duas propostas de correção podem ser solicitadas após erros de build/teste. A qualidade do programa ainda depende do modelo; um build aprovado não comprova todos os comportamentos pedidos. [Perfis e requisitos](docs/PERFIS_V1.md).
+O perfil preferido no Windows usa C#/.NET 8 e Windows Forms. Há também perfis C++/Win32, Objective-C++/Cocoa, C/GTK3 e OpenGL específico para cada host. Em texto/Markdown sem perfil explícito, o modelo pode escolher entre os perfis com pré-requisitos disponíveis, justificando mudanças de tecnologia. A engine fornece projetos e comandos, restaura bibliotecas cadastradas, compila e executa o autoteste antes de publicar o cache. São 3 tentativas totais por padrão, configuráveis de 1 a 10. A qualidade do programa ainda depende do modelo; um build aprovado não comprova todos os comportamentos pedidos. [Perfis e requisitos](docs/PERFIS_V1.md).
 
 `doctor` informa arquitetura da engine/host, perfil, requisitos e caminhos. Com `--check`, consulta o SDK local antes da geração, sem chamar a IA. `inspect` mostra os requisitos do perfil junto da intenção resolvida; não executa SDKs.
 
 ## Provider e credenciais
 
-Abra `crexe configure` (ou o executável sem argumentos) para escolher provider/modelo e salvar a API key no cofre do sistema. A tela mostra o arquivo ativo e permite importar um TOML para revisão. `config.example.toml` é um exemplo: editá-lo não altera a configuração ativa. Instalar/reinstalar preserva suas escolhas; os instaladores interativos abrem a tela ao concluir.
+Abra `crexe configure` (ou o executável sem argumentos) para escolher provider/modelo, **Tentativas máximas** e salvar a API key no cofre do sistema. **Avançado** permite limitar o total de tokens de saída; a tela mostra quando esse teto reduz as tentativas efetivas. A tela mostra o arquivo ativo e permite importar um TOML para revisão. `config.example.toml` é um exemplo: editá-lo não altera a configuração ativa. Instalar/reinstalar preserva suas escolhas; os instaladores interativos abrem a tela ao concluir.
 
 Os presets disponíveis são **Ollama**, **OpenAI** e **DeepSeek**. Para DeepSeek, selecione o perfil `deepseek`, informe a API key e salve. O preset usa `deepseek-flash`, com raciocínio desligado por padrão; a opção pode ser alterada em **Avançado**. Instalações antigas também oferecem o novo perfil na tela, sem trocar o provider ativo até salvar.
 
@@ -68,13 +68,21 @@ O perfil DeepSeek referencia `crexe_deepseek_api_key`, também compatível com `
 & "$env:LOCALAPPDATA\CREXE\releases\v1\crexe.exe" associate
 ```
 
-A associação aponta para `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` e habilita a janela “Creative Executable / Gerando seu programa…”. A espera acompanha a abertura da janela do aplicativo (até 15 segundos), restaura janelas minimizadas e solicita foco ao Windows. Se o sistema negar foco, a barra de tarefas sinaliza a abertura. Falhas aparecem em uma mensagem; fechar a espera cancela a preparação. A invocação por terminal preserva logs; `--ui` ativa a apresentação explicitamente.
+A associação aponta para `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` e habilita a janela “Creative Executable / Gerando seu programa…”. Ela mostra provider, modelo e “Tentativa 1 de 3 — até 2 correções”, separadamente da fase atual. A espera acompanha a abertura da janela do aplicativo (até 15 segundos), restaura janelas minimizadas e solicita foco ao Windows. Se o sistema negar foco, a barra de tarefas sinaliza a abertura. Falhas aparecem em uma mensagem; fechar a espera cancela a preparação. A invocação por terminal preserva logs; `--ui` ativa a apresentação explicitamente.
 
 Cliques repetidos durante a preparação avisam a execução existente, sem gerar ou compilar novamente. Se a intenção/opções mudaram, a espera orienta concluir ou cancelar primeiro. Depois que o aplicativo abre, outro clique pode abrir outra instância pelo cache.
 
 O Windows pode exigir escolher CREXE como aplicativo padrão. `unassociate` remove apenas os registros desta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; associação gráfica e janela de espera dessas plataformas ainda não estão implementadas. [Guia de plataformas](docs/platforms/README.md).
 
 `CREXE_HOME` seleciona uma raiz absoluta para instalação, configuração e cache, útil em testes e instalações portáteis.
+
+## Editar a intenção
+
+Use **Editar** no menu de contexto Windows (após registrar a associação atual) ou `crexe edit "calculadora.crexe"`. O editor integrado funciona em Windows, macOS e Linux com sessão gráfica. Cada abertura tem sua própria janela, com caminho, indicação de alterações, **Salvar**, **Recarregar** e **Fechar**. Oferece seleção, copiar/colar, desfazer/refazer e `Ctrl+S` (`Cmd+S` no macOS).
+
+Salvar altera somente o documento. Para gerar ou atualizar o programa, abra o `.crexe` novamente. O editor não consulta providers nem carrega credenciais. Aceita texto vazio ou incompleto, preserva UTF-8, BOM e LF/CRLF e limita o arquivo a 1 MiB. A gravação é atômica; alterações externas bloqueiam o salvamento e mantêm o texto da janela para recuperação. Recarregar e fechar pedem confirmação quando há alterações locais.
+
+Abrir um arquivo vazio, apenas com espaços ou BOM pelo fluxo gráfico Windows apresenta **“O arquivo está vazio. Abrir para edição?”**, com **Sim** e **Cancelar**. Sim abre o mesmo editor, sem iniciar geração após salvar. A CLI orienta usar `crexe edit`; sem sessão gráfica, o comando informa a limitação.
 
 ## Formatos, cache e ZIP
 
@@ -85,6 +93,7 @@ O Windows pode exigir escolher CREXE como aplicativo padrão. `unassociate` remo
 ```powershell
 crexe exec calculadora.crexe --no-run --export calculadora-fontes.zip
 crexe calculadora.crexe --rebuild --max-repairs 2
+crexe calculadora.crexe --fresh
 ```
 
 Cada revisão aprovada inclui `source.zip`. No perfil .NET, ele contém os fontes, `.csproj`, instruções e scripts de build, run, test e publish. O ZIP pode ser recompilado sem CREXE, com os pré-requisitos indicados. O publish .NET é dependente do runtime; não instala nem publica na internet. A exportação exige um destino novo. YAML legado inclui scripts de build/run; não inventa uma operação publish ausente.
@@ -101,7 +110,9 @@ crexe export ./projeto-extraido --output ./fontes.zip
 
 Build/test/publish usam uma nova pasta temporária; build/publish entregam uma nova pasta de saída e preservam o projeto de origem. Export empacota os fontes atuais sem recompilá-los. Um ZIP de versões anteriores sem manifesto precisa ser regenerado para usar esses comandos; seus scripts continuam utilizáveis. [Contrato das operações](docs/PROJETOS_V1.md).
 
-O cache tem revisões imutáveis, manifesto de hashes e troca atômica do ponteiro de revisão. Builds com falha preservam a revisão anterior e o workspace de diagnóstico. Arquivo ausente/modificado no cache exige regeneração. Copiar apenas o `.crexe` compartilha a intenção, sem transportar o cache. `--cache-dir` muda a raiz por decisão local.
+O cache tem revisões imutáveis, hashes e um índice por caminho canônico do documento. Cada alteração envia o pedido anterior, os fontes aprovados e o pedido atual à IA. Ela recebe orientação para preservar comportamentos não afetados, podendo justificar uma recriação completa ou troca de perfil quando necessário. Os reparos usam a tentativa mais recente e seus diagnósticos. Binários, logs e diretórios de build não entram nesse contexto.
+
+O índice só avança após build/testes aprovados. Falha ou cancelamento preserva o baseline. `--rebuild` força nova geração a partir dele; `--fresh` gera sem ele. Fontes aprovados corrompidos ou contexto acima do limite causam diagnóstico, sem descarte silencioso. Cache antigo só é adotado com identidade e inventário verificáveis. Copiar ou mover o `.crexe` começa um histórico independente; `--cache-dir` seleciona outra raiz local. Alterar somente o limite de tentativas não invalida a revisão aprovada.
 
 ## Limites atuais
 
@@ -109,7 +120,7 @@ Build e aplicativo usam o **host com as permissões do usuário**. A pasta tempo
 
 Há validação de caminhos, limites de resposta/arquivos/logs, controle de subprocessos, timeout e cancelamento, sem herança das credenciais configuradas. Isso não impede um programa nativo malicioso de acessar o host. `allowNetwork: false` é rejeitado porque a engine não oferece isolamento de rede.
 
-Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na configuração local; a receita não pode ampliá-los. Ainda faltam, entre outros critérios: validação com modelos reais e uso de aplicativos em toda a matriz nativa, triagem de compatibilidade, gestão de dependências além do SDK e preparação da release. Confira o registro de implementação antes de distribuir.
+Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na configuração local; a receita não pode ampliá-los. Ainda faltam, entre outros critérios: validação com modelos reais e uso de aplicativos em toda a matriz nativa, triagem de compatibilidade, dependências além do catálogo da engine e preparação da release. Confira o registro de implementação antes de distribuir.
 
 ## Documentação e licença
 

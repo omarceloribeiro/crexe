@@ -130,6 +130,7 @@ def main():
             return True
         C.windll.user32.EnumChildWindows(hwnd, child_text, 0)
         assert any("Gerando seu programa" in text for text in labels), labels
+        assert any("Provider: test" in text and "Modelo: fixture" in text and "Tentativa 1 de 1" in text for text in labels), labels
         C.windll.user32.UpdateWindow(hwnd)
         time.sleep(0.25)
         screenshot = root / "progress.png"

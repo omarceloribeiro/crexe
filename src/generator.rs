@@ -44,7 +44,7 @@ impl<'a> Session<'a> {
         let reserved = self
             .reserved_tokens
             .saturating_add(self.settings.provider.max_output_tokens);
-        if reserved > policy.max_output_tokens_total {
+        if reserved > policy.output_budget(self.settings.provider.max_output_tokens) {
             bail!("Local output-token budget exhausted; no provider request was made");
         }
         let remaining = Duration::from_secs(policy.generation_timeout_seconds)
@@ -52,6 +52,17 @@ impl<'a> Session<'a> {
             .filter(|v| v.as_secs() > 0)
             .context("Local generation time budget exhausted")?;
         self.requests += 1;
+        super::presentation::details(&format!(
+            "Provider: {} ({})\nModelo: {}\nTentativa {} de {} — até {} correções",
+            self.settings.profile,
+            self.settings.provider.kind.label(),
+            self.settings.provider.model,
+            self.requests,
+            policy.attempts(self.settings.provider.max_output_tokens, None),
+            policy
+                .attempts(self.settings.provider.max_output_tokens, None)
+                .saturating_sub(1)
+        ));
         self.reserved_tokens = reserved;
         let mut settings = self.settings.clone();
         settings.provider.timeout_seconds =
@@ -124,7 +135,7 @@ fn request(
             "api/chat",
             json!({
                 "model": p.model, "messages": messages, "stream": false,
-                "format": {"type": "object", "required": ["files"], "properties": {"files": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["path", "content"], "properties": {"path": {"type": "string"}, "content": {"type": "string"}}}}}},
+                "format": {"type": "object", "required": ["files"], "properties": {"profile": {"type": "string"}, "change_kind": {"type": "string", "enum": ["incremental", "recreate"]}, "reason": {"type": "string"}, "files": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["path", "content"], "properties": {"path": {"type": "string"}, "content": {"type": "string"}}}}}},
                 "think": p.thinking, "keep_alive": p.keep_alive,
                 "options": {"num_ctx": p.context_tokens, "num_predict": p.max_output_tokens, "temperature": 0.2}
             }),

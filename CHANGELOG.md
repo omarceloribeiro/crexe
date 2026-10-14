@@ -2,6 +2,11 @@
 
 ## 1.0.0 — em desenvolvimento, não publicada
 
+- Editor integrado `crexe edit`, menu Editar Windows e diálogo para arquivos vazios; gravação atômica com preservação de UTF-8/BOM/LF/CRLF e detecção de conflitos.
+- Geração incremental com fontes/pedido anteriores, histórico por documento, recuperação explícita por `--fresh` e adoção verificável do cache legado.
+- Tentativas totais configuráveis de 1 a 10, orçamento de saída derivado ou explícito e acompanhamento de provider/modelo/tentativa.
+- Seleção de perfil na resposta de geração e perfis OpenGL por host; OpenTK 4.9.4 fixado e lockfile exportável no Windows.
+
 - Pacote Cargo na raiz, baseline com referência fixa e implementação histórica arquivada.
 - Instalação por usuário, associação Windows e janela de espera separada por plataforma.
 - YAML legado, Markdown com marcador e prompt livre; perfil C#/.NET no host.

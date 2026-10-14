@@ -2,6 +2,26 @@
 
 Iniciada em 24/09/2026, na branch `feature/v1`. Referência fixa: `baseline/pre-v1`. Este registro não declara a v1 concluída ou pronta para distribuição pública.
 
+## Editor e geração incremental — 14/10/2026
+
+Implementados `crexe edit`, o menu **Editar** Windows e o diálogo de arquivo vazio. O estado textual e a gravação estão separados da UI; o editor não carrega configurações/credenciais nem gera ao salvar. Gravação atômica, limite de 1 MiB, UTF-8/BOM/LF/CRLF, detecção de conflito e confirmação ao descartar alterações fazem parte do fluxo.
+
+As configurações oferecem 1–10 tentativas totais (padrão 3), teto explícito ou orçamento derivado de tokens, mantendo os demais valores locais. `--max-repairs 0..9` restringe o limite; a janela mostra provider, modelo e contador efetivos, além da fase. Mudar apenas tentativas/orçamento não invalida o cache aprovado.
+
+O índice por documento aponta para revisões aprovadas com pedido, parâmetros, ancestral e hashes dos fontes. Geração recebe pedido anterior, fontes e pedido atual; correções recebem a tentativa mais recente e seus diagnósticos. `--rebuild` usa o baseline; `--fresh` começa sem ele. Corrupção/contexto excessivo causam diagnóstico. Migração do cache exige correspondência verificável e copia a revisão sem alterar os arquivos antigos. Cópias/movimentações do documento iniciam histórico separado.
+
+O modelo pode selecionar um perfil disponível e justificar a mudança no mesmo JSON dos fontes. Perfil explícito/YAML continuam fixos. Incluídos `dotnet-opengl`, `objc-cocoa-opengl` e `c-gtk-opengl`; projetos/comandos pertencem à engine. OpenTK 4.9.4 tem versão exata e lockfile NuGet, preservado entre incrementos e na exportação. Antes de abrir programas OpenGL, a engine executa a verificação gráfica; `--no-run` permite compilar/testar lógica sem display.
+
+Validação local no Windows:
+
+- `cargo fmt --all --check`, `cargo clippy --locked --all-targets -- -D warnings`, 56 testes Rust (39 unitários e 17 de CLI) e build release aprovados. O controle real do egui foi testado sem display para seleção, colar, desfazer/refazer e reconhecimento do atalho de salvar.
+- Ensaio C++/Win32 adicional aprovado: vários fontes, autoteste, cache sem compilador, ZIP recompilável e publish local.
+- Ensaio OpenGL adicional aprovado com contexto real e renderização: mudança de perfil, erro de compilação corrigido mantendo perfil/justificativa, incremento posterior, cache, restauração bloqueada, exportação e recompilação. Usou fontes controlados, sem chamadas a modelos reais.
+- `tests/windows_editor.ps1` e `tests/windows_empty.ps1` passaram no executável release: salvar/recarregar, cancelamento/descarte, conflito externo com preservação do buffer, BOM/CRLF/acentos/caminho com espaços, Sim/Cancelar/fechar no arquivo vazio e nenhuma geração ao salvar.
+- `tests/windows_configuration.ps1` passou em release; o teste de registro isolado verifica **Editar** e preservação da abertura padrão. `tests/windows_progress.py` verificou os detalhes permanentes, build Rust real e cancelamento em 0,171 s preservando a revisão anterior.
+
+A CI foi ampliada com o ensaio OpenGL nos três hosts, .NET 8 no Windows e libepoxy no Linux. Esta sessão não executou a CI remota nem validou desktop/renderização em macOS/Linux. Atalhos e desfazer/refazer usam o controle de texto do egui; a matriz manual completa de teclado e testes com modelos reais permanece para validação de aceitação. Os resultados históricos abaixo pertencem aos incrementos e commits indicados em cada trecho.
+
 ## Implementado no primeiro conjunto de incrementos
 
 - Pacote Cargo/lockfile na raiz, CLI fina e módulos internos. Scripts ativos em `scripts`, exemplos separados por formato, fixture original preservada e tentativa GPT Pro arquivada sem virar baseline.

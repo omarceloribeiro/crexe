@@ -10,6 +10,14 @@ A tela consulta `GET /api/tags` no Ollama ou `GET /models` em OpenAI/DeepSeek, a
 
 Os presets vêm de `config.example.toml`; aparecem também ao abrir configurações antigas. Selecionar um preset ainda ausente só o grava ao salvar. A CLI `--provider deepseek` exige que esse perfil exista no TOML ativo, ou usa os defaults quando não há arquivo ativo. Atualizar/reinstalar não altera automaticamente o provider escolhido.
 
+## Tentativas e orçamento de saída
+
+**Tentativas máximas** na tela principal controla `execution.max_provider_requests`: de 1 a 10, padrão 3, incluindo a geração inicial. Só falhas de compilação/teste permitem correções automáticas; autenticação, saldo, conexão e respostas inválidas encerram a execução. `--max-repairs 0..9` é opcional: quando informado, reduz o número de correções dentro do limite configurado. `--max-repairs 0` permite apenas a proposta inicial.
+
+Sem `execution.max_output_tokens_total`, o orçamento de saída é derivado de `max_provider_requests × providers.<perfil>.max_output_tokens`. Um teto já gravado em configurações antigas continua valendo. Em **Avançado**, **Limitar total de tokens de saída** permite editar esse teto ou voltar ao cálculo automático. Por exemplo, 10 tentativas com 6000 tokens por chamada usam orçamento de 60000; um teto explícito de 18000 reduz o limite efetivo a 3. Se o teto não comportar uma chamada, a execução informa o problema antes de consultar o provider.
+
+A janela de geração mostra provider, modelo, tentativa atual e total efetivo, com a fase em campo separado. Esses valores são capturados no início, incluindo substituições da CLI. Alterar tentativas ou teto de saída não invalida um programa aprovado, e não modifica uma execução já iniciada. O salvamento preserva as demais regras de execução, comentários e perfis locais.
+
 ## Chaves no cofre do usuário
 
 **Salvar** guarda a chave digitada no Windows Credential Manager (persistência local), macOS Keychain ou Secret Service no Linux. O TOML recebe somente `credential.id` e `credential.binding`, vinculados ao caminho da configuração, perfil e endpoint. Trocar o endpoint exige nova chave ou remoção explícita. A tela não preenche o campo com a chave antiga; mostra o estado da referência. Cofre bloqueado/ausente gera erro, sem salvar em texto puro ou usar outra chave silenciosamente.
@@ -49,8 +57,8 @@ HTTPS é obrigatório fora do loopback. URLs com credenciais, query ou fragment 
 | Chamada HTTP | `timeout_seconds`, 1–1800 s; conexão até 15 s |
 | Saída do modelo | `max_output_tokens`, 128–65536; resposta HTTP até 20 MiB |
 | Ollama | Contexto 512–131072, maior que a saída e com espaço também para o prompt |
-| Propostas | Inicial + até duas correções de build/teste (`--max-repairs 0..2`) |
-| Orçamento local | Até `execution.max_provider_requests` chamadas (padrão 3); reserva de até `max_output_tokens_total` tokens de saída (padrão 18000); prompt até `max_prompt_bytes` bytes (padrão 131072) |
+| Propostas | De 1 a 10 tentativas totais (padrão 3); `--max-repairs 0..9` opcional restringe correções |
+| Orçamento local | Até `execution.max_provider_requests` chamadas; saída derivada de tentativas × tokens por chamada, ou `max_output_tokens_total` explícito; prompt completo até `max_prompt_bytes` bytes (padrão 131072) |
 | Prazo de geração | `execution.generation_timeout_seconds` (padrão 1800 s) desde o início da preparação; reduz o timeout das próximas chamadas ao tempo restante |
 | Fontes | 1–128 arquivos; 4 MiB por arquivo; 16 MiB por resposta |
 | Build/teste | Timeout por comando; 2 MiB por stream de log; cauda de até 64 KiB por stream nos diagnósticos |
@@ -60,6 +68,8 @@ HTTPS é obrigatório fora do loopback. URLs com credenciais, query ou fragment 
 Fechar a janela ou Ctrl+C encerra a orquestração e os grupos de subprocessos próprios. Uma requisição já entregue ao servidor pode continuar brevemente no provider; a engine não publica seu resultado após cancelamento. O serviço Ollama não é parado.
 
 A reserva de saída usa o máximo solicitado por chamada, mesmo se o modelo responder menos. Não mede tokens de entrada nem é um teto monetário da API. O prazo de geração impede novas chamadas após o limite; build/teste têm prazos próprios por comando (padrões 300/60 s), que a receita só pode reduzir. Não é um prazo único que interrompe o aplicativo final.
+
+O contexto incremental é explícito: pedido anterior, fontes aprovados e pedido atual, conforme o [gerenciamento de estado por mensagens](https://developers.openai.com/api/docs/guides/conversation-state). Não depende de arquivos ou conversas mantidos pelo provider. O limite de prompt inclui os contratos dos perfis e esse contexto; excedê-lo interrompe a geração e mantém o baseline. Os reparos enviam o snapshot da tentativa mais recente, sem repetir o snapshot aprovado original.
 
 ## Política local de execução
 

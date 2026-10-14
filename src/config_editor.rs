@@ -20,6 +20,7 @@ pub(crate) struct Editor {
     document: DocumentMut,
     pub profile: String,
     pub provider: Provider,
+    pub execution: super::policy::Policy,
 }
 
 #[derive(Clone, Default)]
@@ -47,6 +48,7 @@ impl Editor {
             document,
             profile: parsed.default_provider.clone(),
             provider: parsed.providers[&parsed.default_provider].clone(),
+            execution: parsed.execution,
         })
     }
 
@@ -146,6 +148,7 @@ impl Editor {
         publish: impl FnOnce(tempfile::NamedTempFile, &Path) -> Result<()>,
     ) -> Result<(Self, String)> {
         self.provider.validate()?;
+        self.execution.validate()?;
         super::paths::reject_links(&self.path)?;
         let parent = self
             .path
@@ -192,6 +195,13 @@ impl Editor {
             }
         };
         self.apply_provider()?;
+        self.document["execution"]["max_provider_requests"] =
+            value(i64::from(self.execution.max_provider_requests));
+        if let Some(cap) = self.execution.max_output_tokens_total {
+            self.document["execution"]["max_output_tokens_total"] = value(i64::from(cap));
+        } else if let Some(table) = self.document["execution"].as_table_mut() {
+            table.remove("max_output_tokens_total");
+        }
         let text = self.document.to_string();
         config::parse(&text)?;
         let mut staged = tempfile::NamedTempFile::new_in(parent)?;
@@ -404,6 +414,8 @@ mod tests {
         )
         .unwrap();
         let mut editor = Editor::load(&path).unwrap();
+        editor.execution.max_provider_requests = 10;
+        editor.execution.max_output_tokens_total = Some(50000);
         editor.import(&imported).unwrap();
         assert_eq!(
             fs::read_to_string(&path).unwrap(),
@@ -420,6 +432,8 @@ mod tests {
         assert_eq!(settings.profile, "openai");
         assert_eq!(settings.provider.model, "imported-model");
         assert!(!settings.execution.allow_shells);
+        assert_eq!(settings.execution.max_provider_requests, 10);
+        assert_eq!(settings.execution.max_output_tokens_total, Some(50000));
         assert!(fs::read_to_string(&path)
             .unwrap()
             .contains("# locally reviewed policy"));

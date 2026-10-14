@@ -214,6 +214,14 @@ impl Settings {
     }
 
     pub fn identity(&self) -> Result<Vec<u8>> {
+        let mut identity: serde_json::Value = serde_json::from_slice(&self.legacy_identity()?)?;
+        for key in ["max_provider_requests", "max_output_tokens_total"] {
+            identity["execution"].as_object_mut().unwrap().remove(key);
+        }
+        Ok(serde_json::to_vec(&identity)?)
+    }
+
+    pub fn legacy_identity(&self) -> Result<Vec<u8>> {
         let mut provider = self.provider.clone();
         provider.credential = None;
         if provider.kind == Kind::Deepseek {
@@ -221,8 +229,11 @@ impl Settings {
             provider.api_key_env = None;
             provider.thinking = Some(provider.thinking.unwrap_or(false));
         }
+        let mut execution = serde_json::to_value(&self.execution)?;
+        execution["max_output_tokens_total"] =
+            serde_json::json!(self.execution.max_output_tokens_total.unwrap_or(18000));
         Ok(serde_json::to_vec(
-            &serde_json::json!({"provider": provider, "execution": self.execution}),
+            &serde_json::json!({"provider": provider, "execution": execution}),
         )?)
     }
 }

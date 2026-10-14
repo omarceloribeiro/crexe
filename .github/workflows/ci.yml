@@ -47,6 +47,16 @@ jobs:
           sudo apt-get install -y gcc make pkg-config libgtk-3-dev
       - name: Native project fixture (no real model or GUI interaction)
         run: cargo +1.98.1 test --locked --test native_profiles -- --ignored --nocapture
+      - name: .NET SDK for Windows OpenGL profile
+        if: runner.os == 'Windows'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Linux OpenGL headers (CI runner only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y libepoxy-dev
+      - name: Host OpenGL migration, locked restore and source export (no display required)
+        run: cargo +1.98.1 test --locked --test opengl_profiles -- --ignored --nocapture
       - name: Release build
         run: cargo +1.98.1 build --release --locked
       - name: Verify Windows runtime dependencies

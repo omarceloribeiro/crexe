@@ -15,11 +15,15 @@ mod config;
 mod config_editor;
 mod configure;
 mod credentials;
+mod document_editor;
+mod edit;
 mod environment;
 mod executor;
 mod format;
 mod generator;
+mod history;
 mod installation;
+mod orchestration;
 mod package;
 mod paths;
 mod policy;
@@ -54,8 +58,8 @@ struct Cli {
     #[arg(long, global = true)]
     export: Option<PathBuf>,
     /// Maximum compiler/test repair proposals after the initial generation
-    #[arg(long, global = true, default_value_t = 2, value_parser = clap::value_parser!(u8).range(0..=2))]
-    max_repairs: u8,
+    #[arg(long, global = true, value_parser = clap::value_parser!(u8).range(0..=9))]
+    max_repairs: Option<u8>,
     /// Simple desktop progress window (used by the file association)
     #[arg(long, global = true)]
     ui: bool,
@@ -65,6 +69,8 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Edit a .crexe document in the built-in text editor; saving never generates
+    Edit { file: PathBuf },
     /// Open native provider/model/API-key settings; import only stages changes for review
     Configure {
         #[arg(long)]
@@ -77,9 +83,12 @@ enum Commands {
         /// Override inputs: KEY=VALUE
         #[arg(long = "set")]
         set: Vec<String>,
-        /// Ignore cache and regenerate/rebuild
+        /// Force generation using the previous approved sources as baseline
         #[arg(long = "rebuild", default_value_t = false)]
         rebuild: bool,
+        /// Generate without the previous approved sources
+        #[arg(long)]
+        fresh: bool,
         /// Override the local cache directory (never taken from the recipe)
         #[arg(long)]
         cache_dir: Option<PathBuf>,
@@ -133,6 +142,12 @@ struct RuntimeVars {
 #[derive(Debug, Deserialize, Serialize)]
 struct GeneratedOutput {
     files: Vec<GeneratedFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    change_kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
     #[allow(dead_code)]
     hints: Option<serde_json::Value>,
 }
@@ -158,6 +173,7 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse_from(args);
 
     match &cli.command {
+        Commands::Edit { file } => edit::open(file)?,
         Commands::Configure { import } => {
             configure::open(cli.config.as_deref(), import.as_deref())?
         }
@@ -165,10 +181,18 @@ pub fn run() -> Result<()> {
             file,
             set,
             rebuild,
+            fresh,
             cache_dir,
         } => {
             let overrides = parse_set_args(set)?;
-            if let Err(error) = exec_crexe(file, overrides, *rebuild, cache_dir.as_deref(), &cli) {
+            if let Err(error) = orchestration::exec(
+                file,
+                overrides,
+                *rebuild,
+                *fresh,
+                cache_dir.as_deref(),
+                &cli,
+            ) {
                 if cli.ui && !executor::cancelled() {
                     presentation::show_error(&truncate(&format!("{error:#}"), 2000));
                 }
@@ -330,259 +354,6 @@ fn looks_like_crexe_file(path: &Path) -> bool {
         .and_then(|s| s.to_str())
         .map(|s| s.eq_ignore_ascii_case("crexe"))
         .unwrap_or(false)
-}
-
-fn exec_crexe(
-    file: &Path,
-    overrides: BTreeMap<String, String>,
-    rebuild: bool,
-    cache_dir: Option<&Path>,
-    cli: &Cli,
-) -> Result<()> {
-    let crexe_path = file
-        .canonicalize()
-        .with_context(|| format!("CREXE not found: {}", file.display()))?;
-    let raw = format::read(&crexe_path)?;
-    let spec = match format::parse(&raw, &crexe_path)? {
-        format::Document::Yaml(spec) => {
-            if get_path(&spec, &["engine_project"]).is_some()
-                || get_path(&spec, &["engine_profile"]).is_some()
-            {
-                bail!("Reserved engine fields in YAML");
-            }
-            spec
-        }
-        format::Document::Intent {
-            name,
-            prompt,
-            profile,
-            format,
-        } => {
-            println!("Format: {format}; app: {name}");
-            profiles::resolve(
-                &name,
-                &prompt,
-                cli.profile.as_deref().or(profile.as_deref()),
-            )?
-        }
-    };
-    let mut settings = config::Settings::load(
-        cli.config.as_deref(),
-        cli.provider.as_deref(),
-        cli.model.as_deref(),
-        cli.env_file.as_deref(),
-    )?;
-    if let Some(seconds) =
-        get_path(&spec, &["policies", "timeoutSeconds", "generate"]).and_then(Value::as_u64)
-    {
-        settings.provider.timeout_seconds = settings.provider.timeout_seconds.min(seconds);
-    }
-    if get_path(&spec, &["generator"]).is_some() {
-        println!("Legacy generator settings are ignored; provider and credentials come from local configuration.");
-    }
-
-    let inputs = resolve_inputs(&spec, overrides)?;
-    let runtime = detect_runtime_vars();
-
-    let mut ctx = BTreeMap::new();
-    for (k, v) in &inputs {
-        ctx.insert(k.clone(), v.clone());
-    }
-    ctx.insert("OS".to_string(), runtime.os.clone());
-    ctx.insert("ARCH".to_string(), runtime.arch.clone());
-    ctx.insert("EXE_EXT".to_string(), runtime.exe_ext.clone());
-    ctx.insert("USER_HOME".to_string(), runtime.user_home.clone());
-
-    let target = select_target(&spec, &ctx)?;
-    println!(
-        "Target: {} (OS={}, ARCH={})",
-        target, runtime.os, runtime.arch
-    );
-
-    let build_steps = get_build_steps(&spec, &target)?;
-    let run_cmd = get_cmd(&spec, &["targets", &target, "run", "cmd"])?;
-    // Catch missing template values before contacting a provider.
-    let mut all_commands = build_steps.clone();
-    all_commands.push(run_cmd.clone());
-    for operation in ["test", "publish"] {
-        if let Some(steps) =
-            get_path(&spec, &["targets", &target, operation, "steps"]).and_then(Value::as_sequence)
-        {
-            for step in steps {
-                all_commands.push(value_to_cmd(get_path(step, &["cmd"]).unwrap_or(step))?);
-            }
-        }
-    }
-    for cmd in &all_commands {
-        for argument in cmd {
-            check_template(&render_template(argument, &spec, &ctx))?;
-        }
-    }
-
-    let mut identity = raw.as_bytes().to_vec();
-    identity.extend(serde_yaml::to_string(&spec)?.as_bytes());
-    identity.extend(settings.identity()?);
-    let mut request_identity = identity.clone();
-    request_identity.extend(serde_json::to_vec(&json!({"inputs": inputs, "rebuild": rebuild,
-        "no_run": cli.no_run, "export": cli.export, "repairs": cli.max_repairs, "cache_dir": cache_dir}))?);
-    let Some(mut preparation) = preparation::Session::acquire(&crexe_path, &request_identity)?
-    else {
-        return Ok(());
-    };
-    let _progress = presentation::Progress::start(cli.ui)?;
-    let mut ready = || {
-        presentation::finish();
-        preparation.release();
-    };
-    let cache = get_cache_state(&crexe_path, &identity, &spec, &inputs, cache_dir)?;
-    let lock = cache.lock()?;
-    if !rebuild {
-        if let Some(revision) = cache.current() {
-            println!("Cache hit: skipping generate/build");
-            drop(lock);
-            package::export(&revision, cli.export.as_deref())?;
-            if !cli.no_run {
-                run_command(
-                    &spec,
-                    &run_cmd,
-                    &revision,
-                    "run",
-                    &runtime.os,
-                    &ctx,
-                    &settings,
-                    Some(&mut ready),
-                )?;
-            } else {
-                ready();
-            }
-            return Ok(());
-        }
-    }
-    let workspace = tempfile::Builder::new().prefix("crexe-work-").tempdir()?;
-    let workspace_path = workspace.path().canonicalize()?;
-    println!("Workspace: {}", workspace_path.display());
-    let mut generation = generator::Session::new(&settings);
-    let result = (|| -> Result<PathBuf> {
-        for cmd in &build_steps {
-            let command = render_template(&cmd[0], &spec, &ctx);
-            executor::resolve_tool(&command)?;
-            settings.execution.authorize(&command)?;
-            check_allowlist(&spec, &[command], &runtime.os, "build", &workspace_path)?;
-        }
-        profiles::preflight(&spec, &workspace_path, &settings)?;
-        let (system_prompt, user_prompt) = build_prompt(&spec, &target, &ctx)?;
-        presentation::phase("Gerando seu programa…");
-        let mut generated = generation.generate(&system_prompt, &user_prompt)?;
-        for attempt in 0..=cli.max_repairs {
-            let attempt_path = workspace_path.join(format!("attempt-{}", attempt + 1));
-            fs::create_dir(&attempt_path)?;
-            apply_generated_files(&attempt_path, &generated.files, &ctx)?;
-            profiles::scaffold(&spec, &attempt_path)?;
-            let attempt_spec = profiles::materialize(&spec, &attempt_path, &generated.files, &ctx)?;
-            presentation::phase("Compilando seu programa…");
-            let built = (|| -> Result<()> {
-                for cmd in &get_build_steps(&attempt_spec, &target)? {
-                    run_command(
-                        &attempt_spec,
-                        cmd,
-                        &attempt_path,
-                        "build",
-                        &runtime.os,
-                        &ctx,
-                        &settings,
-                        None,
-                    )?;
-                }
-                if let Some(steps) = get_path(&spec, &["targets", &target, "test", "steps"])
-                    .and_then(Value::as_sequence)
-                {
-                    presentation::phase("Verificando seu programa…");
-                    for step in steps {
-                        let cmd = value_to_cmd(get_path(step, &["cmd"]).unwrap_or(step))?;
-                        run_command(
-                            &spec,
-                            &cmd,
-                            &attempt_path,
-                            "test",
-                            &runtime.os,
-                            &ctx,
-                            &settings,
-                            None,
-                        )?;
-                    }
-                }
-                let rendered_run: Vec<String> = run_cmd
-                    .iter()
-                    .map(|s| render_template(s, &spec, &ctx))
-                    .collect();
-                resolve_run_command(rendered_run, &attempt_path)?;
-                Ok(())
-            })();
-            match built {
-                Ok(()) => {
-                    presentation::phase("Preparando os arquivos…");
-                    package::create(
-                        &attempt_spec,
-                        &target,
-                        &ctx,
-                        &attempt_path,
-                        &generated.files,
-                    )?;
-                    return cache.publish(&attempt_path);
-                }
-                Err(error) => {
-                    let diagnostics = format!("{error:#}");
-                    fs::write(
-                        workspace_path.join(format!("attempt-{}.log", attempt + 1)),
-                        &diagnostics,
-                    )?;
-                    if attempt == cli.max_repairs || executor::cancelled() {
-                        return Err(error);
-                    }
-                    println!(
-                        "Build/test failed; requesting correction {}/{}",
-                        attempt + 1,
-                        cli.max_repairs
-                    );
-                    let repair = format!("Original request:\n{user_prompt}\nCurrent complete source files:\n{}\nCompiler/test diagnostics:\n{}\nCorrect the actual failure. Return the FULL corrected files[] snapshot, not a patch. Preserve requested behavior and tests. Do not change the engine-owned build commands or install global tools.", serde_json::to_string(&generated)?, truncate(&diagnostics, 24000));
-                    presentation::phase("Corrigindo erros de compilação…");
-                    generated = generation.generate(&system_prompt, &repair)?;
-                }
-            }
-        }
-        unreachable!()
-    })();
-    let revision = match result {
-        Ok(revision) => revision,
-        Err(error) => {
-            let preserved = workspace.keep();
-            return Err(error).with_context(|| {
-                format!(
-                    "Generation failed; previous cache preserved. Diagnostic workspace: {}",
-                    preserved.display()
-                )
-            });
-        }
-    };
-    drop(workspace);
-    drop(lock);
-    println!("Validated revision: {}", revision.display());
-    package::export(&revision, cli.export.as_deref())?;
-    if !cli.no_run {
-        run_command(
-            &spec,
-            &run_cmd,
-            &revision,
-            "run",
-            &runtime.os,
-            &ctx,
-            &settings,
-            Some(&mut ready),
-        )?;
-    } else {
-        ready();
-    }
-    Ok(())
 }
 
 fn parse_set_args(items: &[String]) -> Result<BTreeMap<String, String>> {

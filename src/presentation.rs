@@ -40,6 +40,12 @@ pub(crate) fn phase(message: &str) {
     windows::phase(message);
 }
 
+pub(crate) fn details(message: &str) {
+    println!("{message}");
+    #[cfg(windows)]
+    windows::details(message);
+}
+
 pub(crate) fn finish() {
     #[cfg(windows)]
     windows::finish();
@@ -57,6 +63,17 @@ pub(crate) fn show_error(message: &str) {
     windows::show_error(message);
     #[cfg(not(windows))]
     eprintln!("{message}");
+}
+
+pub(crate) fn confirm_edit_empty() -> anyhow::Result<bool> {
+    #[cfg(windows)]
+    {
+        windows::confirm_edit_empty()
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(false)
+    }
 }
 
 #[cfg(windows)]

@@ -22,6 +22,7 @@ use windows_sys::Win32::{
 
 static WINDOW: AtomicIsize = AtomicIsize::new(0);
 static LABEL: AtomicIsize = AtomicIsize::new(0);
+static DETAILS: AtomicIsize = AtomicIsize::new(0);
 const FINISH: u32 = WM_APP + 1;
 const ACTIVATE: u32 = WM_APP + 2;
 const CHANGED: u32 = WM_APP + 3;
@@ -49,7 +50,7 @@ impl Window {
             };
             RegisterClassW(&definition);
             let width = 460;
-            let height = 210;
+            let height = 340;
             let hwnd = CreateWindowExW(
                 0,
                 class.as_ptr(),
@@ -85,7 +86,7 @@ impl Window {
             let label = CreateWindowExW(
                 0,
                 wide("STATIC").as_ptr(),
-                wide("Preparando o ambienteâ€¦").as_ptr(),
+                wide("Preparando o ambiente…").as_ptr(),
                 WS_CHILD | WS_VISIBLE,
                 24,
                 62,
@@ -96,7 +97,21 @@ impl Window {
                 instance,
                 null(),
             );
-            for control in [title, label] {
+            let details = CreateWindowExW(
+                0,
+                wide("STATIC").as_ptr(),
+                null(),
+                WS_CHILD | WS_VISIBLE,
+                24,
+                112,
+                398,
+                142,
+                hwnd,
+                null_mut(),
+                instance,
+                null(),
+            );
+            for control in [title, label, details] {
                 SendMessageW(
                     control,
                     WM_SETFONT,
@@ -114,7 +129,7 @@ impl Window {
                 null(),
                 WS_CHILD | WS_VISIBLE | PBS_MARQUEE,
                 24,
-                130,
+                270,
                 398,
                 12,
                 hwnd,
@@ -125,6 +140,7 @@ impl Window {
             SendMessageW(bar, PBM_SETMARQUEE, 1, 35);
             WINDOW.store(hwnd as isize, Ordering::SeqCst);
             LABEL.store(label as isize, Ordering::SeqCst);
+            DETAILS.store(details as isize, Ordering::SeqCst);
             ShowWindow(hwnd, SW_SHOW);
             let _ = send.send(true);
             let mut message: MSG = std::mem::zeroed();
@@ -133,6 +149,7 @@ impl Window {
                 DispatchMessageW(&message);
             }
             LABEL.store(0, Ordering::SeqCst);
+            DETAILS.store(0, Ordering::SeqCst);
             WINDOW.store(0, Ordering::SeqCst);
         });
         if !receive.recv().context("Progress window thread failed")? {
@@ -163,6 +180,14 @@ pub(super) fn phase(text: &str) {
         }
     }
 }
+pub(super) fn details(text: &str) {
+    let hwnd = DETAILS.load(Ordering::SeqCst) as HWND;
+    if !hwnd.is_null() {
+        unsafe {
+            SendMessageW(hwnd, WM_SETTEXT, 0, wide(text).as_ptr() as isize);
+        }
+    }
+}
 pub(super) fn finish() {
     let hwnd = WINDOW.load(Ordering::SeqCst) as HWND;
     if !hwnd.is_null() {
@@ -186,9 +211,128 @@ pub(super) fn show_error(message: &str) {
         MessageBoxW(
             null_mut(),
             wide(message).as_ptr(),
-            wide("Creative Executable â€” Falha").as_ptr(),
+            wide("Creative Executable — Falha").as_ptr(),
             MB_OK | MB_ICONERROR,
         );
+    }
+}
+
+static EMPTY_CHOICE: AtomicIsize = AtomicIsize::new(0);
+
+pub(super) fn confirm_edit_empty() -> Result<bool> {
+    unsafe {
+        FreeConsole();
+        EMPTY_CHOICE.store(0, Ordering::SeqCst);
+        let class = wide("CREXE.EmptyDocument.v1");
+        let instance = GetModuleHandleW(null());
+        RegisterClassW(&WNDCLASSW {
+            lpfnWndProc: Some(empty_window_proc),
+            hInstance: instance,
+            lpszClassName: class.as_ptr(),
+            hCursor: LoadCursorW(null_mut(), IDC_ARROW),
+            hbrBackground: (COLOR_WINDOW + 1) as _,
+            ..std::mem::zeroed()
+        });
+        let hwnd = CreateWindowExW(
+            WS_EX_DLGMODALFRAME,
+            class.as_ptr(),
+            wide("Creative Executable").as_ptr(),
+            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+            (GetSystemMetrics(SM_CXSCREEN) - 460) / 2,
+            (GetSystemMetrics(SM_CYSCREEN) - 190) / 2,
+            460,
+            190,
+            null_mut(),
+            null_mut(),
+            instance,
+            null(),
+        );
+        if hwnd.is_null() {
+            anyhow::bail!("Não foi possível abrir o diálogo de edição");
+        }
+        let label = CreateWindowExW(
+            0,
+            wide("STATIC").as_ptr(),
+            wide("O arquivo está vazio. Abrir para edição?").as_ptr(),
+            WS_CHILD | WS_VISIBLE,
+            24,
+            28,
+            400,
+            44,
+            hwnd,
+            null_mut(),
+            instance,
+            null(),
+        );
+        let yes = CreateWindowExW(
+            0,
+            wide("BUTTON").as_ptr(),
+            wide("Sim").as_ptr(),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON as u32,
+            228,
+            98,
+            90,
+            30,
+            hwnd,
+            IDYES as _,
+            instance,
+            null(),
+        );
+        let cancel = CreateWindowExW(
+            0,
+            wide("BUTTON").as_ptr(),
+            wide("Cancelar").as_ptr(),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+            328,
+            98,
+            90,
+            30,
+            hwnd,
+            IDCANCEL as _,
+            instance,
+            null(),
+        );
+        for control in [label, yes, cancel] {
+            SendMessageW(
+                control,
+                WM_SETFONT,
+                GetStockObject(DEFAULT_GUI_FONT) as usize,
+                1,
+            );
+        }
+        ShowWindow(hwnd, SW_SHOW);
+        let mut message: MSG = std::mem::zeroed();
+        while GetMessageW(&mut message, null_mut(), 0, 0) > 0 {
+            if IsDialogMessageW(hwnd, &message) == 0 {
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+        Ok(EMPTY_CHOICE.load(Ordering::SeqCst) == IDYES as isize)
+    }
+}
+
+unsafe extern "system" fn empty_window_proc(
+    hwnd: HWND,
+    message: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    match message {
+        WM_COMMAND if matches!(wparam as u16 as i32, IDYES | IDCANCEL) => {
+            EMPTY_CHOICE.store(wparam as u16 as isize, Ordering::SeqCst);
+            DestroyWindow(hwnd);
+            0
+        }
+        WM_CLOSE => {
+            DestroyWindow(hwnd);
+            0
+        }
+        WM_DESTROY => {
+            PostQuitMessage(0);
+            0
+        }
+        _ => DefWindowProcW(hwnd, message, wparam, lparam),
     }
 }
 
@@ -200,7 +344,7 @@ impl Activation {
     pub fn new(executable: &std::path::Path, pid: u32, enabled: bool) -> Self {
         let enabled = enabled && gui_executable(executable);
         if enabled {
-            phase("Abrindo seu programaâ€¦");
+            phase("Abrindo seu programa…");
             unsafe {
                 AllowSetForegroundWindow(pid);
             }
@@ -313,7 +457,7 @@ unsafe extern "system" fn window_proc(
         ACTIVATE_APP => SetForegroundWindow(wparam as HWND) as isize,
         ACTIVATE | CHANGED => {
             if message == CHANGED {
-                phase("Arquivo ou opÃ§Ãµes alterados. Conclua ou cancele esta preparaÃ§Ã£o antes de reabrir.");
+                phase("Arquivo ou opções alterados. Conclua ou cancele esta preparação antes de reabrir.");
             }
             ShowWindow(hwnd, SW_RESTORE);
             if SetForegroundWindow(hwnd) == 0 {

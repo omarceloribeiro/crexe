@@ -1,12 +1,12 @@
 # Contrato de formatos — implementação em desenvolvimento
 
-Todos usam `.crexe`, UTF-8 (BOM opcional) e LF ou CRLF. Arquivo vazio, documento acima de 1 MiB e estruturas identificadas mas inválidas falham antes da chamada ao modelo.
+Todos usam `.crexe`, UTF-8 (BOM opcional) e LF ou CRLF. Documento acima de 1 MiB e estruturas identificadas mas inválidas falham antes da chamada ao modelo. Arquivo vazio (inclusive apenas espaços ou BOM) oferece edição no fluxo gráfico Windows e orientação para `crexe edit` na CLI. O editor permite salvar conteúdo vazio/incompleto; a validação ocorre ao executar.
 
 ## Texto puro
 
 `gerar uma calculadora de regra de 3` é uma entrada completa. Nenhuma seção ou palavra-chave é obrigatória. O nome vem do arquivo sem extensão. O texto inteiro constitui a intenção. Uma frase com dois-pontos continua sendo texto puro.
 
-O Windows prefere `dotnet-winforms` quando encontra `dotnet`; se só encontra `g++`, escolhe `cpp-win32`. Sem ambos, informa o requisito .NET antes da geração. Linux seleciona `c-gtk` e macOS `objc-cocoa`. Os três perfis C/C++/Objective-C++ estão em validação experimental. `--profile` permite a escolha explícita, inclusive `dotnet-console` para console. O host não é emulado e dependências globais não são instaladas. Veja a [matriz e os SDKs](PERFIS_V1.md).
+A seleção automática oferece ao modelo os perfis suportados com SDKs disponíveis no host, incluindo OpenGL. Prefere o perfil do baseline, ou o padrão do sistema quando não existe revisão anterior. Uma mudança exige justificativa. `--profile` permite a escolha fixa, inclusive `dotnet-console` para console. O host não é emulado e dependências globais não são instaladas. Veja a [matriz e os SDKs](PERFIS_V1.md).
 
 ## Markdown
 
@@ -31,9 +31,11 @@ Os campos principais exigem mappings. Operações usam de 1 a 32 steps; test/pub
 
 ## Projeto e correções
 
-Ambos os providers retornam `files: [{path, content}]`. A engine valida toda a lista antes da escrita, incluindo caminhos relativos, duplicatas, colisões arquivo/diretório, links e limites. Cada tentativa compila em uma subpasta nova; fontes/artefatos anteriores não contaminam a seguinte.
+Os providers retornam `files: [{path, content}]`, com `profile`, `change_kind` (`incremental` ou `recreate`) e `reason` opcionais para compatibilidade com respostas antigas. Seleção automática pede esses metadados; mudança de perfil exige justificativa e só aceita perfis oferecidos pela engine. A engine valida toda a lista antes da escrita, incluindo caminhos relativos, duplicatas, colisões arquivo/diretório, links e limites. Cada tentativa compila em uma subpasta nova; fontes/artefatos anteriores não contaminam a seguinte.
 
-O perfil .NET fornece `.csproj` e comandos; o modelo fornece fontes. O build é seguido pelo `--crexe-self-test` solicitado ao gerador. Falhas devolvem fontes atuais e diagnósticos ao modelo, que deve retornar um snapshot completo. Até duas correções são permitidas. Nenhum SDK de agentes ou sandbox do provider é necessário.
+O perfil .NET fornece `.csproj`, dependências cadastradas e comandos; o modelo fornece fontes. O build é seguido pelo `--crexe-self-test` solicitado ao gerador. Falhas devolvem fontes atuais e diagnósticos ao modelo, que deve retornar um snapshot completo. São 1–10 tentativas totais, padrão 3, respeitando o orçamento local. Nenhum SDK de agentes ou sandbox do provider é necessário.
+
+Cada documento possui histórico independente por caminho canônico. A revisão aprovada guarda pedido resolvido, perfil, parâmetros, ancestral e inventário de fontes com hashes em `CREXE-GENERATION.json`. O índice em `cache/.documents` aponta apenas para revisões aprovadas. Novo pedido recebe o prompt e fontes textuais declarados no manifesto anterior, inclusive projetos e dependências; compilados e temporários ficam fora. O índice só muda após aprovação, e a identidade da geração inclui seu ancestral. `--fresh` desconsidera esse histórico explicitamente; `--rebuild` o utiliza.
 
 O ZIP contém a lista de fontes e arquivos fornecidos pela engine, excluindo caches de restore, binários e credenciais. Build/run são BAT no Windows e shell nos outros sistemas; no perfil .NET há também test/publish. Argumentos incompatíveis com exportação segura de BAT produzem erro explícito.
 

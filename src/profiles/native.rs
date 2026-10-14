@@ -9,16 +9,16 @@ const SOURCES: &str = "$CREXE_SOURCES";
 pub(super) const MAKEFILE: &str = "CrexeBuild.mk";
 
 pub(super) fn resolve(name: &str, prompt: &str, profile: &str) -> Result<Value> {
-    let (os, language, build): (&str, &str, Vec<&str>) = match profile {
+    let (os, language, mut build): (&str, &str, Vec<&str>) = match profile {
         "cpp-win32" => (
             "windows", "C++17 and the Win32 API (Unicode). Use wWinMain, Windows headers, user32/gdi32/shell32. Separate application logic from UI into .cpp/.h files. Parse GetCommandLineW with CommandLineToArgvW from shellapi.h and LocalFree the result. Check the parsed --crexe-self-test argument before creating windows; raw wWinMain command-line text may contain quotes when launched by a BAT script.",
             vec!["g++", "-std=c++17", "-O2", "-municode", "-mwindows", "-static", SOURCES, "-o", "CrexeApp.exe", "-luser32", "-lgdi32", "-lshell32"],
         ),
-        "objc-cocoa" => (
+        "objc-cocoa" | "objc-cocoa-opengl" => (
             "macos", "Objective-C++17 and Cocoa/AppKit with ARC. Use .mm/.h sources, one main(int argc, char **argv). Separate application logic and UI. Check --crexe-self-test before starting NSApplication. Build is a native executable, not a signed .app bundle.",
             vec!["clang++", "-std=c++17", "-O2", "-fobjc-arc", "-arch", if cfg!(target_arch = "aarch64") { "arm64" } else { std::env::consts::ARCH }, SOURCES, "-framework", "Cocoa", "-o", "CrexeApp"],
         ),
-        "c-gtk" => (
+        "c-gtk" | "c-gtk-opengl" => (
             "linux", "C17 and GTK3 (not GTK4), using .c/.h sources and one main(int argc, char **argv). Separate application logic from UI. Check --crexe-self-test before gtk_init or gtk_application_new so tests work without a display. The engine supplies the Makefile and pkg-config build commands.",
             vec!["make", "-f", MAKEFILE],
         ),
@@ -30,7 +30,14 @@ pub(super) fn resolve(name: &str, prompt: &str, profile: &str) -> Result<Value> 
             std::env::consts::OS
         );
     }
-    let system = format!("Develop a complete small native application with {language} Display name: {name}. Return complete sources in files[]. No shell scripts, project/build files or external dependencies beyond the named SDK and standard library. The --crexe-self-test branch MUST exercise meaningful deterministic application logic, exit 0 on success and nonzero on failure, and avoid external services/devices. Do not open a window in that branch. No network on startup or global installations. State unsupported requirements explicitly in README; do not silently substitute unrelated behavior. Build diagnostics can be returned for a complete corrected snapshot.");
+    let mut system = format!("Develop a complete small native application with {language} Display name: {name}. Return complete sources in files[]. No shell scripts, project/build files or external dependencies beyond the named SDK and standard library. The --crexe-self-test branch MUST exercise meaningful deterministic application logic, exit 0 on success and nonzero on failure, and avoid external services/devices. Do not open a window in that branch. No network on startup or global installations. State unsupported requirements explicitly in README; do not silently substitute unrelated behavior. Build diagnostics can be returned for a complete corrected snapshot.");
+    if profile == "objc-cocoa-opengl" {
+        build.extend(["-framework", "OpenGL"]);
+        system.push_str(" Use NSOpenGLView with NSOpenGLProfileVersion3_2Core and <OpenGL/gl3.h>, OpenGL 3.2 core shaders and explicit vertex buffers. OpenGL is deprecated on macOS but requested here; check context creation and show a clear error when unsupported. Handle --crexe-graphics-check by creating the context, compiling shaders, rendering one frame and exiting 0/nonzero. Keep --crexe-self-test independent of AppKit and graphics initialization.");
+    }
+    if profile == "c-gtk-opengl" {
+        system.push_str(" Use GtkGLArea with desktop OpenGL 3.3 core and <epoxy/gl.h>. GTK3 and libepoxy are SDK prerequisites. Call gtk_gl_area_set_required_version(area, 3, 3), check gtk_gl_area_get_error after making the context current, and show a clear error if unavailable. Use shaders and vertex buffers, no legacy immediate mode. Handle --crexe-graphics-check by creating the context, compiling shaders, rendering one frame and exiting 0/nonzero. Keep --crexe-self-test before GTK/graphics initialization.");
+    }
     let mut spec = serde_yaml::to_value(json!({
         "version": "1.0", "meta": {"name": name}, "engine_profile": profile,
         "selectors": {"target": {"fallback": "host"}},
@@ -42,7 +49,7 @@ pub(super) fn resolve(name: &str, prompt: &str, profile: &str) -> Result<Value> 
             "run": {"cmd": ["CrexeApp{{EXE_EXT}}"]}
         }}
     }))?;
-    let publish = if profile == "c-gtk" {
+    let publish = if profile.starts_with("c-gtk") {
         vec!["make", "-f", MAKEFILE, "publish"]
     } else {
         build
@@ -62,8 +69,8 @@ pub(super) fn resolve(name: &str, prompt: &str, profile: &str) -> Result<Value> 
 pub(super) fn preflight(profile: &str, workspace: &Path, settings: &Settings) -> Result<()> {
     let compiler = match profile {
         "cpp-win32" => "g++",
-        "objc-cocoa" => "clang++",
-        "c-gtk" => "gcc",
+        "objc-cocoa" | "objc-cocoa-opengl" => "clang++",
+        "c-gtk" | "c-gtk-opengl" => "gcc",
         _ => bail!("Unknown native profile"),
     };
     settings.execution.authorize(compiler)?;
@@ -81,19 +88,27 @@ pub(super) fn preflight(profile: &str, workspace: &Path, settings: &Settings) ->
                 .any(|prefix| target.starts_with(prefix)));
     let matching_os = match profile {
         "cpp-win32" => target.contains("mingw"),
-        "objc-cocoa" => target.contains("apple"),
-        "c-gtk" => target.contains("linux"),
+        "objc-cocoa" | "objc-cocoa-opengl" => target.contains("apple"),
+        "c-gtk" | "c-gtk-opengl" => target.contains("linux"),
         _ => false,
     };
     if !matching_arch || !matching_os {
         bail!("Compiler target '{}' is incompatible with profile {profile} and engine architecture {arch}", target.trim());
     }
-    if profile == "c-gtk" {
+    if profile.starts_with("c-gtk") {
         for tool in ["make", "pkg-config"] {
             settings.execution.authorize(tool)?;
         }
         crate::executor::output(&["pkg-config".into(), "--exists".into(), "gtk+-3.0".into()], workspace, &settings.secret_names)
             .context("GTK3 development headers/libraries are required; configure pkg-config before generating")?;
+        if profile == "c-gtk-opengl" {
+            crate::executor::output(
+                &["pkg-config".into(), "--exists".into(), "epoxy".into()],
+                workspace,
+                &settings.secret_names,
+            )
+            .context("libepoxy development headers/libraries are required for OpenGL")?;
+        }
     }
     Ok(())
 }
@@ -108,12 +123,15 @@ pub(super) fn materialize(
     let Some(profile) = get_path(spec, &["engine_profile"]).and_then(Value::as_str) else {
         return Ok(result);
     };
-    if !matches!(profile, "cpp-win32" | "objc-cocoa" | "c-gtk") {
+    if !matches!(
+        profile,
+        "cpp-win32" | "objc-cocoa" | "c-gtk" | "objc-cocoa-opengl" | "c-gtk-opengl"
+    ) {
         return Ok(result);
     }
     let extension = match profile {
         "cpp-win32" => "cpp",
-        "objc-cocoa" => "mm",
+        "objc-cocoa" | "objc-cocoa-opengl" => "mm",
         _ => "c",
     };
     // Use the actual written paths and never a wildcard or model-supplied compiler flags.
@@ -139,7 +157,7 @@ pub(super) fn materialize(
     if sources.is_empty() {
         bail!("Profile {profile} requires at least one .{extension} source");
     }
-    if profile == "c-gtk" {
+    if profile.starts_with("c-gtk") {
         if files
             .iter()
             .any(|file| file.path.eq_ignore_ascii_case(MAKEFILE))
@@ -153,7 +171,12 @@ pub(super) fn materialize(
             .join(" ");
         // GNU Make expands pkg-config's escaped flags before the shell parses the command.
         // The source list is fixed, individually quoted, and contains no model-supplied flags.
-        let makefile = format!(".PHONY: all publish\nall:\n\tgcc -std=c17 -O2 {quoted} $(shell pkg-config --cflags --libs gtk+-3.0) -lm -o CrexeApp\npublish:\n\tgcc -std=c17 -O2 {quoted} $(shell pkg-config --cflags --libs gtk+-3.0) -lm -o CrexeApp-publish\n");
+        let packages = if profile == "c-gtk-opengl" {
+            "gtk+-3.0 epoxy"
+        } else {
+            "gtk+-3.0"
+        };
+        let makefile = format!(".PHONY: all publish\nall:\n\tgcc -std=c17 -O2 {quoted} $(shell pkg-config --cflags --libs {packages}) -lm -o CrexeApp\npublish:\n\tgcc -std=c17 -O2 {quoted} $(shell pkg-config --cflags --libs {packages}) -lm -o CrexeApp-publish\n");
         fs::write(workspace.join(MAKEFILE), makefile)?;
     } else {
         for operation in ["build", "publish"] {

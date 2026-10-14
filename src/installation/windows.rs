@@ -68,6 +68,10 @@ fn register(classes: &RegKey, exe: &Path) -> Result<()> {
     }
     app.set_value("", &"Creative Executable")?;
     open.set_value("", &command)?;
+    let (edit, _) = app.create_subkey("shell\\edit")?;
+    edit.set_value("", &"Editar")?;
+    let (edit_command, _) = edit.create_subkey("command")?;
+    edit_command.set_value("", &format!("\"{}\" edit \"%1\"", exe.display()))?;
     let (with, _) = extension.create_subkey("OpenWithProgids")?;
     with.set_raw_value(
         PROG_ID,
@@ -134,6 +138,13 @@ mod tests {
         let exe = temp.path().join("usuário com espaço\\crexe.exe");
         register(&classes, &exe).unwrap();
         register(&classes, &exe).unwrap();
+        let edit = classes
+            .open_subkey(format!("{PROG_ID}\\shell\\edit\\command"))
+            .unwrap();
+        assert_eq!(
+            string(&edit, "").unwrap(),
+            Some(format!("\"{}\" edit \"%1\"", exe.display()))
+        );
         assert_eq!(string(&ext, "").unwrap().as_deref(), Some(PROG_ID));
         unregister(&classes, &exe).unwrap();
         assert_eq!(string(&ext, "").unwrap().as_deref(), Some("Previous.App"));

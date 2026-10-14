@@ -28,7 +28,8 @@ pub(crate) struct Policy {
     pub test_timeout_seconds: u64,
     pub generation_timeout_seconds: u64,
     pub max_provider_requests: u8,
-    pub max_output_tokens_total: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens_total: Option<u32>,
     pub max_prompt_bytes: usize,
 }
 
@@ -54,13 +55,24 @@ impl Default for Policy {
             test_timeout_seconds: 60,
             generation_timeout_seconds: 1800,
             max_provider_requests: 3,
-            max_output_tokens_total: 18000,
+            max_output_tokens_total: None,
             max_prompt_bytes: 131072,
         }
     }
 }
 
 impl Policy {
+    pub fn output_budget(&self, tokens_per_call: u32) -> u32 {
+        self.max_output_tokens_total
+            .unwrap_or(u32::from(self.max_provider_requests) * tokens_per_call)
+    }
+
+    pub fn attempts(&self, tokens_per_call: u32, repairs: Option<u8>) -> u8 {
+        self.max_provider_requests
+            .min(repairs.map_or(10, |n| n + 1))
+            .min((self.output_budget(tokens_per_call) / tokens_per_call).min(10) as u8)
+    }
+
     pub fn validate(&self) -> Result<()> {
         if self.allowed_tools.len() > 64
             || self.allowed_tools.iter().any(|tool| tool.trim().is_empty())
@@ -70,8 +82,10 @@ impl Policy {
         if !(1..=3600).contains(&self.build_timeout_seconds)
             || !(1..=600).contains(&self.test_timeout_seconds)
             || !(1..=7200).contains(&self.generation_timeout_seconds)
-            || !(1..=3).contains(&self.max_provider_requests)
-            || !(128..=196608).contains(&self.max_output_tokens_total)
+            || !(1..=10).contains(&self.max_provider_requests)
+            || self
+                .max_output_tokens_total
+                .is_some_and(|v| !(128..=655360).contains(&v))
             || !(1024..=1048576).contains(&self.max_prompt_bytes)
         {
             bail!("Invalid local execution budget");
@@ -121,6 +135,21 @@ impl Policy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn attempts_and_derived_budget_have_explicit_bounds() {
+        let mut policy = Policy::default();
+        assert_eq!(policy.output_budget(6000), 18000);
+        assert_eq!(policy.attempts(6000, None), 3);
+        policy.max_provider_requests = 10;
+        assert_eq!(policy.output_budget(6000), 60000);
+        assert_eq!(policy.attempts(6000, Some(2)), 3);
+        policy.max_output_tokens_total = Some(18000);
+        assert_eq!(policy.attempts(6000, None), 3);
+        for attempts in [0, 11] {
+            policy.max_provider_requests = attempts;
+            assert!(policy.validate().is_err());
+        }
+    }
     #[test]
     fn local_policy_rejects_unapproved_absolute_executables_and_clamps_recipe_limits() {
         let policy = Policy {

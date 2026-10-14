@@ -157,6 +157,13 @@ impl eframe::App for Window {
                     });
                 }
                 ui.small("Você também pode digitar o nome do modelo. A lista não garante compatibilidade de geração.");
+                ui.horizontal(|ui| {
+                    ui.label("Tentativas máximas");
+                    ui.add(egui::DragValue::new(&mut self.editor.execution.max_provider_requests).range(1..=10));
+                });
+                ui.small("Inclui a geração inicial. 3 tentativas permitem até 2 correções de compilação/teste.");
+                let attempts = self.editor.execution.attempts(self.editor.provider.max_output_tokens, None);
+                ui.small(format!("Limite efetivo: {attempts} tentativas; orçamento de saída: {} tokens.", self.editor.execution.output_budget(self.editor.provider.max_output_tokens)));
                 ui.add_space(12.0);
                 ui.label(if self.editor.provider.credential.is_some() { "Chave: referência salva no cofre (verificada ao testar ou usar)." }
                     else if self.editor.provider.api_key_env.is_some() { "Chave: não salva no cofre. Configuração por variável de ambiente disponível." }
@@ -176,6 +183,14 @@ impl eframe::App for Window {
                 ui.small("Consulta a lista de modelos; não gera código nem consome tokens de geração.");
                 ui.add_space(10.0);
                 ui.collapsing("Avançado", |ui| {
+                    let mut limited = self.editor.execution.max_output_tokens_total.is_some();
+                    if ui.checkbox(&mut limited, "Limitar total de tokens de saída").changed() {
+                        self.editor.execution.max_output_tokens_total = limited.then(|| self.editor.execution.output_budget(self.editor.provider.max_output_tokens));
+                    }
+                    if let Some(cap) = &mut self.editor.execution.max_output_tokens_total {
+                        ui.add(egui::DragValue::new(cap).range(128..=655360));
+                        ui.small("Este teto pode reduzir o número efetivo de tentativas.");
+                    }
                     ui.label("Endereço do provider");
                     ui.add(egui::TextEdit::singleline(&mut self.editor.provider.base_url).desired_width(f32::INFINITY));
                     ui.small("Trocar o endereço exige informar novamente ou remover a chave salva.");

@@ -7,7 +7,7 @@ use std::{
     process::{Command, Output},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     thread,
     time::Duration,
@@ -17,7 +17,183 @@ fn engine() -> &'static str {
     env!("CARGO_BIN_EXE_crexe")
 }
 
+fn document_revision(home: &Path) -> std::path::PathBuf {
+    let pointer = fs::read_dir(home.join("cache/.documents"))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let value: Value = serde_json::from_slice(&fs::read(pointer).unwrap()).unwrap();
+    home.join("cache").join(value["revision"].as_str().unwrap())
+}
+
+#[test]
+fn incremental_context_preserves_sources_isolates_copies_and_recovers_explicitly() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let file = temp.path().join("app.crexe");
+    let mut spec = recipe(&provider);
+    fs::write(&file, spec.to_string()).unwrap();
+    success(invoke(Path::new(engine()), temp.path(), &home, &file, true));
+    let first = document_revision(&home);
+    spec["prompt"]["user_by_target"]["native"] = json!("GREEN");
+    fs::write(&file, spec.to_string()).unwrap();
+    success(invoke(Path::new(engine()), temp.path(), &home, &file, true));
+    let requests = provider.requests.lock().unwrap().clone();
+    let context = requests[1]["messages"][1]["content"].as_str().unwrap();
+    assert!(context.contains("PREVIOUS REQUEST:\nWHITE"));
+    assert!(context.contains("CREXE_FIXTURE_WHITE"));
+    assert!(context.contains("CURRENT REQUEST:\nGREEN"));
+    assert!(!context.contains("fixture-app.exe"));
+    assert!(!context.contains("source.zip"));
+    let second = document_revision(&home);
+    assert_ne!(first, second);
+    let metadata: Value =
+        serde_json::from_slice(&fs::read(second.join("CREXE-GENERATION.json")).unwrap()).unwrap();
+    assert!(metadata["parent"]
+        .as_str()
+        .unwrap()
+        .contains(first.file_name().unwrap().to_str().unwrap()));
+    let config = home.join("config.toml");
+    let original = fs::read_to_string(&config).unwrap();
+    fs::write(
+        &config,
+        format!("{original}\n[execution]\nmax_provider_requests=10\n"),
+    )
+    .unwrap();
+    assert!(
+        success(invoke(Path::new(engine()), temp.path(), &home, &file, true)).contains("Cache hit")
+    );
+    assert_eq!(provider.count.load(Ordering::SeqCst), 2);
+    fs::write(second.join("src/main.rs"), "corrupted source").unwrap();
+    let broken = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+    assert!(!broken.status.success());
+    assert!(String::from_utf8_lossy(&broken.stderr).contains("baseline"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 2);
+    success(
+        Command::new(engine())
+            .arg(&file)
+            .args(["--fresh", "--no-run"])
+            .env("CREXE_HOME", &home)
+            .env("CREXE_TEST_KEY", "synthetic")
+            .output()
+            .unwrap(),
+    );
+    let requests = provider.requests.lock().unwrap().clone();
+    assert!(!requests[2]["messages"][1]["content"]
+        .as_str()
+        .unwrap()
+        .contains("PREVIOUS APPROVED SOURCE FILES"));
+    let copied = temp.path().join("copied.crexe");
+    fs::copy(&file, &copied).unwrap();
+    success(invoke(
+        Path::new(engine()),
+        temp.path(),
+        &home,
+        &copied,
+        true,
+    ));
+    let requests = provider.requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 4);
+    assert!(!requests[3]["messages"][1]["content"]
+        .as_str()
+        .unwrap()
+        .contains("PREVIOUS APPROVED SOURCE FILES"));
+}
+
+#[test]
+fn attempts_one_ten_token_cap_and_cli_restriction_are_enforced() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let file = temp.path().join("broken.crexe");
+    fs::write(&file, recipe(&provider).to_string()).unwrap();
+    provider.fail.store(true, Ordering::SeqCst);
+    let config = home.join("config.toml");
+    let original = fs::read_to_string(&config).unwrap();
+    for (policy, args, expected) in [
+        ("max_provider_requests=1", vec![], 1),
+        ("max_provider_requests=10", vec![], 10),
+        (
+            "max_provider_requests=10\nmax_output_tokens_total=6000",
+            vec![],
+            1,
+        ),
+        ("max_provider_requests=10", vec!["--max-repairs", "0"], 1),
+    ] {
+        fs::write(&config, format!("{original}\n[execution]\n{policy}\n")).unwrap();
+        let before = provider.count.load(Ordering::SeqCst);
+        let output = Command::new(engine())
+            .arg(&file)
+            .arg("--no-run")
+            .args(args)
+            .env("CREXE_HOME", &home)
+            .env("CREXE_TEST_KEY", "synthetic")
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert_eq!(provider.count.load(Ordering::SeqCst) - before, expected);
+        assert!(!home.join("cache/.documents").exists());
+    }
+}
+
+#[test]
+fn empty_and_excess_context_never_call_provider_or_replace_history() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let file = temp.path().join("app.crexe");
+    for text in ["", " \r\n\t", "\u{feff}", "\u{feff} \n"] {
+        fs::write(&file, text).unwrap();
+        let output = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("crexe edit"));
+    }
+    assert_eq!(provider.count.load(Ordering::SeqCst), 0);
+    let mut spec = recipe(&provider);
+    fs::write(&file, spec.to_string()).unwrap();
+    success(invoke(Path::new(engine()), temp.path(), &home, &file, true));
+    let previous = document_revision(&home);
+    let config = home.join("config.toml");
+    let original = fs::read_to_string(&config).unwrap();
+    fs::write(
+        config,
+        format!("{original}\n[execution]\nmax_prompt_bytes=1024\n"),
+    )
+    .unwrap();
+    spec["prompt"]["user_by_target"]["native"] = json!("a".repeat(2000));
+    fs::write(&file, spec.to_string()).unwrap();
+    let output = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("max_prompt_bytes"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
+    assert_eq!(document_revision(&home), previous);
+}
+
+#[test]
+fn yaml_targets_cannot_be_changed_by_provider_profile_metadata() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("home");
+    configure(&provider, &home);
+    let file = temp.path().join("app.crexe");
+    let mut spec = recipe(&provider);
+    spec["prompt"]["user_by_target"]["native"] = json!("FORCE_PROFILE_CHANGE");
+    fs::write(&file, spec.to_string()).unwrap();
+    let output = invoke(Path::new(engine()), temp.path(), &home, &file, true);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unavailable or explicitly fixed"));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
+    assert!(!home.join("cache/.documents").exists());
+}
+
 struct Provider {
+    requests: Arc<Mutex<Vec<Value>>>,
     url: String,
     count: Arc<AtomicUsize>,
     stop: Arc<AtomicBool>,
@@ -38,10 +214,18 @@ impl Provider {
         let worker_pause = Arc::clone(&pause);
         let worker_fail = Arc::clone(&fail);
         let (worker_count, worker_stop) = (Arc::clone(&count), Arc::clone(&stop));
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&requests);
         let worker = thread::spawn(move || {
             while !worker_stop.load(Ordering::SeqCst) {
                 match listener.accept() {
-                    Ok((stream, _)) => serve(stream, &worker_count, &worker_fail, &worker_pause),
+                    Ok((stream, _)) => serve(
+                        stream,
+                        &worker_count,
+                        &worker_fail,
+                        &worker_pause,
+                        &captured,
+                    ),
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(5))
                     }
@@ -50,6 +234,7 @@ impl Provider {
             }
         });
         Self {
+            requests,
             url,
             count,
             stop,
@@ -72,7 +257,13 @@ impl Drop for Provider {
     }
 }
 
-fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool, pause: &AtomicBool) {
+fn serve(
+    mut stream: TcpStream,
+    count: &AtomicUsize,
+    fail: &AtomicBool,
+    pause: &AtomicBool,
+    requests: &Mutex<Vec<Value>>,
+) {
     // On Windows, accepted sockets inherit the listener's nonblocking mode.
     stream.set_nonblocking(false).unwrap();
     stream
@@ -112,6 +303,7 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool, pause: &
         request.extend_from_slice(&buffer[..n]);
     }
     let payload: Value = serde_json::from_slice(&request[body_start..body_start + length]).unwrap();
+    requests.lock().unwrap().push(payload.clone());
     let deepseek = payload["model"] == "deepseek-fixture";
     if deepseek {
         assert_eq!(payload["thinking"]["type"], "disabled");
@@ -141,7 +333,7 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool, pause: &
     } else {
         format!("fn main() {{ for name in [\"CREXE_TEST_KEY\", \"OPENAI_API_KEY\", \"crexe_deepseek_api_key\", \"DEEPSEEK_API_KEY\"] {{ assert!(std::env::var_os(name).is_none()); }} println!(\"{message}\"); }}")
     };
-    let generated = if deepseek {
+    let mut generated = if deepseek {
         json!({"files": [
             {"path":"src/main.rs","content":"mod app; fn main() { app::run(); }"},
             {"path":"src/app.rs","content":source.replace("fn main()", "pub fn run()")}
@@ -149,6 +341,11 @@ fn serve(mut stream: TcpStream, count: &AtomicUsize, fail: &AtomicBool, pause: &
     } else {
         json!({"files": [{"path": "src/main.rs", "content": source} ]})
     };
+    if payload.to_string().contains("FORCE_PROFILE_CHANGE") {
+        generated["profile"] = json!("dotnet-console");
+        generated["change_kind"] = json!("recreate");
+        generated["reason"] = json!("Attempted change of fixed YAML target");
+    }
     let body = if payload.to_string().contains("INVALID_DEEPSEEK") {
         json!({"choices":[{"finish_reason":"stop","message":{"content":"{\"files\":[]}","reasoning_content":"not-a-source"}}]})
     } else if payload.to_string().contains("TRUNCATED_DEEPSEEK") {
@@ -272,6 +469,7 @@ fn deepseek_repairs_multifile_projects_changes_intent_reuses_cache_and_exports()
     let revision = fs::read_dir(home.join("cache"))
         .unwrap()
         .map(|e| e.unwrap().path())
+        .filter(|entry| entry.join("current.json").is_file())
         .find_map(|entry| {
             let manifest: Value =
                 serde_json::from_slice(&fs::read(entry.join("current.json")).unwrap()).unwrap();
@@ -585,6 +783,7 @@ fn installed_engine_runs_from_other_cwd_regenerates_and_reuses_cache() {
     let green_entry = fs::read_dir(root.join("cache"))
         .unwrap()
         .map(|entry| entry.unwrap().path())
+        .filter(|entry| entry.join("current.json").is_file())
         .find(|entry| {
             let manifest: Value =
                 serde_json::from_slice(&fs::read(entry.join("current.json")).unwrap()).unwrap();

@@ -75,8 +75,14 @@ impl Project {
                 .collect()]
             });
         }
-        if get_path(spec, &["engine_profile"]).and_then(Value::as_str) == Some("c-gtk") {
+        if get_path(spec, &["engine_profile"])
+            .and_then(Value::as_str)
+            .is_some_and(|p| p.starts_with("c-gtk"))
+        {
             sources.push("CrexeBuild.mk".into());
+        }
+        if get_path(spec, &["engine_profile"]).and_then(Value::as_str) == Some("dotnet-opengl") {
+            sources.push("packages.lock.json".into());
         }
         for steps in commands.values_mut() {
             for cmd in steps {
@@ -108,7 +114,7 @@ impl Project {
         if self.schema != 1 {
             bail!("Unsupported project manifest version");
         }
-        if self.sources.is_empty() || self.sources.len() > 129 {
+        if self.sources.is_empty() || self.sources.len() > 130 {
             bail!("Invalid project source count");
         }
         let mut unique = BTreeSet::new();
@@ -241,6 +247,7 @@ impl Project {
 pub(crate) fn reserved(path: &str) -> bool {
     [
         MANIFEST,
+        super::history::METADATA,
         "source.zip",
         "CREXE-README.md",
         "build.bat",
