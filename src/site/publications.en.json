@@ -1,0 +1,236 @@
+[
+  {
+    "slug": "fundamentos",
+    "title": "CREXE: foundations of intent-based distribution",
+    "description": "The execution model, v1 contracts, and the limits of distributing recipes that generate local programs.",
+    "category": "whitepaper",
+    "status": "Foundations and implementation",
+    "language": "en",
+    "source": "docs/en/publicacoes/whitepaper-fundamentos.md",
+    "date": "2026-11-25",
+    "notice": "Informational white paper. Describes the implementation under development and distinguishes its capabilities from proposed extensions."
+  },
+  {
+    "slug": "computacao-regeneravel",
+    "title": "Regenerable computing: a long-term vision",
+    "description": "From personal tools to system utilities: hypotheses, boundaries, and criteria for investigating software regeneration.",
+    "category": "whitepaper",
+    "status": "Future vision",
+    "language": "en",
+    "source": "docs/en/publicacoes/whitepaper-computacao-regeneravel.md",
+    "date": "2026-11-24",
+    "notice": "Research proposal. The operating-system integration scenarios are not features available in CREXE."
+  },
+  {
+    "slug": "seguranca-e-confianca",
+    "title": "Security and trust in regenerable software",
+    "description": "Where the trust boundaries lie, what the engine controls today, and what an isolated architecture would need to demonstrate.",
+    "category": "guide",
+    "status": "Technical analysis",
+    "language": "en",
+    "source": "docs/en/publicacoes/guia-seguranca-e-confianca.md",
+    "date": "2026-11-24",
+    "notice": "The current version runs on the host with the user's permissions. The isolation layers discussed here are proposals, not guarantees provided by the engine."
+  },
+  {
+    "slug": "modelos-locais-e-remotos",
+    "title": "Local models, remote models, and system APIs",
+    "description": "How to choose a generation environment and assess privacy, availability, costs, and future integrations.",
+    "category": "guide",
+    "status": "Technical analysis",
+    "language": "en",
+    "source": "docs/en/publicacoes/guia-modelos-locais-e-remotos.md",
+    "date": "2026-11-24",
+    "notice": "CREXE integrates Ollama, OpenAI, and DeepSeek. Native system APIs are research references, not providers implemented in this version."
+  },
+  {
+    "slug": "distribuir-intencao",
+    "title": "What if we could also distribute intent?",
+    "description": "The recipe as another way to distribute software, with choices that remain in the recipient's hands.",
+    "category": "article",
+    "status": "Article",
+    "language": "en",
+    "source": "docs/en/publicacoes/artigo-distribuir-intencao.md",
+    "date": "2026-11-25",
+    "notice": "Editorial article. The proposal complements binary and source distribution; it does not assume those models will be universally replaced."
+  },
+  {
+    "slug": "alem-de-executar",
+    "title": "Beyond execution: software as creative material",
+    "description": "Read, edit, test, and share a small tool — while keeping the technical work that makes it possible visible.",
+    "category": "article",
+    "status": "Article",
+    "language": "en",
+    "source": "docs/en/publicacoes/artigo-alem-de-executar.md",
+    "date": "2026-11-24",
+    "notice": "Editorial article about creating personal tools. The proposed experiences still require review, testing, and preparation of the environment."
+  },
+  {
+    "slug": "software-como-rna",
+    "title": "Software as RNA: a metaphor and its limits",
+    "description": "Recipe, environment, and transformation: what the biological analogy helps us see and where its explanatory power ends.",
+    "category": "article",
+    "status": "Essay",
+    "language": "en",
+    "source": "docs/en/publicacoes/ensaio-software-como-rna.md",
+    "date": "2026-11-24",
+    "notice": "Conceptual essay. The RNA comparison is an architectural metaphor, not a biological equivalence or technical proof."
+  },
+  {
+    "slug": "manifesto",
+    "title": "The Creative Executable Manifesto",
+    "description": "Principles for bringing intent, creation, and control closer together: software that is readable, reviewable, and open to transformation.",
+    "category": "manifesto",
+    "status": "Manifesto",
+    "language": "en",
+    "source": "docs/en/publicacoes/manifesto-creative-executable.md",
+    "date": "2026-11-25",
+    "notice": "Statement of principles. It is not a normative specification, a new license, or a guarantee of features already delivered."
+  },
+  {
+    "slug": "rfc-draft",
+    "title": "RFC Draft 0.1 — CREXE Specification",
+    "description": "The original Creative Executable specification draft: file structure, generation, execution, caching, and proposed security requirements.",
+    "category": "rfc",
+    "status": "Draft 0.1 · Historical",
+    "language": "en",
+    "source": "docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md",
+    "date": "2026-11-24",
+    "notice": "Historical draft, preserved in its original English; this date records its inclusion in the library. It is neither an approved standard nor the complete contract of the current v1. Generator configuration in recipes and network isolation are proposals in this draft, not current features. See Formats .crexe in v1 for the implemented contract.",
+    "originalSource": "docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md"
+  },
+  {
+    "slug": "formatos-v1",
+    "title": ".crexe formats in v1",
+    "description": "The implemented contract for plain text, Markdown, and YAML, including migration and revision history.",
+    "category": "reference",
+    "status": "V1 reference",
+    "language": "en",
+    "source": "docs/en/FORMATOS_V1.md",
+    "date": "2026-11-24",
+    "notice": "English translation of the documentation maintained in the repository. The contract described here takes precedence over historical drafts."
+  },
+  {
+    "slug": "configuracao",
+    "title": "Engine configuration",
+    "description": "Providers, models, credentials, limits, and local configuration choices.",
+    "category": "reference",
+    "status": "V1 reference",
+    "language": "en",
+    "source": "docs/en/CONFIGURACAO.md",
+    "date": "2026-11-24",
+    "notice": "Implementation reference. Provider and credentials belong to local configuration, not to instructions in a received recipe. Native application labels are translated here for explanation; this site translation does not change the engine's interface language."
+  },
+  {
+    "slug": "perfis-e-requisitos",
+    "title": "Profiles and requirements",
+    "description": "Platforms, SDKs, and dependencies needed to generate and compile applications.",
+    "category": "reference",
+    "status": "V1 reference",
+    "language": "en",
+    "source": "docs/en/PERFIS_V1.md",
+    "date": "2026-11-24",
+    "notice": "Check your profile's requirements. The engine does not automatically install all compilers, models, or system libraries."
+  },
+  {
+    "slug": "projetos-e-exportacao",
+    "title": "Projects, sources, and export",
+    "description": "Build, test, run, local publish, and export operations for generated projects.",
+    "category": "reference",
+    "status": "V1 reference",
+    "language": "en",
+    "source": "docs/en/PROJETOS_V1.md",
+    "date": "2026-11-24",
+    "notice": "The publish command prepares local output. It does not host the application or publish files online."
+  },
+  {
+    "slug": "licenciamento",
+    "title": "Licensing and ecosystem",
+    "description": "The MIT-licensed engine, MIT-0 output materials, and freedom to choose the app’s license, including a proprietary license.",
+    "category": "reference",
+    "status": "Licensing review",
+    "language": "en",
+    "source": "docs/en/LICENCIAMENTO_E_ECOSSISTEMA.md",
+    "date": "2026-11-25",
+    "notice": "The engine uses MIT, with its copyright and license notices preserved. CREXE materials incorporated into output use MIT-0, without requiring source disclosure or CREXE attribution. Third-party and provider terms still apply; see the scope in LICENSE-GENERATED."
+  },
+  {
+    "slug": "project-overview",
+    "title": "Project guide",
+    "description": "Get started with CREXE: installation, providers, editing, projects, and current development status.",
+    "category": "reference",
+    "status": "Project reference",
+    "language": "en",
+    "source": "docs/en/README.md",
+    "date": "2026-11-25",
+    "notice": "English translation of the project README. CREXE v1 is under development; snapshots are not stable releases. Native application labels are explained in English here without changing the engine's interface."
+  },
+  {
+    "slug": "security",
+    "title": "Execution limits",
+    "description": "Host permissions, current protection boundaries, credentials, and how to report problems.",
+    "category": "reference",
+    "status": "Security reference",
+    "language": "en",
+    "source": "docs/en/SECURITY.md",
+    "date": "2026-11-24",
+    "notice": "English translation of the repository's execution limits. The current engine does not provide security isolation for generated applications."
+  },
+  {
+    "slug": "contributing",
+    "title": "Contributing to CREXE",
+    "description": "Development workflow, checks, platform-specific code, and contribution practices.",
+    "category": "reference",
+    "status": "Contribution guide",
+    "language": "en",
+    "source": "docs/en/CONTRIBUTING.md",
+    "date": "2026-11-24",
+    "notice": "English translation of the contribution guide. Follow the repository's current toolchain and validation requirements when proposing code changes."
+  },
+  {
+    "slug": "crexp",
+    "title": "CREXP: a package of specifications",
+    "description": "Multiple SDD documents in a ZIP: the preview guide, privacy, and the complete original handoff download.",
+    "category": "guide",
+    "status": "Minimal preview · Evolving architecture",
+    "source": "docs/en/publicacoes/crexp.md",
+    "notice": "Maintained guide to the implemented subset, not a full translation of the handoff. Download the complete unchanged Portuguese original, including future proposals and earlier licensing references. The engine uses MIT; designated output materials use MIT-0.",
+    "originalSource": "docs/formatos/originais/CREXP-HANDOFF-COMPLETO.md",
+    "originalLanguage": "pt-BR",
+    "sourceAliases": [
+      "docs/publicacoes/crexp.md"
+    ],
+    "date": "2026-11-25",
+    "language": "en"
+  },
+  {
+    "slug": "crexb",
+    "title": "CREXB: recipe and application, together",
+    "description": "Distribute an accepted revision and open a compatible payload without AI or recompilation. Scope, runtime, and the complete proposal.",
+    "category": "guide",
+    "status": "Minimal preview · One target per bundle",
+    "source": "docs/en/publicacoes/crexb.md",
+    "notice": "Executable bundle preview, without application sandboxing or publisher authentication. Hashes verify integrity; signatures and the complete architecture remain on the roadmap. This guide is not a full translation of the downloadable Portuguese handoff. Schema and example are references, not a ready-to-run application.",
+    "originalSource": "docs/formatos/originais/CREXB-HANDOFF-COMPLETO.md",
+    "originalLanguage": "pt-BR",
+    "sourceAliases": [
+      "docs/publicacoes/crexb.md"
+    ],
+    "date": "2026-11-25",
+    "language": "en"
+  },
+  {
+    "slug": "roadmap-formatos",
+    "title": "Roadmap: complete CREXP and CREXB",
+    "description": "What the preview delivers and what remains for complete SDD packages and executable bundles, with unabridged originals.",
+    "category": "guide",
+    "status": "Roadmap · No promised dates",
+    "source": "docs/en/publicacoes/roadmap-formatos.md",
+    "notice": "Public planning. Future stages are not available features. Downloads preserve both complete original Portuguese handoffs and original JSON references; placeholder examples are not executable builds.",
+    "sourceAliases": [
+      "docs/publicacoes/roadmap-formatos.md"
+    ],
+    "date": "2026-11-25",
+    "language": "en"
+  }
+]

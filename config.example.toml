@@ -1,0 +1,46 @@
+version = 1
+default_provider = "local"
+
+[execution]
+allowed_tools = ["dotnet", "rustc", "g++", "gcc", "clang++", "clang", "windres", "make", "pkg-config"]
+allow_shells = false
+build_timeout_seconds = 300
+test_timeout_seconds = 60
+generation_timeout_seconds = 1800
+max_provider_requests = 3
+# Optional explicit cap; by default requests * provider.max_output_tokens.
+# Reader preparation adds one planning call, without consuming a code attempt.
+# Its default token budget adds up to 2048 planning tokens; an explicit cap
+# below remains an aggregate limit covering planning and code generation.
+# max_output_tokens_total = 18000
+max_prompt_bytes = 131072
+
+[providers.local]
+kind = "ollama"
+base_url = "http://127.0.0.1:11434"
+model = "gemma4:12b"
+timeout_seconds = 900
+max_output_tokens = 4500
+context_tokens = 8192
+thinking = false
+keep_alive = "2m"
+
+# Selected only by --provider openai or an explicit change to default_provider.
+# There is no automatic paid fallback.
+[providers.openai]
+kind = "openai"
+base_url = "https://api.openai.com/v1"
+model = "gpt-4o-mini"
+api_key_env = "crexe_openai_api_key_env"
+timeout_seconds = 180
+max_output_tokens = 6000
+
+# Select explicitly in Configurações, default_provider or --provider deepseek.
+[providers.deepseek]
+kind = "deepseek"
+base_url = "https://api.deepseek.com"
+model = "deepseek-flash"
+api_key_env = "crexe_deepseek_api_key"
+timeout_seconds = 300
+max_output_tokens = 6000
+thinking = false

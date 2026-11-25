@@ -1,0 +1,19 @@
+{
+  "name": "crexe-public-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static source for the CREXE public landing page.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "package": "node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "markdown-it": "15.0.3"
+  }
+}

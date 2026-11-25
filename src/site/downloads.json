@@ -1,0 +1,9 @@
+{
+  "version": null,
+  "releaseUrl": null,
+  "platforms": {
+    "windows": { "url": null, "checksumUrl": null },
+    "linux": { "url": null, "checksumUrl": null },
+    "macos": { "url": null, "checksumUrl": null }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "ci_run": "https://github.com/omarceloribeiro/crexe/actions/runs/36096064360",
+  "packages": [
+    {
+      "archive": "crexe-1.0.0-dev.845e1bc-macos-aarch64.tar.gz",
+      "sha256": "6c0c68dab3e3f5e77c937e96bed2033e720c6dd075cb95c7ee806bae8f80fdea",
+      "os": "macos",
+      "arch": "aarch64",
+      "file_hashes_verified": true
+    },
+    {
+      "archive": "crexe-1.0.0-dev.845e1bc-linux-x86_64.tar.gz",
+      "sha256": "c537fb58aa52c1c89f0696ce216674646cf64100111113e1affae6f01730172b",
+      "os": "linux",
+      "arch": "x86_64",
+      "file_hashes_verified": true
+    },
+    {
+      "archive": "crexe-1.0.0-dev.845e1bc-windows-x86_64.zip",
+      "sha256": "741b745008cf352d689ed5cdb458724009cccd8fb3bbf2193400c6020e61fe35",
+      "os": "windows",
+      "arch": "x86_64",
+      "file_hashes_verified": true,
+      "installed_from_other_cwd": true,
+      "empty_path_smoke_passed": true,
+      "tested_on": "development Windows host inside Codex"
+    }
+  ],
+  "clean_machine": false,
+  "manual_explorer": false
+}

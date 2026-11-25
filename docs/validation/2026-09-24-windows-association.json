@@ -1,0 +1,19 @@
+{
+  "result": "PASS",
+  "platform": "Windows x64",
+  "provider": "local HTTP fixture",
+  "real_compilation": true,
+  "association_launch": "Windows ShellExecute",
+  "manual_explorer_double_click": false,
+  "gui_calculator": false,
+  "launches": [
+    "WHITE",
+    "WHITE",
+    "GREEN",
+    "GREEN"
+  ],
+  "generation_requests": 2,
+  "installed_engine_sha256": "86cbad7147287b7b988fa74a6f77030dfcb06a4756d3a0ad7db8922527056889",
+  "workspace": "C:\\Users\\marce\\AppData\\Local\\Temp\\crexe-association-66u5mnax",
+  "paid_api_calls": 0
+}

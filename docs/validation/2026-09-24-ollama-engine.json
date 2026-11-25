@@ -1,0 +1,50 @@
+{
+  "date": "2026-09-24",
+  "platform": "Windows x64",
+  "model": "gemma4:12b",
+  "endpoint": "Ollama /api/chat",
+  "stream": false,
+  "paid_api_calls": 0,
+  "calculator": {
+    "status": "NOT_VALIDATED",
+    "first_request": {
+      "timeout_seconds": 300,
+      "max_output_tokens": 6000,
+      "result": "timeout"
+    },
+    "second_execution": {
+      "timeout_seconds": 900,
+      "max_output_tokens": 4500,
+      "context_tokens": 8192,
+      "max_repairs": 1,
+      "provider_requests": 2,
+      "generated_sources": 3,
+      "initial_build": "syntax errors in Program.cs",
+      "repair_build": "syntax fixed; CS0117 MessageBoxButtons.OK1 remains",
+      "published_cache": false
+    }
+  },
+  "console": {
+    "status": "PASS",
+    "prompt": "Crie um programa de console mínimo em C# que calcula o dobro de 21 e imprime 42. Use Program.cs para a entrada e Dobro.cs para a função. Inclua teste de 21 -> 42 e -3 -> -6 no modo --crexe-self-test.",
+    "profile": "dotnet-console",
+    "timeout_seconds": 900,
+    "max_output_tokens": 4500,
+    "context_tokens": 8192,
+    "provider_requests": 1,
+    "source_files": [
+      "Program.cs",
+      "Dobro.cs"
+    ],
+    "build_errors": 0,
+    "build_warnings": 0,
+    "generated_self_test": "PASS",
+    "output": "42",
+    "zip_created": true
+  },
+  "limitations": [
+    "Console test does not validate desktop calculator quality.",
+    "Streaming was not compared; no causal claim about syntax errors.",
+    "No model or Ollama service was stopped."
+  ]
+}

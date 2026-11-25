@@ -1,0 +1,186 @@
+version: 1.0
+
+meta:
+  id: "crexe.examples.calculator.native.rust-executor"
+  name: "Native Calculator"
+  description: "Generates a native calculator per OS using the Rust CREXE executor. Windows uses C++ Win32 with g++/MinGW."
+
+inputs:
+  AppName:
+    type: string
+    default: "CrexeCalculator"
+  AppVersion:
+    type: string
+    default: "1.0.0"
+  WindowTitle:
+    type: string
+    default: "CREXE Calculator"
+  ForceTarget:
+    type: string
+    default: ""
+
+workspace:
+  mode: cache
+  cache:
+    strategy: "sha256(spec+inputs+runtime+model)"
+    root:
+      windows: "%LOCALAPPDATA%/CREXE/cache"
+      macos: "~/Library/Caches/CREXE"
+      linux: "~/.cache/crexe"
+    layout: "{{fingerprint}}"
+    markers:
+      manifest: "crexe.manifest.json"
+      build_ok: ".build_ok"
+
+policies:
+  timeoutSeconds:
+    generate: 180
+    build: 300
+    run: 300
+  allowNetwork: true
+  commandAllowlist:
+    windows: ["cmd", "g++", "gcc", "windres"]
+    macos: ["sh", "bash", "clang", "clang++", "g++", "gcc", "make"]
+    linux: ["sh", "bash", "gcc", "g++", "clang", "clang++", "make", "pkg-config"]
+
+selectors:
+  target:
+    rules:
+      - when: "{{ForceTarget}} == 'windows'"
+        use: "windows"
+      - when: "{{ForceTarget}} == 'macos'"
+        use: "macos"
+      - when: "{{ForceTarget}} == 'linux'"
+        use: "linux"
+      - when: "{{OS}} == 'windows'"
+        use: "windows"
+      - when: "{{OS}} == 'macos'"
+        use: "macos"
+      - when: "{{OS}} == 'linux'"
+        use: "linux"
+    fallback: "linux"
+
+prompt_core:
+  app_definition: |
+    You will generate a NATIVE DESKTOP CALCULATOR.
+
+    UI requirements:
+    - Window title: "{{WindowTitle}}"
+    - A display showing the current expression and/or result
+    - Buttons: 0-9, ".", "+", "-", "*", "/", "=", "C"
+    - Layout can be simple and reliable.
+
+    Behavior requirements:
+    - Numbers and "." build the current input number
+    - Operators (+ - * /) set a binary operation
+    - "=" computes and shows the result
+    - "C" clears all state and display
+    - Division by zero shows "Error" and allows clearing
+    - Keep it simple but working.
+
+    Constraints:
+    - Keep the generated code small and self-contained.
+    - Do not require Visual Studio, MSVC, cl.exe, CMake, Qt, wxWidgets, SDL, Electron, Node, Python, or external UI frameworks on Windows.
+
+  output_contract: |
+    OUTPUT CONTRACT (STRICT):
+    Return ONLY a JSON object:
+    {
+      "files": [
+        {"path": "relative/path", "content": "file content"},
+        ...
+      ],
+      "hints": {
+        "entrypoint": "optional",
+        "notes": "optional"
+      }
+    }
+    No markdown. No explanations. No extra text.
+
+prompt:
+  system: |
+    You are a project generator for CREXE. Follow the output contract EXACTLY.
+  user_by_target:
+    windows: |
+      {{prompt_core.app_definition}}
+
+      Target: Windows desktop.
+      Language: C++17 compatible with MinGW-w64 g++.
+      UI: Native Win32 API controls, forms-style window.
+      Deliver:
+      - src/main.cpp
+
+      Build assumptions:
+      - Must compile with:
+        g++ -std=c++17 src\main.cpp -o build\{{AppName}}.exe -mwindows -municode -static-libgcc -static-libstdc++ -luser32 -lgdi32 -lcomctl32
+      - Must NOT use MSVC-only pragmas, Visual Studio project files, .rc resource files, .NET, C++/CLI, or cl.exe assumptions.
+      - Use wWinMain, CreateWindowExW, BUTTON controls, and an EDIT or STATIC display.
+      - The generated C++ should be fully contained in src/main.cpp.
+
+      {{prompt_core.output_contract}}
+
+    macos: |
+      {{prompt_core.app_definition}}
+
+      Target: macOS desktop.
+      Language: Objective-C++ compatible with clang++.
+      UI: Cocoa programmatic UI, no storyboard.
+      Deliver:
+      - src/main.mm
+
+      Build assumptions:
+      - Must compile with:
+        clang++ -std=c++17 -x objective-c++ -framework Cocoa -O2 -Wall -Wextra -o build/{{AppName}} src/main.mm
+
+      {{prompt_core.output_contract}}
+
+    linux: |
+      {{prompt_core.app_definition}}
+
+      Target: Linux desktop.
+      Language: C compatible with gcc.
+      UI: GTK3.
+      Deliver:
+      - src/main.c
+
+      Build assumptions:
+      - Must compile with:
+        gcc -O2 -Wall -Wextra -o build/{{AppName}} src/main.c $(pkg-config --cflags --libs gtk+-3.0)
+
+      {{prompt_core.output_contract}}
+
+generator:
+  mode: "online"
+  provider: "openai-compatible"
+  baseUrl: "https://api.openai.com/v1"
+  apiKeyEnv: "OPENAI_API_KEY"
+  model: "gpt-5.4"
+  temperature: 0.2
+  maxOutputTokens: 6000
+  tokenParameter: "auto"
+  sendTemperature: true
+
+targets:
+  windows:
+    build:
+      steps:
+        - cmd: ["cmd", "/c", "if not exist build mkdir build"]
+        - cmd: ["g++", "-std=c++17", "src\\main.cpp", "-o", "build\\{{AppName}}.exe", "-mwindows", "-municode", "-static-libgcc", "-static-libstdc++", "-luser32", "-lgdi32", "-lcomctl32"]
+    run:
+      cmd: ["build\\{{AppName}}.exe"]
+
+  macos:
+    build:
+      steps:
+        - cmd: ["sh", "-lc", "mkdir -p build"]
+        - cmd: ["sh", "-lc", "clang++ -std=c++17 -x objective-c++ -framework Cocoa -O2 -Wall -Wextra -o build/{{AppName}} src/main.mm"]
+    run:
+      cmd: ["./build/{{AppName}}"]
+
+  linux:
+    build:
+      steps:
+        - cmd: ["sh", "-lc", "mkdir -p build"]
+        - cmd: ["sh", "-lc", "gcc -O2 -Wall -Wextra -o build/{{AppName}} src/main.c $(pkg-config --cflags --libs gtk+-3.0)"]
+    run:
+      cmd: ["./build/{{AppName}}"]

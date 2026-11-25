@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "generation_requests": 1,
+  "source_files": 3,
+  "build_errors": 0,
+  "build_warnings": 14,
+  "generated_self_test": "PASS",
+  "real_gui_operations": [
+    {
+      "keys": "2+3=",
+      "result": "5"
+    },
+    {
+      "keys": "8-3=",
+      "result": "5"
+    },
+    {
+      "keys": "2*3=",
+      "result": "6"
+    },
+    {
+      "keys": "8/2=",
+      "result": "4"
+    }
+  ],
+  "gui_launched_by_engine": true,
+  "cache_hit_without_generation": true,
+  "screenshot": "2026-09-24-calculadora-openai.png",
+  "credit_purchases": 0,
+  "zip_build": "PASS",
+  "zip_test": "PASS",
+  "zip_publish": "PASS",
+  "zip_validation_environment": "same Windows host, fresh extracted directory with spaces; not a clean second machine",
+  "fallback_reason": "Ollama calculator timed out, then failed compilation after one correction",
+  "all_gui_behaviors_verified": false
+}

@@ -1,0 +1,42 @@
+# Keep the imported baseline byte-for-byte, including existing line endings.
+# Adopt formatting/line-ending conventions in a separate implementation change.
+* -text
+/.github/** text eol=lf
+/.cargo/** text eol=lf
+/src/** text eol=lf
+/*.toml text eol=lf
+/Cargo.lock text eol=lf
+/README.md text eol=lf
+/CONTRIBUTING.md text eol=lf
+/SECURITY.md text eol=lf
+/CHANGELOG.md text eol=lf
+/config.example.toml text eol=lf
+/scripts/windows/** text eol=crlf
+/scripts/unix/** text eol=lf
+/scripts/*.py text eol=lf
+/examples/** text eol=lf
+/tests/*.rs text eol=lf
+/tests/*.py text eol=lf
+/tests/baseline-audit/README.md text eol=lf
+/docs/IMPLEMENTACAO_V1.md text eol=lf
+/docs/CONFIGURACAO.md text eol=lf
+/docs/FORMATOS_V1.md text eol=lf
+/docs/PROJETOS_V1.md text eol=lf
+/docs/PERFIS_V1.md text eol=lf
+/docs/DISTRIBUICAO_V1.md text eol=lf
+/docs/VALIDACAO_INSTALACAO_WINDOWS.md text eol=lf
+/docs/platforms/README.md text eol=lf
+/docs/crexe_handoff_docs/README.md text eol=lf
+/docs/validation/*.json text eol=lf
+# Preserve imported evidence exactly; these reports predate LF normalization.
+/docs/validation/2026-09-23-ollama-probe.json -text !eol
+/docs/validation/2026-09-23-smtp-reference-results.json -text !eol
+
+# LICENSE was already tracked with normalized line endings in the initial commit.
+LICENSE text
+# Upstream notice snapshots are checked by byte hash on every platform.
+/scripts/third_party_licenses/** -text !eol
+# Supplied CREXP/CREXB handoffs and JSON references are downloadable originals.
+/docs/formatos/originais/** -text !eol whitespace=-blank-at-eol
+# CREXP is a binary ZIP, even though the contained documents are text.
+/examples/**/*.crexp -text !eol

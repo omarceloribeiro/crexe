@@ -1,0 +1,12 @@
+crexp: 1
+package:
+  name: Calculadora CREXP
+  id: org.crexe.examples.calculadora
+  version: 1.0.0
+documents:
+  - path: requirements.md
+    role: requirements
+    priority: 100
+  - path: tests.md
+    role: acceptance
+    priority: 90
