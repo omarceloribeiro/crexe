@@ -101,3 +101,14 @@ test('an explicit original document link must not become a link to its own trans
   assert.match(result.html, /href="\.\.\/docs\/crexe_handoff_docs\/01_RFC_CREXE_SPEC_DRAFT.md"/);
   assert.doesNotMatch(result.html, /href="exemplo.html"/);
 });
+
+test('original download metadata distinguishes Portuguese handoffs from English RFCs', () => {
+  const handoff = { ...current, originalSource: 'docs/formatos/originais/CREXP-HANDOFF-COMPLETO.md', originalLanguage: 'pt-BR' };
+  assert.equal(validateCatalog([handoff])[0].originalLanguage, 'pt-BR');
+  assert.throws(() => validateCatalog([{ ...handoff, originalLanguage: 'unknown' }]), /Unsupported/);
+  assert.throws(() => validateCatalog([{ ...current, originalLanguage: 'pt-BR' }]), /requires an original source/);
+  const english = { ...handoff, language: 'en', source: 'docs/en/publicacoes/crexp.md' };
+  const result = renderPublication('[complete Portuguese handoff](../../formatos/originais/CREXP-HANDOFF-COMPLETO.md)', english, [english]);
+  assert.match(result.html, /href="\.\.\/\.\.\/docs\/formatos\/originais\/CREXP-HANDOFF-COMPLETO.md"/);
+  assert.doesNotMatch(result.html, /href="exemplo.html"/);
+});

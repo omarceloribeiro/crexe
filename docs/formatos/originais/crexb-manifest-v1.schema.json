@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crexe.org/schemas/crexb-manifest-v1.schema.json",
+  "title": "CREXB Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "schemaVersion",
+    "bundle",
+    "recipe",
+    "generation",
+    "targets",
+    "validation",
+    "integrity",
+    "behavior"
+  ],
+  "properties": {
+    "format": {
+      "const": "crexe.bundle"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "version", "buildId", "createdAt", "kind"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "buildId": {"type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$"},
+        "createdAt": {"type": "string", "format": "date-time"},
+        "kind": {"const": "executable-snapshot"}
+      }
+    },
+    "publisher": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "id": {"type": "string"},
+        "signatureRequired": {"type": "boolean"}
+      }
+    },
+    "recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "sha256"],
+      "properties": {
+        "kind": {
+          "enum": ["crexe-text", "crexp-package", "crexe-yaml", "crexe-markdown"]
+        },
+        "path": {"type": "string", "pattern": "^recipe/"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+        "resolvedPath": {"type": "string", "pattern": "^recipe/"},
+        "generationPlanPath": {"type": "string", "pattern": "^recipe/"}
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["generationId", "engineVersion", "resolver"],
+      "properties": {
+        "generationId": {"type": "string", "minLength": 1},
+        "engineVersion": {"type": "string", "minLength": 1},
+        "recipeCompilerVersion": {"type": "string"},
+        "resolver": {
+          "type": "object",
+          "required": ["id", "version"],
+          "properties": {
+            "id": {"type": "string"},
+            "version": {"type": "string"}
+          }
+        },
+        "provider": {"type": "object"},
+        "toolchainFingerprint": {"type": "string"}
+      }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "os",
+          "architecture",
+          "payloadRoot",
+          "launchManifest",
+          "runtimeManifest",
+          "runtimeModel"
+        ],
+        "properties": {
+          "id": {"type": "string"},
+          "os": {"type": "string"},
+          "architecture": {"type": "string"},
+          "abi": {"type": "string"},
+          "payloadRoot": {"type": "string", "pattern": "^payload/"},
+          "launchManifest": {"type": "string", "pattern": "^payload/"},
+          "runtimeManifest": {"type": "string", "pattern": "^payload/"},
+          "runtimeModel": {
+            "enum": ["self-contained", "framework-dependent", "external-runtime"]
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "build", "tests", "applicationStart"],
+      "properties": {
+        "status": {"const": "accepted"},
+        "acceptedAt": {"type": "string", "format": "date-time"},
+        "build": {"enum": ["passed", "not-required"]},
+        "tests": {"enum": ["passed", "not-required"]},
+        "applicationStart": {"enum": ["passed", "not-verified"]},
+        "acceptance": {"enum": ["passed", "partial", "not-required"]}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "checksumsPath", "artifactManifestPath"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "checksumsPath": {"const": "META-INF/checksums.sha256"},
+        "artifactManifestPath": {"const": "META-INF/artifact-manifest.json"}
+      }
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contentKey": {"type": "string"},
+        "recipeKey": {"type": "string"}
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowRegeneration",
+        "onIncompatibleTarget",
+        "onMissingRuntime",
+        "onIntegrityFailure"
+      ],
+      "properties": {
+        "allowRegeneration": {"type": "boolean"},
+        "onIncompatibleTarget": {
+          "enum": ["ask-to-regenerate", "block", "regenerate-by-policy"]
+        },
+        "onMissingRuntime": {
+          "enum": ["ask-to-repair", "block", "regenerate-self-contained"]
+        },
+        "onIntegrityFailure": {"const": "block"}
+      }
+    }
+  }
+}

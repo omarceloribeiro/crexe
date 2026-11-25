@@ -186,5 +186,51 @@
     "source": "docs/en/CONTRIBUTING.md",
     "date": "2026-11-24",
     "notice": "English translation of the contribution guide. Follow the repository's current toolchain and validation requirements when proposing code changes."
+  },
+  {
+    "slug": "crexp",
+    "title": "CREXP: a package of specifications",
+    "description": "Multiple SDD documents in a ZIP: the preview guide, privacy, and the complete original handoff download.",
+    "category": "guide",
+    "status": "Minimal preview · Evolving architecture",
+    "source": "docs/en/publicacoes/crexp.md",
+    "notice": "Maintained guide to the implemented subset, not a full translation of the handoff. Download the complete unchanged Portuguese original, including future proposals and earlier licensing references. The engine uses MIT; designated output materials use MIT-0.",
+    "originalSource": "docs/formatos/originais/CREXP-HANDOFF-COMPLETO.md",
+    "originalLanguage": "pt-BR",
+    "sourceAliases": [
+      "docs/publicacoes/crexp.md"
+    ],
+    "date": "2026-11-25",
+    "language": "en"
+  },
+  {
+    "slug": "crexb",
+    "title": "CREXB: recipe and application, together",
+    "description": "Distribute an accepted revision and open a compatible payload without AI or recompilation. Scope, runtime, and the complete proposal.",
+    "category": "guide",
+    "status": "Minimal preview · One target per bundle",
+    "source": "docs/en/publicacoes/crexb.md",
+    "notice": "Executable bundle preview, without application sandboxing or publisher authentication. Hashes verify integrity; signatures and the complete architecture remain on the roadmap. This guide is not a full translation of the downloadable Portuguese handoff. Schema and example are references, not a ready-to-run application.",
+    "originalSource": "docs/formatos/originais/CREXB-HANDOFF-COMPLETO.md",
+    "originalLanguage": "pt-BR",
+    "sourceAliases": [
+      "docs/publicacoes/crexb.md"
+    ],
+    "date": "2026-11-25",
+    "language": "en"
+  },
+  {
+    "slug": "roadmap-formatos",
+    "title": "Roadmap: complete CREXP and CREXB",
+    "description": "What the preview delivers and what remains for complete SDD packages and executable bundles, with unabridged originals.",
+    "category": "guide",
+    "status": "Roadmap · No promised dates",
+    "source": "docs/en/publicacoes/roadmap-formatos.md",
+    "notice": "Public planning. Future stages are not available features. Downloads preserve both complete original Portuguese handoffs and original JSON references; placeholder examples are not executable builds.",
+    "sourceAliases": [
+      "docs/publicacoes/roadmap-formatos.md"
+    ],
+    "date": "2026-11-25",
+    "language": "en"
   }
 ]

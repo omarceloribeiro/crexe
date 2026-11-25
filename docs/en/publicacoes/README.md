@@ -16,6 +16,9 @@ The RFC is a historical proposal, not an approved standard or a complete descrip
 
 ## Technical guides
 
+- [CREXP: a package of specifications](crexp.md): SDD ZIP preview, current contract, privacy, and the complete original handoff.
+- [CREXB: recipe and application, together](crexb.md): accepted snapshots, opening without generation, compatibility, and proposal downloads.
+- [Formats roadmap](roadmap-formatos.md): minimal delivery and complete architecture for both formats, without promised dates. These guides fully translate their maintained Portuguese counterparts; the original Portuguese handoffs are separately labelled, preserved, and downloadable unabridged. They have not been translated in full.
 - [Security and trust](guia-seguranca-e-confianca.md)
 - [Local models, remote models, and operating system APIs](guia-modelos-locais-e-remotos.md)
 

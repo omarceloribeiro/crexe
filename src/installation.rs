@@ -101,7 +101,7 @@ pub(crate) fn associate() -> Result<()> {
     }
     #[cfg(windows)]
     println!(
-        "Associated .crexe with {} and added Gerar com CREXE for individual files. Windows may require choosing CREXE as the default app for .crexe; other file defaults are unchanged.",
+        "Associated .crexe, .crexp and .crexb with {} and added Gerar com CREXE for individual files. Windows may require choosing CREXE as the default app for these formats; other file defaults are unchanged.",
         exe.display()
     );
     #[cfg(windows)]

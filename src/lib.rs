@@ -15,11 +15,14 @@ mod config;
 mod config_editor;
 mod configure;
 mod credentials;
+mod crexb;
+mod crexp;
 mod document_editor;
 mod edit;
 mod environment;
 mod executor;
 mod format;
+mod format_dispatch;
 mod generator;
 mod history;
 mod installation;
@@ -33,6 +36,7 @@ mod profiles;
 mod project;
 mod reader;
 mod reader_desktop;
+mod secure_archive;
 
 const RUNTIME_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -80,9 +84,9 @@ enum Commands {
         #[arg(long)]
         import: Option<PathBuf>,
     },
-    /// Generate + build + run a .crexe file
+    /// Generate a recipe/package or open an existing compatible bundle
     Exec {
-        /// Path to .crexe file
+        /// Path to .crexe, .crexp or .crexb file
         file: PathBuf,
         /// Override inputs: KEY=VALUE
         #[arg(long = "set")]
@@ -97,9 +101,14 @@ enum Commands {
         #[arg(long)]
         cache_dir: Option<PathBuf>,
     },
+    /// Distribute an approved build or inspect and open a bundle without generation
+    Bundle {
+        #[command(subcommand)]
+        command: BundleCommands,
+    },
     /// Install this engine at the stable per-user releases/v1 path
     Install,
-    /// Associate .crexe with the installed engine for the current user
+    /// Associate .crexe, .crexp and .crexb with the installed engine for this user
     Associate,
     /// Remove only associations owned by the installed CREXE engine
     Unassociate,
@@ -130,6 +139,34 @@ enum Commands {
     /// Export current project sources and scripts into a new ZIP without generation
     Export {
         project: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum BundleCommands {
+    /// Export the last accepted revision, including its original recipe
+    Create {
+        recipe: PathBuf,
+        #[arg(long, default_value = "current", value_parser = ["current"])]
+        target: String,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long)]
+        cache_dir: Option<PathBuf>,
+    },
+    Verify {
+        file: PathBuf,
+    },
+    Inspect {
+        file: PathBuf,
+    },
+    Run {
+        file: PathBuf,
+    },
+    ExtractRecipe {
+        file: PathBuf,
         #[arg(long)]
         output: PathBuf,
     },
@@ -170,7 +207,7 @@ pub fn run() -> Result<()> {
     }
     if args
         .get(1)
-        .is_some_and(|arg| looks_like_crexe_file(Path::new(arg)))
+        .is_some_and(|arg| format_dispatch::is_crexe_format(Path::new(arg)))
     {
         args.insert(1, "exec".into());
     }
@@ -185,7 +222,10 @@ pub fn run() -> Result<()> {
                 return Err(error);
             }
         }
-        Commands::Edit { file } => edit::open(file)?,
+        Commands::Edit { file } => {
+            format_dispatch::require_text(file)?;
+            edit::open(file)?;
+        }
         Commands::Configure { import } => {
             configure::open(cli.config.as_deref(), import.as_deref())?
         }
@@ -197,7 +237,7 @@ pub fn run() -> Result<()> {
             cache_dir,
         } => {
             let overrides = parse_set_args(set)?;
-            if let Err(error) = orchestration::exec(
+            if let Err(error) = format_dispatch::exec(
                 file,
                 overrides,
                 *rebuild,
@@ -211,6 +251,7 @@ pub fn run() -> Result<()> {
                 return Err(error);
             }
         }
+        Commands::Bundle { command } => format_dispatch::bundle(command, &cli)?,
         Commands::Install => installation::install()?,
         Commands::Associate => installation::associate()?,
         Commands::Unassociate => installation::unassociate()?,
@@ -308,6 +349,9 @@ fn doctor(cli: &Cli, check: bool) -> Result<()> {
 }
 
 fn inspect(file: &Path, cli: &Cli) -> Result<()> {
+    if format_dispatch::inspect(file)? {
+        return Ok(());
+    }
     let raw = format::read(file)?;
     let (format, name, spec) = match format::parse(&raw, file)? {
         format::Document::Yaml(spec) => (
@@ -359,13 +403,6 @@ fn inspect(file: &Path, cli: &Cli) -> Result<()> {
         }))?
     );
     Ok(())
-}
-
-fn looks_like_crexe_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|s| s.to_str())
-        .map(|s| s.eq_ignore_ascii_case("crexe"))
-        .unwrap_or(false)
 }
 
 fn parse_set_args(items: &[String]) -> Result<BTreeMap<String, String>> {

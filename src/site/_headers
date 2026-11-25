@@ -10,12 +10,24 @@
   Content-Type: application/octet-stream
   Content-Disposition: attachment
 
+/*.crexp
+  Content-Type: application/octet-stream
+  Content-Disposition: attachment
+
+/*.crexb
+  Content-Type: application/octet-stream
+  Content-Disposition: attachment
+
 /*.sha256
   Content-Type: text/plain; charset=utf-8
   Content-Disposition: attachment
 
 /*.zip
   Content-Type: application/zip
+  Content-Disposition: attachment
+
+/docs/formatos/originais/*.json
+  Content-Type: application/json; charset=utf-8
   Content-Disposition: attachment
 
 /*.tar.gz

@@ -34,7 +34,7 @@ The export destination must be a new file. The ZIP contains the reader project, 
 
 The command accepts regular local files with a valid extension, including unknown extensions. The normalized extension must be at most 64 UTF-8 bytes and contain only letters, numbers, hyphens or underscores. Files with no extension, or an empty, invalid, overly long or non-UTF-8 extension, receive an unsupported-type message before any model call. The engine does not read document bytes to identify its type. Relative paths resolve from the caller's directory. Names containing spaces, accents, or a leading hyphen are separate arguments; they do not become shell commands.
 
-Selecting a `.crexe` in this action also returns a message without sending the recipe to the model. To execute a recipe, open it normally or use `crexe exec recipe.crexe`; **Generate with CREXE** does not silently delegate to that workflow.
+Selecting `.crexe`, `.crexp`, or `.crexb` in this action also returns a message without sending the recipe to the model. To execute a recipe, package, or bundle, open it normally or use `crexe exec recipe.crexe`; **Generate with CREXE** does not silently delegate to that workflow. In the explicit [CREXP](publicacoes/crexp.md) workflow, SDD documents are the recipe sent to the provider; that action has a different privacy contract from the document reader.
 
 Open the engine without arguments or run `crexe configure`. Under **Gerar com CREXE**, click **Selecionar arquivo e gerar programa…** (Select a file and generate a program). The picker allows one file at a time and does not filter extensions. Cancelling ends the selection without generation or a model call. Opening uses the saved configuration; unsaved settings edits remain intact and are not applied to the reader.
 
@@ -144,7 +144,7 @@ Use synthetic documents and a new directory. Record commit/package, host, profil
 | Engine picker | Open `configure`, select the document, and follow progress until the reader opens. The engine window remains available; after preparation, select another document. |
 | Pending settings | Edit a preference without saving and use the picker; opening uses saved settings and the pending edit remains in the form. |
 | Picker cancellation | Open and cancel the picker; no generation starts. |
-| Unsupported type | Select a file with no extension, an invalid extension or a `.crexe` recipe; check the message and absence of model calls. |
+| Unsupported type | Select a file with no extension, an invalid extension, a `.crexe` recipe, a `.crexp` package, or a `.crexb` bundle; check the message and absence of model calls. |
 | Failure before generation | In a test environment without the SDK or with insufficient budget, open a new type; check the error and absence of provider requests. |
 | Concurrency/failure | Open two documents of the same type during preparation; check that one preparation is shared. On failure, both receive diagnostics without an automatic new generation from the waiting caller. |
 

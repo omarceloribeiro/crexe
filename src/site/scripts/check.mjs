@@ -117,6 +117,27 @@ assert.equal(createHash('sha256').update(await readFile(path.join(distRoot, orig
   'b889ddc77e9d156da5a656c3abefaf49c0b46a5a54c3759542f83e12421bb1f8', 'The supplied English RFC original must remain unchanged.');
 assert(htmlPages.get('biblioteca/rfc-draft.html').includes(`href="../${originalRfc}" download`), 'The Portuguese RFC must offer the original English download.');
 
+const formatOriginals = new Map([
+  ['CREXP-HANDOFF-COMPLETO.md', '7d5e67b9efc273aabecaaea846f2f2aa8920b695676ed156ea6ab27ade323f4c'],
+  ['CREXB-HANDOFF-COMPLETO.md', 'f2c9223620edcd26f3345983dac83b889dde7ce80e77ac7ea8d0eebde4924166'],
+  ['crexb-manifest-v1.schema.json', 'e39c24295d83f718660aefa77fcb66a81dde125fd684f19e9d1944e8cb14c0d6'],
+  ['crexb-manifest.example.json', '2da8dc6e87d26b704532123aaf74447ff80c80f91933f213f6399ccac45dee4b'],
+]);
+for (const [file, hash] of formatOriginals) {
+  assert.equal(createHash('sha256').update(await readFile(path.join(distRoot, 'docs/formatos/originais', file))).digest('hex'),
+    hash, `The supplied format reference must remain byte-identical: ${file}`);
+}
+for (const [directory, prefix, label] of [['biblioteca', '../', 'Baixar handoff original completo em português'], ['en/library', '../../', 'Download complete Portuguese handoff']]) {
+  for (const slug of ['crexp', 'crexb']) {
+    assert(htmlPages.get(`${directory}/${slug}.html`).includes(`href="${prefix}docs/formatos/originais/${slug.toUpperCase()}-HANDOFF-COMPLETO.md" download hreflang="pt-BR" data-original-download>${label}</a>`),
+      `The ${slug} guide must label and download its full Portuguese original in ${directory}.`);
+  }
+  assert(htmlPages.has(`${directory}/roadmap-formatos.html`), 'The formats roadmap must have both language editions.');
+}
+const draftSchema = await readFile(path.join(distRoot, 'schemas/crexb-manifest-v1.schema.json'));
+assert.equal(createHash('sha256').update(draftSchema).digest('hex'), formatOriginals.get('crexb-manifest-v1.schema.json'));
+assert.equal(JSON.parse(draftSchema).$id, 'https://crexe.org/schemas/crexb-manifest-v1.schema.json');
+
 const manifest = validateDownloads(await readJson(path.join(distRoot, 'downloads.json')));
 assert.deepEqual(manifest, await readJson(path.join(siteRoot, 'downloads.json')));
 const readyManifest = {

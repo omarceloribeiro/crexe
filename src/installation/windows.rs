@@ -6,6 +6,21 @@ const PROG_ID: &str = "CREXE.Intent.v1";
 const EXTENSION: &str = ".crexe";
 const PREVIOUS: &str = "PreviousDefault";
 const GENERATE_VERB: &str = "*\\shell\\CREXE.Generate";
+const ASSOCIATIONS: [(&str, &str, &str, bool); 3] = [
+    (EXTENSION, PROG_ID, "Creative Executable", true),
+    (
+        ".crexp",
+        "CREXE.Package.v1",
+        "Creative Executable Package",
+        false,
+    ),
+    (
+        ".crexb",
+        "CREXE.Bundle.v1",
+        "Creative Executable Bundle",
+        false,
+    ),
+];
 
 #[link(name = "shell32")]
 unsafe extern "system" {
@@ -84,44 +99,54 @@ pub(super) fn associate(exe: &Path) -> Result<()> {
 fn register(classes: &RegKey, exe: &Path) -> Result<()> {
     let command = open_command(exe)?;
     let generate = generate_command(exe)?;
-    // Check both owners before writing either integration. A second installation
-    // must not leave the first one's .crexe handler or generic menu half-replaced.
-    check_registration_owner(
-        classes,
-        &format!("{PROG_ID}\\shell\\open\\command"),
-        &[command.clone(), format!("\"{}\" \"%1\"", exe.display())],
-    )?;
+    // Verify every handler and the menu before changing any integration. A second
+    // installation must not leave a mixture of different owners behind.
+    for (_, prog_id, _, _) in ASSOCIATIONS {
+        let mut accepted = vec![command.clone()];
+        if prog_id == PROG_ID {
+            accepted.push(format!("\"{}\" \"%1\"", exe.display()));
+        }
+        check_registration_owner(
+            classes,
+            &format!("{prog_id}\\shell\\open\\command"),
+            &accepted,
+        )?;
+    }
     check_registration_owner(
         classes,
         &format!("{GENERATE_VERB}\\command"),
         std::slice::from_ref(&generate),
     )?;
-    let (app, _) = classes.create_subkey(PROG_ID)?;
-    let (open, _) = app.create_subkey("shell\\open\\command")?;
-    let (extension, _) = classes.create_subkey(EXTENSION)?;
-    let current = string(&extension, "")?;
-    // Save once, never replace the original default on repeated registration.
-    if string(&app, PREVIOUS)?.is_none() {
-        app.set_value(
-            PREVIOUS,
-            &current.as_deref().filter(|v| *v != PROG_ID).unwrap_or(""),
+    for (extension_name, prog_id, label, editable) in ASSOCIATIONS {
+        let (app, _) = classes.create_subkey(prog_id)?;
+        let (open, _) = app.create_subkey("shell\\open\\command")?;
+        let (extension, _) = classes.create_subkey(extension_name)?;
+        let current = string(&extension, "")?;
+        // Store each extension's original default under its own ProgID, once.
+        if string(&app, PREVIOUS)?.is_none() {
+            app.set_value(
+                PREVIOUS,
+                &current.as_deref().filter(|v| *v != prog_id).unwrap_or(""),
+            )?;
+        }
+        app.set_value("", &label)?;
+        open.set_value("", &command)?;
+        if editable {
+            let (edit, _) = app.create_subkey("shell\\edit")?;
+            edit.set_value("", &"Editar")?;
+            let (edit_command, _) = edit.create_subkey("command")?;
+            edit_command.set_value("", &format!("\"{}\" edit \"%1\"", exe.display()))?;
+        }
+        let (with, _) = extension.create_subkey("OpenWithProgids")?;
+        with.set_raw_value(
+            prog_id,
+            &winreg::RegValue {
+                bytes: Vec::new(),
+                vtype: REG_NONE,
+            },
         )?;
+        extension.set_value("", &prog_id)?;
     }
-    app.set_value("", &"Creative Executable")?;
-    open.set_value("", &command)?;
-    let (edit, _) = app.create_subkey("shell\\edit")?;
-    edit.set_value("", &"Editar")?;
-    let (edit_command, _) = edit.create_subkey("command")?;
-    edit_command.set_value("", &format!("\"{}\" edit \"%1\"", exe.display()))?;
-    let (with, _) = extension.create_subkey("OpenWithProgids")?;
-    with.set_raw_value(
-        PROG_ID,
-        &winreg::RegValue {
-            bytes: Vec::new(),
-            vtype: REG_NONE,
-        },
-    )?;
-    extension.set_value("", &PROG_ID)?;
     let (generate_verb, _) = classes.create_subkey(GENERATE_VERB)?;
     generate_verb.set_value("", &"Gerar com CREXE")?;
     // A document is supplied explicitly, never made the default application for
@@ -141,11 +166,14 @@ pub(super) fn unassociate(exe: &Path) -> Result<()> {
 }
 
 fn unregister(classes: &RegKey, exe: &Path) -> Result<()> {
-    let app = optional_key(classes, PROG_ID)?;
+    let apps = ASSOCIATIONS
+        .iter()
+        .map(|(_, prog_id, _, _)| optional_key(classes, prog_id))
+        .collect::<Result<Vec<_>>>()?;
     let generate = optional_key(classes, GENERATE_VERB)?;
-    // Missing one integration must not prevent removing the other. Verify every
+    // Missing one integration must not prevent removing the others. Verify every
     // present owner first so refusal never partially removes an installation.
-    if let Some(app) = &app {
+    for app in apps.iter().flatten() {
         let command = app.open_subkey("shell\\open\\command")?;
         if string(&command, "")?.as_deref() != Some(open_command(exe)?.as_str()) {
             bail!("Association belongs to another installation; nothing was removed");
@@ -157,9 +185,12 @@ fn unregister(classes: &RegKey, exe: &Path) -> Result<()> {
             bail!("Generate menu belongs to another installation; nothing was removed");
         }
     }
-    if let Some(app) = app {
-        if let Some(extension) = optional_key(classes, EXTENSION)? {
-            if string(&extension, "")?.as_deref() == Some(PROG_ID) {
+    for ((extension_name, prog_id, _, _), app) in ASSOCIATIONS.iter().zip(apps) {
+        let Some(app) = app else {
+            continue;
+        };
+        if let Some(extension) = optional_key(classes, extension_name)? {
+            if string(&extension, "")?.as_deref() == Some(*prog_id) {
                 match string(&app, PREVIOUS)?.filter(|v| !v.is_empty()) {
                     Some(previous) => extension.set_value("", &previous)?,
                     None => {
@@ -168,15 +199,15 @@ fn unregister(classes: &RegKey, exe: &Path) -> Result<()> {
                 }
             }
             if let Some(with) = optional_key(&extension, "OpenWithProgids")? {
-                if let Err(error) = with.delete_value(PROG_ID) {
+                if let Err(error) = with.delete_value(prog_id) {
                     if error.kind() != io::ErrorKind::NotFound {
                         return Err(error.into());
                     }
                 }
             }
         }
-        // Only our verified ProgID; never delete .crexe or Explorer's UserChoice.
-        classes.delete_subkey_all(PROG_ID)?;
+        // Only our verified ProgID; never delete extension keys or UserChoice.
+        classes.delete_subkey_all(prog_id)?;
     }
     if generate.is_some() {
         // Do not remove the shared *\\shell key or any neighbouring verb.
@@ -378,5 +409,119 @@ mod tests {
         unregister(&classes, &exe).unwrap();
         assert_eq!(string(&ext, "").unwrap().as_deref(), Some("Other.App"));
         user.delete_subkey_all(key_path).unwrap();
+    }
+
+    #[test]
+    fn package_and_bundle_handlers_restore_their_own_defaults_without_edit_verbs() {
+        let fixture = RegistryFixture::new();
+        for (extension, _, _, _) in ASSOCIATIONS {
+            let (key, _) = fixture.classes.create_subkey(extension).unwrap();
+            key.set_value("", &format!("Previous{extension}")).unwrap();
+            let (user_choice, _) = key.create_subkey("UserChoice").unwrap();
+            user_choice
+                .set_value("ProgId", &"User.Selected.App")
+                .unwrap();
+            let (other, _) = key.create_subkey("OpenWithProgids").unwrap();
+            other.set_value("Other.App", &"").unwrap();
+        }
+        register(&fixture.classes, &fixture.exe).unwrap();
+        register(&fixture.classes, &fixture.exe).unwrap();
+        for (extension, prog_id, _, editable) in ASSOCIATIONS {
+            let key = fixture.classes.open_subkey(extension).unwrap();
+            assert_eq!(string(&key, "").unwrap().as_deref(), Some(prog_id));
+            let app = fixture.classes.open_subkey(prog_id).unwrap();
+            assert_eq!(
+                string(&app, PREVIOUS).unwrap(),
+                Some(format!("Previous{extension}"))
+            );
+            assert_eq!(
+                string(&app.open_subkey("shell\\open\\command").unwrap(), "").unwrap(),
+                Some(open_command(&fixture.exe).unwrap())
+            );
+            assert_eq!(
+                optional_key(&app, "shell\\edit").unwrap().is_some(),
+                editable
+            );
+        }
+        unregister(&fixture.classes, &fixture.exe).unwrap();
+        for (extension, prog_id, _, _) in ASSOCIATIONS {
+            let key = fixture.classes.open_subkey(extension).unwrap();
+            assert_eq!(
+                string(&key, "").unwrap(),
+                Some(format!("Previous{extension}"))
+            );
+            assert_eq!(
+                string(&key.open_subkey("UserChoice").unwrap(), "ProgId")
+                    .unwrap()
+                    .as_deref(),
+                Some("User.Selected.App")
+            );
+            let with = key.open_subkey("OpenWithProgids").unwrap();
+            assert!(with.get_raw_value(prog_id).is_err());
+            assert_eq!(string(&with, "Other.App").unwrap().as_deref(), Some(""));
+            assert!(optional_key(&fixture.classes, prog_id).unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn foreign_package_or_bundle_owner_prevents_any_registration_or_removal() {
+        for (_, foreign_id, _, _) in ASSOCIATIONS.into_iter().skip(1) {
+            let fixture = RegistryFixture::new();
+            let (command, _) = fixture
+                .classes
+                .create_subkey(format!("{foreign_id}\\shell\\open\\command"))
+                .unwrap();
+            command.set_value("", &"another installation").unwrap();
+            assert!(register(&fixture.classes, &fixture.exe).is_err());
+            for (extension, _, _, _) in ASSOCIATIONS {
+                assert!(optional_key(&fixture.classes, extension).unwrap().is_none());
+            }
+            assert!(optional_key(&fixture.classes, PROG_ID).unwrap().is_none());
+            assert!(optional_key(&fixture.classes, GENERATE_VERB)
+                .unwrap()
+                .is_none());
+
+            command
+                .set_value("", &open_command(&fixture.exe).unwrap())
+                .unwrap();
+            register(&fixture.classes, &fixture.exe).unwrap();
+            command.set_value("", &"another installation").unwrap();
+            assert!(unregister(&fixture.classes, &fixture.exe).is_err());
+            for (extension, prog_id, _, _) in ASSOCIATIONS {
+                assert!(optional_key(&fixture.classes, prog_id).unwrap().is_some());
+                assert_eq!(
+                    string(&fixture.classes.open_subkey(extension).unwrap(), "")
+                        .unwrap()
+                        .as_deref(),
+                    Some(prog_id)
+                );
+            }
+            assert!(optional_key(&fixture.classes, GENERATE_VERB)
+                .unwrap()
+                .is_some());
+        }
+    }
+
+    #[test]
+    fn removing_package_handlers_preserves_new_user_defaults() {
+        let fixture = RegistryFixture::new();
+        register(&fixture.classes, &fixture.exe).unwrap();
+        for (extension, _, _, _) in ASSOCIATIONS {
+            let key = fixture
+                .classes
+                .open_subkey_with_flags(extension, KEY_READ | KEY_WRITE)
+                .unwrap();
+            key.set_value("", &"Changed.After.Install").unwrap();
+        }
+        unregister(&fixture.classes, &fixture.exe).unwrap();
+        unregister(&fixture.classes, &fixture.exe).unwrap();
+        for (extension, _, _, _) in ASSOCIATIONS {
+            assert_eq!(
+                string(&fixture.classes.open_subkey(extension).unwrap(), "")
+                    .unwrap()
+                    .as_deref(),
+                Some("Changed.After.Install")
+            );
+        }
     }
 }

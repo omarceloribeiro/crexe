@@ -1,6 +1,8 @@
 # Contrato de formatos — implementação em desenvolvimento
 
-Todos usam `.crexe`, UTF-8 (BOM opcional) e LF ou CRLF. Documento acima de 1 MiB e estruturas identificadas mas inválidas falham antes da chamada ao modelo. Arquivo vazio (inclusive apenas espaços ou BOM) oferece edição no fluxo gráfico Windows e orientação para `crexe edit` na CLI. O editor permite salvar conteúdo vazio/incompleto; a validação ocorre ao executar.
+Os formatos textuais abaixo usam `.crexe`, UTF-8 (BOM opcional) e LF ou CRLF. Documento textual acima de 1 MiB e estruturas identificadas mas inválidas falham antes da chamada ao modelo. Arquivo vazio (inclusive apenas espaços ou BOM) oferece edição no fluxo gráfico Windows e orientação para `crexe edit` na CLI. O editor permite salvar conteúdo vazio/incompleto; a validação ocorre ao executar.
+
+A prévia também reconhece ZIPs [CREXP](publicacoes/crexp.md) (pacotes de vários Markdown) e [CREXB](publicacoes/crexb.md) (receita e snapshot executável aceito), inclusive quando usam `.crexe` como extensão universal. O conteúdo e o manifesto determinam o fluxo; renomear um ZIP genérico não basta. Cada formato tem limites próprios, documentados nos guias. Veja o [roadmap](publicacoes/roadmap-formatos.md) e os handoffs integrais para a arquitetura completa proposta.
 
 ## Texto puro
 

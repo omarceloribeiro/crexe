@@ -186,5 +186,42 @@
     "source": "CONTRIBUTING.md",
     "date": "2026-11-24",
     "notice": "Guia de contribuição mantido no repositório. Siga a toolchain e os requisitos de validação atuais ao propor alterações no código."
+  },
+  {
+    "slug": "crexp",
+    "title": "CREXP: um pacote de especificações",
+    "description": "Vários documentos SDD em um ZIP: guia da prévia, privacidade e handoff completo para download.",
+    "category": "guide",
+    "status": "Prévia mínima · Arquitetura em evolução",
+    "source": "docs/publicacoes/crexp.md",
+    "notice": "Guia mantido do subconjunto implementado. O handoff completo em português está preservado para download, incluindo propostas futuras e referências de licença anteriores. A engine usa MIT; os materiais de saída designados usam MIT-0.",
+    "originalSource": "docs/formatos/originais/CREXP-HANDOFF-COMPLETO.md",
+    "originalLanguage": "pt-BR",
+    "date": "2026-11-25",
+    "language": "pt-BR"
+  },
+  {
+    "slug": "crexb",
+    "title": "CREXB: receita e aplicativo, juntos",
+    "description": "Distribua uma revisão aceita e abra um payload compatível sem IA nem recompilação. Escopo, runtime e proposta completa.",
+    "category": "guide",
+    "status": "Prévia mínima · Um target por bundle",
+    "source": "docs/publicacoes/crexb.md",
+    "notice": "Prévia de bundle executável, sem sandbox ou autenticação do publisher. Hashes verificam integridade; assinaturas e a arquitetura completa permanecem no roadmap. O original em português, schema e exemplo são referências, não um aplicativo pronto.",
+    "originalSource": "docs/formatos/originais/CREXB-HANDOFF-COMPLETO.md",
+    "originalLanguage": "pt-BR",
+    "date": "2026-11-25",
+    "language": "pt-BR"
+  },
+  {
+    "slug": "roadmap-formatos",
+    "title": "Roadmap: CREXP e CREXB completos",
+    "description": "O que a prévia entrega e o que falta para pacotes SDD e bundles executáveis completos, com os originais integrais.",
+    "category": "guide",
+    "status": "Roadmap · Sem datas prometidas",
+    "source": "docs/publicacoes/roadmap-formatos.md",
+    "notice": "Planejamento público. As etapas futuras não são funcionalidades disponíveis. Downloads preservam os dois handoffs completos e os JSON originais; exemplos com placeholders não constituem builds executáveis.",
+    "date": "2026-11-25",
+    "language": "pt-BR"
   }
 ]

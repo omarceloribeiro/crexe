@@ -34,7 +34,7 @@ O destino da exportação deve ser um arquivo novo. O ZIP contém o projeto do l
 
 O comando aceita arquivos locais regulares com extensão válida, inclusive extensões desconhecidas. A extensão normalizada deve ter até 64 bytes UTF-8 e conter somente letras, números, hífen ou sublinhado. Arquivos sem extensão, com extensão vazia, inválida, muito longa ou não UTF-8 recebem um aviso de falta de suporte antes de qualquer chamada ao modelo. A engine não lê bytes do documento para descobrir o tipo. Caminhos relativos partem da pasta de quem chamou. Nomes com espaços, acentos ou hífen são argumentos separados; não viram comandos de shell.
 
-Selecionar um `.crexe` nessa ação também retorna um aviso, sem enviar a receita ao modelo. Para executar uma receita, use sua abertura normal ou `crexe exec receita.crexe`; **Gerar com CREXE** não delega silenciosamente para esse fluxo.
+Selecionar `.crexe`, `.crexp` ou `.crexb` nessa ação também retorna um aviso, sem enviar a receita ao modelo. Para executar uma receita, pacote ou bundle, use sua abertura normal ou `crexe exec receita.crexe`; **Gerar com CREXE** não delega silenciosamente para esse fluxo. No fluxo explícito de um [CREXP](publicacoes/crexp.md), os documentos SDD são a receita enviada ao provider; essa ação tem um contrato de privacidade diferente do leitor de documentos.
 
 Abra a engine sem argumentos ou use `crexe configure`. Em **Gerar com CREXE**, clique em **Selecionar arquivo e gerar programa…**. O seletor permite um arquivo por vez e não filtra extensões. Cancelá-lo encerra a seleção sem geração nem chamada ao modelo. A abertura usa a configuração salva; mudanças ainda não salvas na tela continuam preservadas e não são aplicadas ao leitor.
 
@@ -144,7 +144,7 @@ Use arquivos sintéticos e uma pasta nova. Registre commit/pacote, host, perfil,
 | Seletor da engine | Abrir `configure`, selecionar o documento e acompanhar até o leitor abrir. A janela da engine continua disponível; depois da preparação, selecionar outro documento. |
 | Configuração pendente | Editar uma preferência sem salvar e usar o seletor; a abertura usa a configuração salva e a edição pendente continua na tela. |
 | Cancelamento do seletor | Abrir e cancelar a seleção; nenhuma geração é iniciada. |
-| Tipo sem suporte | Selecionar arquivo sem extensão, com extensão inválida ou uma receita `.crexe`; conferir o aviso e ausência de chamadas ao modelo. |
+| Tipo sem suporte | Selecionar arquivo sem extensão, com extensão inválida, receita `.crexe`, pacote `.crexp` ou bundle `.crexb`; conferir o aviso e ausência de chamadas ao modelo. |
 | Falha antes da geração | Em ambiente de teste sem o SDK ou com orçamento insuficiente, abrir um tipo novo; conferir erro e ausência de solicitações ao provider. |
 | Concorrência/falha | Abrir dois documentos do mesmo tipo durante a preparação; conferir um preparo compartilhado. Em falha, ambos recebem diagnóstico, sem uma nova geração automática de quem aguardava. |
 

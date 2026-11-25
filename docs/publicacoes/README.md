@@ -20,6 +20,9 @@ O RFC e os handoffs preservam suas propostas e avisos originais. A política atu
 
 ## Guias técnicos
 
+- [CREXP: um pacote de especificações](crexp.md): prévia de ZIP SDD, contrato atual, privacidade e handoff original integral.
+- [CREXB: receita e aplicativo, juntos](crexb.md): snapshot aceito, abertura sem geração, compatibilidade e downloads da proposta.
+- [Roadmap dos formatos](roadmap-formatos.md): entrega mínima e arquitetura completa de ambos, sem datas prometidas. Os guias têm tradução integral em inglês; os handoffs originais em português estão preservados, identificados e disponíveis sem cortes.
 - [Segurança e confiança](guia-seguranca-e-confianca.md): fronteiras atuais e propostas de isolamento.
 - [Modelos locais, remotos e APIs do sistema](guia-modelos-locais-e-remotos.md): opções atuais da engine e possibilidades de integração.
 

@@ -103,8 +103,8 @@ pub(crate) fn open(file: &Path, cli: &Cli) -> Result<()> {
     if !fs::metadata(&document)?.is_file() {
         bail!("Gerar com CREXE aceita um arquivo local regular por vez, não uma pasta ou dispositivo.");
     }
-    if looks_like_crexe_file(file) {
-        bail!("Sem suporte: Gerar com CREXE não abre receitas .crexe. Abra a receita normalmente para executá-la.");
+    if format_dispatch::is_crexe_format(file) {
+        bail!("Sem suporte: Gerar com CREXE não abre receitas .crexe, pacotes .crexp ou bundles .crexb. Abra o arquivo normalmente para executá-lo.");
     }
     // Reject unsupported types before loading credentials/configuration or touching
     // the reader cache. Do not inspect bytes or send a type hash as a fallback.

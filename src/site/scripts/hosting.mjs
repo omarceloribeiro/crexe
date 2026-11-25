@@ -10,7 +10,7 @@ export const types = {
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon',
   '.woff': 'font/woff', '.woff2': 'font/woff2', '.md': 'text/plain; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8', '.sha256': 'text/plain; charset=utf-8',
-  '.crexe': 'application/octet-stream', '.zip': 'application/zip', '.gz': 'application/gzip',
+  '.crexe': 'application/octet-stream', '.crexp': 'application/octet-stream', '.crexb': 'application/octet-stream', '.zip': 'application/zip', '.gz': 'application/gzip',
 };
 
 // The site's _headers uses only relative paths with a single greedy splat,

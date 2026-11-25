@@ -8,6 +8,12 @@ With **Generate with CREXE** (Gerar com CREXE), an ordinary document can also be
 
 **Under development on the `feature/v1` branch; not yet a public release.** The original executor is preserved at the `baseline/pre-v1` tag. See the [plan](../PLANO_V1.md) and [implementation log](../IMPLEMENTACAO_V1.md) to distinguish present functionality from outstanding criteria.
 
+## CREXP and CREXB
+
+The preview includes **CREXP — Creative Executable Package**, a ZIP of Markdown SDD documents used for generation, and **CREXB — Creative Executable Bundle**, preserving the recipe and accepted snapshot for opening on a compatible target without AI or recompilation. These are minimal subsets: runtimes and libraries are still required, and applications are not sandboxed.
+
+See the [CREXP guide](publicacoes/crexp.md), [CREXB guide](publicacoes/crexb.md), and [complete roadmap](publicacoes/roadmap-formatos.md). The [original handoffs and JSON references](../formatos/originais/README.md) are preserved unabridged for download. The site and maintained guides have Portuguese and English editions; the complete handoffs remain in their original Portuguese, clearly labelled as such.
+
 ## Getting started
 
 With Rust/Cargo and native build tools, from the repository root:
@@ -56,7 +62,7 @@ On macOS/Linux, use `./crexe open-generating -- "meeting notes.md"`. For an engi
 
 When preparing a new reader, **one LLM call formulates its intent from the file extension**. The normal code generation then follows, with build, self-tests and bounded repairs. Planning has its own request count: the default allows one plan and up to three code attempts, subject to token and time limits. The application opens the selected document without asking for it again. Another document of the same compatible type reuses the approved reader: a valid cache means zero additional model calls and no rebuild. Changing only a document's contents does not change the reader's identity.
 
-Valid unknown extensions are accepted. Files with no extension or an invalid extension receive an unsupported-type message, without a model call or reading bytes to identify the type. Selecting `.crexe` in this action also returns a message: recipes must be opened through the normal execution workflow.
+Valid unknown extensions are accepted. Files with no extension or an invalid extension receive an unsupported-type message, without a model call or reading bytes to identify the type. Selecting `.crexe`, `.crexp`, or `.crexb` in this action also returns a message: recipes, packages, and bundles must be opened through the normal execution workflow.
 
 The document's name, path and body do not enter model requests, generation history or the source ZIP. The application receives its path as a separate argument and reads the data locally at runtime. The saved active configuration supplies provider, model and limits; selecting a document does not save or discard pending settings edits. Cancelling the picker makes no AI call.
 

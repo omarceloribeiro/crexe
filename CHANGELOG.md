@@ -2,6 +2,9 @@
 
 ## 1.0.0 — em desenvolvimento, não publicada
 
+- Prévia CREXP: ZIP de especificações Markdown, consolidação determinística, detecção por conteúdo e histórico incremental preservado ao editar o pacote.
+- Prévia CREXB: exportação da última revisão aceita com receita original, fontes, autotestes e payload; abertura compatível sem IA ou compilação, integridade e dados separados do cache.
+- Associações Windows para `.crexp` e `.crexb`; guias, roadmap e downloads dos handoffs originais no site em português e inglês, com exemplo CREXP verificável.
 - Editor integrado `crexe edit`, menu Editar Windows e diálogo para arquivos vazios; gravação atômica com preservação de UTF-8/BOM/LF/CRLF e detecção de conflitos.
 - Geração incremental com fontes/pedido anteriores, histórico por documento, recuperação explícita por `--fresh` e adoção verificável do cache legado.
 - Tentativas totais configuráveis de 1 a 10, orçamento de saída derivado ou explícito e acompanhamento de provider/modelo/tentativa.

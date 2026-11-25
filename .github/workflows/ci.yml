@@ -35,6 +35,8 @@ jobs:
         run: cargo +1.98.1 fmt --all --check
       - name: Dependency license packaging tests
         run: python -m unittest discover -s scripts -p test_package_licenses.py
+      - name: Verify downloadable CREXP example
+        run: python scripts/crexp_example.py --check
       - name: Lint
         run: cargo +1.98.1 clippy --locked --all-targets -- -D warnings
       - name: Tests (local provider only)
@@ -69,6 +71,8 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Generated readers, cache and document privacy (local provider, no display)
         run: cargo +1.98.1 test --locked --test open_generating -- --ignored --nocapture
+      - name: CREXP generation and offline CREXB transport (local provider, no display)
+        run: cargo +1.98.1 test --locked --test packages -- --ignored --nocapture
       - name: Linux OpenGL headers (CI runner only)
         if: runner.os == 'Linux'
         run: sudo apt-get install -y libepoxy-dev

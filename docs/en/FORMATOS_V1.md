@@ -1,6 +1,8 @@
 # Format contract — implementation under development
 
-All formats use `.crexe`, UTF-8 (optional BOM), and LF or CRLF. Documents larger than 1 MiB and recognized but invalid structures fail before calling the model. An empty file (including whitespace or a BOM alone) offers editing in the Windows graphical flow and guidance to use `crexe edit` in the CLI. The editor allows empty or incomplete content to be saved; validation takes place when executing it.
+The textual formats below use `.crexe`, UTF-8 (optional BOM), and LF or CRLF. Text documents larger than 1 MiB and recognized but invalid structures fail before calling the model. An empty file (including whitespace or a BOM alone) offers editing in the Windows graphical flow and guidance to use `crexe edit` in the CLI. The editor allows empty or incomplete content to be saved; validation takes place when executing it.
+
+The preview also recognizes [CREXP](publicacoes/crexp.md) ZIPs (multiple Markdown documents) and [CREXB](publicacoes/crexb.md) ZIPs (recipe and accepted executable snapshot), including when they use `.crexe` as a universal extension. Content and manifests determine the workflow; renaming a generic ZIP is insufficient. Each format has its own limits, documented in the guides. See the [roadmap](publicacoes/roadmap-formatos.md) and complete handoffs for the full proposed architecture.
 
 ## Plain text
 

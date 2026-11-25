@@ -6,6 +6,12 @@ Com **Gerar com CREXE**, o ponto de partida também pode ser um documento comum:
 
 **Em desenvolvimento na branch `feature/v1`; ainda não é uma release pública.** O executor original está preservado na tag `baseline/pre-v1`. Veja o [plano](docs/PLANO_V1.md) e o [registro da implementação](docs/IMPLEMENTACAO_V1.md) para distinguir funcionalidades presentes de critérios pendentes.
 
+## CREXP e CREXB
+
+A prévia inclui **CREXP — Creative Executable Package**, um ZIP de documentos SDD em Markdown que alimenta a geração, e **CREXB — Creative Executable Bundle**, que preserva a receita e o snapshot aceito para abrir em um target compatível sem IA nem recompilação. São subconjuntos mínimos: runtime e bibliotecas continuam necessários, e os aplicativos não têm sandbox.
+
+Consulte os guias de [CREXP](docs/publicacoes/crexp.md), [CREXB](docs/publicacoes/crexb.md) e o [roadmap completo](docs/publicacoes/roadmap-formatos.md). Os [handoffs e JSON originais](docs/formatos/originais/README.md) estão preservados integralmente para download. Site e guias têm edição em português e inglês; os handoffs completos permanecem no original em português, identificados dessa forma.
+
 ## Começar
 
 Com Rust/Cargo e as ferramentas nativas de compilação, na raiz:
@@ -54,7 +60,7 @@ No macOS/Linux, use `./crexe open-generating -- "notas da reunião.md"`. Para a 
 
 Na primeira preparação de um leitor, **uma única chamada à LLM formula a intenção a partir da extensão do arquivo**. Depois ocorre a geração normal de código, com build, autotestes e correções limitadas. O planejamento tem contagem separada: o padrão permite um plano e até três tentativas de código, respeitando os limites de tokens e tempo. O programa abre com o documento selecionado, sem pedir a mesma seleção novamente. Outro documento do mesmo tipo compatível reutiliza o leitor aprovado: cache válido significa zero chamadas extras ao modelo e nenhuma recompilação. Alterar somente o conteúdo de um documento não muda a identidade do leitor.
 
-Extensões desconhecidas válidas são aceitas. Arquivos sem extensão ou com extensão inválida recebem aviso de falta de suporte, sem chamada ao modelo nem leitura de bytes para descobrir o tipo. Selecionar `.crexe` nessa ação também retorna um aviso: receitas devem ser abertas pelo fluxo normal de execução.
+Extensões desconhecidas válidas são aceitas. Arquivos sem extensão ou com extensão inválida recebem aviso de falta de suporte, sem chamada ao modelo nem leitura de bytes para descobrir o tipo. Selecionar `.crexe`, `.crexp` ou `.crexb` nessa ação também retorna um aviso: receitas, pacotes e bundles devem ser abertos pelo fluxo normal de execução.
 
 O nome, caminho e corpo do documento não entram nas requisições ao modelo, no histórico de geração ou no ZIP dos fontes. O aplicativo recebe o caminho como argumento separado e lê os dados localmente em runtime. A configuração ativa salva fornece provider, modelo e limites; selecionar um documento na janela não salva nem descarta alterações pendentes nas configurações. Cancelar o seletor não chama a IA.
 

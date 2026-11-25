@@ -66,6 +66,10 @@ As duas landings apresentam **Gerar com CREXE**: selecionar um documento comum p
 
 Os exemplos `.crexe` e a documentação são copiados de suas fontes mantidas no repositório. Edite os originais e gere novamente o site. Não mantenha uma segunda cópia editorial desses documentos nesta pasta.
 
+CREXP e CREXB têm guias e roadmap nas duas edições da landing e da biblioteca. Os quatro originais em `docs/formatos/originais/` são preservados byte a byte: handoffs completos em português, schema e manifesto ilustrativo. O build publica o schema também em `schemas/crexb-manifest-v1.schema.json`, conforme seu `$id`. O check fixa os hashes dos originais e verifica que os botões nas duas edições identificam corretamente o idioma português. Os guias ingleses traduzem integralmente os guias mantidos, sem se apresentar como traduções integrais dos handoffs. O manifesto de exemplo contém placeholders e não é um aplicativo executável.
+
+O exemplo real `examples/crexp/calculadora.crexp` é copiado para download nas duas edições. É um ZIP de SDD em português, não um programa compilado. Para alterar seu conteúdo, edite os fontes em `examples/crexp/calculadora/`, execute `python scripts/crexp_example.py` e valide com `--check`; a CI verifica a correspondência do ZIP determinístico. Os formatos `.crexp` e `.crexb` usam `application/octet-stream` e cabeçalhos de download no preview e em `_headers`.
+
 ## Biblioteca e publicação de textos
 
 A coleção editorial está em [docs/publicacoes](../../docs/publicacoes/README.md). Os white papers, artigos, guias e o manifesto distinguem fatos da implementação, análise e visão de futuro. O catálogo também apresenta referências técnicas existentes como páginas de leitura. Os rascunhos históricos permanecem disponíveis, identificados como históricos.

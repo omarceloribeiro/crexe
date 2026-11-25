@@ -249,6 +249,8 @@ pub(crate) fn reserved(path: &str) -> bool {
     [
         MANIFEST,
         super::history::METADATA,
+        "CREXE-ORIGINAL-RECIPE.json",
+        "CREXE-ORIGINAL-RECIPE.bin",
         "source.zip",
         "CREXE-README.md",
         "CREXE-OUTPUT-LICENSE.txt",
@@ -356,4 +358,43 @@ fn publish_directory(source: &Path, destination: &Path) -> Result<()> {
     }
     fs::rename(stage.path(), destination)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_output_cannot_replace_the_accepted_original_recipe_snapshot() {
+        for name in ["CREXE-ORIGINAL-RECIPE.json", "crexe-original-recipe.BIN"] {
+            let workspace = tempfile::tempdir().unwrap();
+            fs::write(workspace.path().join(name), b"engine-owned original").unwrap();
+            let files = vec![
+                GeneratedFile {
+                    path: "main.cpp".into(),
+                    content: "int main() {}".into(),
+                },
+                GeneratedFile {
+                    path: name.into(),
+                    content: "fake original".into(),
+                },
+            ];
+            assert!(
+                crate::apply_generated_files(workspace.path(), &files, &BTreeMap::new()).is_err()
+            );
+            assert!(!workspace.path().join("main.cpp").exists());
+            assert_eq!(
+                fs::read(workspace.path().join(name)).unwrap(),
+                b"engine-owned original"
+            );
+
+            let project: Project = serde_json::from_value(serde_json::json!({
+                "schema": 1, "name": "Invalid source inventory", "os": "windows", "arch": "x86_64",
+                "profile": "cpp-win32", "sources": [name],
+                "commands": {"build": [["compiler"]], "run": [["CrexeApp.exe"]]}
+            }))
+            .unwrap();
+            assert!(project.validate().is_err());
+        }
+    }
 }

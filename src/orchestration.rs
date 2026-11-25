@@ -9,7 +9,30 @@ pub(crate) fn exec(
     cache_dir: Option<&Path>,
     cli: &Cli,
 ) -> Result<()> {
-    exec_inner(file, overrides, rebuild, fresh, cache_dir, cli, None)
+    exec_inner(file, overrides, rebuild, fresh, cache_dir, cli, None, None)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn exec_with_original(
+    file: &Path,
+    overrides: BTreeMap<String, String>,
+    rebuild: bool,
+    fresh: bool,
+    cache_dir: Option<&Path>,
+    cli: &Cli,
+    original: &crexb::OriginalRecipe,
+    source: &Path,
+) -> Result<()> {
+    exec_inner(
+        file,
+        overrides,
+        rebuild,
+        fresh,
+        cache_dir,
+        cli,
+        None,
+        Some((original, source)),
+    )
 }
 
 pub(crate) fn exec_reader(
@@ -33,6 +56,7 @@ pub(crate) fn exec_reader(
             generation,
             prepared,
         }),
+        None,
     )
 }
 
@@ -43,6 +67,7 @@ struct ReaderInvocation<'a> {
     prepared: &'a mut dyn FnMut() -> Result<()>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn exec_inner(
     file: &Path,
     overrides: BTreeMap<String, String>,
@@ -51,6 +76,7 @@ fn exec_inner(
     cache_dir: Option<&Path>,
     cli: &Cli,
     reader: Option<ReaderInvocation<'_>>,
+    original: Option<(&crexb::OriginalRecipe, &Path)>,
 ) -> Result<()> {
     let reader_mode = reader.is_some();
     let (runtime_args, supplied_settings, mut supplied_generation, mut reader_prepared) =
@@ -67,6 +93,9 @@ fn exec_inner(
     let path = file
         .canonicalize()
         .with_context(|| format!("CREXE not found: {}", file.display()))?;
+    // Keep a package's history stable across edits of its immutable resolved recipe.
+    let document =
+        original.map_or_else(|| Ok(path.clone()), |(_, source)| source.canonicalize())?;
     let raw = format::read(&path)?;
     if format::is_empty(&raw) {
         if cli.ui && cfg!(windows) {
@@ -80,6 +109,14 @@ fn exec_inner(
             path.display()
         );
     }
+    let text_original;
+    let original = match original {
+        Some((original, _)) => original,
+        None => {
+            text_original = crexb::OriginalRecipe::new("crexe-text", raw.as_bytes().to_vec())?;
+            &text_original
+        }
+    };
     let mut intent = None;
     let mut spec = match format::parse(&raw, &path)? {
         format::Document::Yaml(spec) => {
@@ -152,7 +189,7 @@ fn exec_inner(
     let mut preparation = if reader_mode {
         None
     } else {
-        let Some(session) = preparation::Session::acquire(&path, &signature)? else {
+        let Some(session) = preparation::Session::acquire(&document, &signature)? else {
             return Ok(());
         };
         Some(session)
@@ -189,9 +226,9 @@ fn exec_inner(
             println!("CREXE_READER_READY");
         }
     };
-    let old_cache = get_cache_state(&path, &legacy_identity, &spec, &inputs, cache_dir)?;
+    let old_cache = get_cache_state(&document, &legacy_identity, &spec, &inputs, cache_dir)?;
     let root = old_cache.root.parent().context("Invalid cache root")?;
-    let history = history::History::new(root, &path)?;
+    let history = history::History::new(root, &document)?;
     let mut baseline = if fresh {
         None
     } else {
@@ -204,7 +241,7 @@ fn exec_inner(
         baseline = adopt_legacy(
             &old_cache,
             &history,
-            &path,
+            &document,
             history::Metadata::new(
                 request.clone(),
                 None,
@@ -259,7 +296,7 @@ fn exec_inner(
     let parent = baseline.as_ref().map(history::Baseline::id);
     let cache = entry(
         root,
-        &path,
+        &document,
         &request,
         parent.as_deref().unwrap_or("initial"),
     );
@@ -461,6 +498,7 @@ fn exec_inner(
                     metadata.change_kind = change_kind;
                     metadata.reason = change_reason;
                     metadata.write(&attempt_path)?;
+                    crexb::write_original(original, &attempt_path)?;
                     if executor::cancelled() {
                         bail!("Cancelled; generation was not published");
                     }

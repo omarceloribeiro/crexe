@@ -16,6 +16,7 @@ import tarfile
 import tempfile
 import zipfile
 from package_licenses import collect_notices
+from crexp_example import verified_example
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -63,6 +64,7 @@ def main():
             'config.example.toml': ((ROOT / 'config.example.toml').read_bytes(), 0o644),
             'examples/calculadora.crexe': ((ROOT / 'examples/plaintext/calculadora.crexe').read_bytes(), 0o644),
             'examples/regra-de-tres.crexe': ((ROOT / 'examples/markdown/regra-de-tres.crexe').read_bytes(), 0o644),
+            'examples/calculadora.crexp': (verified_example(), 0o644),
             'examples/primeira-leitura.md': ('# Primeiro documento local\n\n- Este item veio do arquivo selecionado.\n\nAbra outra-leitura.md para reutilizar o leitor.\n'.encode('utf-8'), 0o644),
             'examples/outra-leitura.md': ('# Outro documento, mesmo leitor\n\n- Agora esta janela deve mostrar o segundo arquivo.\n\nEdite este texto externamente e reabra para conferir a leitura do disco.\n'.encode('utf-8'), 0o644),
             'SOURCE.txt': ((source_url + '\n').encode(), 0o644),
@@ -77,7 +79,7 @@ def main():
             files['configure.cmd'] = (configure.encode(), 0o644)
             unassociate = '@echo off\r\nsetlocal\r\nset "CREXE_REMOVE_ENGINE=%LOCALAPPDATA%\\CREXE\\releases\\v1\\crexe.exe"\r\nif defined CREXE_HOME set "CREXE_REMOVE_ENGINE=%CREXE_HOME%\\releases\\v1\\crexe.exe"\r\nif not exist "%CREXE_REMOVE_ENGINE%" set "CREXE_REMOVE_ENGINE=%~dp0crexe.exe"\r\n"%CREXE_REMOVE_ENGINE%" unassociate\r\nexit /b %errorlevel%\r\n'
             files['unassociate.cmd'] = (unassociate.encode(), 0o644)
-            install_help = 'Execute install.cmd. Instala em %LOCALAPPDATA%\\CREXE\\releases\\v1, associa .crexe, registra Gerar com CREXE para um arquivo por vez e abre Configurações. No Windows 11, procure também Mostrar mais opções. O menu genérico preserva os aplicativos padrão dos documentos. Reinstalar preserva suas preferências. configure.cmd reabre a tela; unassociate.cmd remove a associação e o menu pertencentes a esta instalação. O Windows pode pedir para escolher o aplicativo padrão de .crexe.'
+            install_help = 'Execute install.cmd. Instala em %LOCALAPPDATA%\\CREXE\\releases\\v1, associa .crexe, .crexp e .crexb, registra Gerar com CREXE para um arquivo por vez e abre Configurações. No Windows 11, procure também Mostrar mais opções. O menu genérico preserva os aplicativos padrão dos documentos; arquivos .zip não são associados globalmente. Reinstalar preserva suas preferências. configure.cmd reabre a tela; unassociate.cmd remove as associações e o menu pertencentes a esta instalação. O Windows pode pedir para escolher o aplicativo padrão dessas extensões.'
         else:
             launcher = 'configure.command' if system == 'macos' else 'configure.sh'
             default_root = '$HOME/Library/Application Support/CREXE' if system == 'macos' else '${XDG_DATA_HOME:-$HOME/.local/share}/crexe'
@@ -87,7 +89,7 @@ def main():
             files['install.sh'] = (install.encode(), 0o755)
             if system == 'macos':
                 files['install.command'] = (install.encode(), 0o755)
-            install_help = f'Execute ./install.sh em uma sessão gráfica. Instala e abre Configurações; {launcher} reabre a tela. Sem desktop, use ./crexe install (não abre UI). Para Gerar com CREXE, use o botão Selecionar arquivo e gerar programa… na janela. Esta prévia não registra menu do Finder ou do gerenciador Linux; a associação gráfica de .crexe continua indisponível neste OS.'
+            install_help = f'Execute ./install.sh em uma sessão gráfica. Instala e abre Configurações; {launcher} reabre a tela. Sem desktop, use ./crexe install (não abre UI). Para Gerar com CREXE, use o botão Selecionar arquivo e gerar programa… na janela. Esta prévia não registra menu do Finder ou do gerenciador Linux; associações gráficas de .crexe/.crexp/.crexb continuam indisponíveis neste OS. Use a CLI para receitas, pacotes e bundles.'
         invocation = '.\\crexe.exe' if system == 'windows' else './crexe'
         readme = f'''# CREXE — snapshot de desenvolvimento
 
@@ -117,6 +119,57 @@ A instalação não adiciona a engine ao PATH. Os comandos acima usam o binário
 para chamar a cópia instalada, use o caminho completo mostrado por doctor.
 Editar a intenção gera outra revisão; reabrir sem alterações usa o cache validado.
 
+## CREXP: várias especificações em um arquivo
+
+examples/calculadora.crexp é um ZIP com crexp.yaml, requirements.md e tests.md.
+É uma receita para gerar, não um aplicativo compilado. Os documentos são em português.
+
+```
+{invocation} inspect examples/calculadora.crexp
+{invocation} exec examples/calculadora.crexp
+```
+
+Inspecionar não chama a IA. Executar consolida os Markdown e usa o provider,
+SDK e tentativas normais. Com provider remoto, os documentos SDD são enviados
+como intenção. A tabela de aceitação no pacote não é uma suíte formal executável.
+A prévia não suporta assets, agentes ou resolução semântica de conflitos.
+
+## CREXB: compartilhar e abrir uma revisão aceita
+
+Depois de gerar a calculadora, exporte o snapshot aceito:
+
+```
+{invocation} bundle create examples/calculadora.crexp --target current --output calculadora.crexb
+{invocation} bundle inspect calculadora.crexb
+{invocation} bundle verify calculadora.crexb
+{invocation} bundle run calculadora.crexb
+```
+
+A exportação requer uma revisão aceita e íntegra com snapshot da receita original;
+cache antigo sem snapshot precisa de regeneração explícita uma vez. Editar um CREXP
+mantém a linhagem pelo caminho original: se a nova tentativa falhar, a última revisão
+aceita e sua receita original ainda podem ser exportadas.
+Não existe download de um aplicativo CREXB pré-gerado neste pacote da engine.
+
+Abertura compatível não chama IA, SDK ou compilador. Exige a mesma plataforma/
+arquitetura e runtimes já instalados: .NET 8 para apps dependentes do framework,
+ou bibliotecas do sistema para perfis nativos. OpenGL e comandos YAML customizados
+ficam fora desta prévia. O código-fonte e referências aos autotestes vão no bundle;
+isso não prova aprovação humana, segurança ou aceitação visual do aplicativo.
+
+Se o target for incompatível, extraia a receita e gere explicitamente no destino:
+
+```
+{invocation} bundle extract-recipe calculadora.crexb --output recuperada.crexp
+{invocation} exec recuperada.crexp
+```
+
+A última linha exige provider e SDK. Escolha .crexe se a receita inspecionada for
+textual. O bundle original não muda. Hashes verificam integridade, não autoria;
+assinaturas não são suportadas. Dados do app ficam separados do payload em cache.
+Não execute bundles desconhecidos: o programa roda no host, sem sandbox.
+Leia CREXP-CREXB.en.md para o guia equivalente em inglês.
+
 ## Gerar um programa para abrir um arquivo
 
 Escolha **Selecionar arquivo e gerar programa…** na janela da engine, ou use o
@@ -134,8 +187,8 @@ aos limites de tokens e tempo. Seguem build, autotestes e eventuais reparos.
 O segundo documento reutiliza o leitor compatível aprovado,
 sem outra chamada de planejamento ou geração quando o cache continua válido.
 Extensões desconhecidas válidas também entram nesse fluxo. Arquivos sem extensão,
-com extensão inválida ou .crexe recebem aviso sem chamada ao modelo; receitas
-usam sua abertura normal. Formatos opacos podem resultar em leitura de texto
+com extensão inválida ou .crexe/.crexp/.crexb recebem aviso sem chamada ao modelo;
+receitas, pacotes e bundles usam sua abertura normal. Formatos opacos podem resultar em leitura de texto
 ou inspeção hexadecimal identificada.
 
 O documento selecionado abre como dado em runtime: seu nome, caminho e conteúdo
@@ -171,6 +224,74 @@ conservador: pode incluir dependências de build/teste não incorporadas ao bin�
 e não representa certificação de conformidade de todas as licenças.
 '''
         files['LEIA-ME.md'] = (readme.encode('utf-8'), 0o644)
+        formats_english = f'''# CREXP and CREXB — minimal preview
+
+Development snapshot {version}, commit {revision}, target {system}/{arch}.
+These previews are a limited subset of the complete formats, not a stable release.
+
+## Generate from several specifications
+
+examples/calculadora.crexp is a ZIP containing crexp.yaml, requirements.md, and
+tests.md. Its documents are in Portuguese. It is generation input, not a compiled app.
+
+```
+{invocation} inspect examples/calculadora.crexp
+{invocation} exec examples/calculadora.crexp
+```
+
+Inspection does not call AI. Execution consolidates the Markdown documents and
+uses the configured provider, profile SDK, and normal repair attempts. With a
+remote provider, the SDD documents are sent as intent. Markdown acceptance scenarios
+are not a formal executable test suite. Assets, agents, and semantic conflict
+resolution are outside this preview.
+
+## Export and open the accepted result
+
+After generation succeeds:
+
+```
+{invocation} bundle create examples/calculadora.crexp --target current --output calculadora.crexb
+{invocation} bundle inspect calculadora.crexb
+{invocation} bundle verify calculadora.crexb
+{invocation} bundle run calculadora.crexb
+```
+
+Export requires an intact accepted revision with the original recipe snapshot.
+Old caches without that snapshot require an explicit regeneration once. Editing a
+CREXP preserves lineage through the original path: if the new attempt fails, the
+last accepted revision and its original recipe can still be exported.
+No pre-generated CREXB application is included in this engine package.
+
+Opening a compatible bundle calls no AI, SDK, or compiler. It requires the same
+platform/architecture and installed runtimes: .NET 8 for framework-dependent apps,
+or system libraries for native profiles. OpenGL and custom YAML commands are
+outside this preview. Sources and self-test references are included in bundles;
+they do not prove human acceptance, security, or visual application validation.
+
+For an incompatible target, explicitly extract and regenerate the included recipe:
+
+```
+{invocation} bundle extract-recipe calculadora.crexb --output recovered.crexp
+{invocation} exec recovered.crexp
+```
+
+The last line requires a provider and SDK. Use .crexe if inspection identifies a
+textual recipe. The original bundle stays unchanged. Hashes verify integrity, not
+authorship; signatures are unsupported. App data is separate from cached payloads.
+Run only trusted bundles: programs execute on the host without a sandbox.
+
+Windows install/associate registers .crexe, .crexp, and .crexb for double-click
+opening, without globally associating .zip. macOS/Linux use the CLI in this preview.
+Generate with CREXE rejects all three recipe/package/bundle extensions. For ordinary
+documents that feature uses only the extension to plan a reader; it does not send
+the document's name, path, contents, or metadata to the model. This differs from
+explicit CREXP execution, where specifications are the recipe sent for generation.
+
+The engine uses MIT (LICENSE). CREXE-authored output materials and official examples
+use MIT-0 (LICENSE-GENERATED). You choose your app's license, subject to applicable
+third-party and provider terms. See LEIA-ME.md for the complete installation guide.
+'''
+        files['CREXP-CREXB.en.md'] = (formats_english.encode('utf-8'), 0o644)
         manifest = {'schema': 1, 'status': 'development snapshot', 'version': version,
                     'source_commit': revision, 'source_url': source_url, 'os': system, 'arch': arch,
                     'files': {path: digest(data) for path, (data, _) in sorted(files.items())}}
@@ -214,6 +335,8 @@ e não representa certificação de conformidade de todas as licenças.
         command([str(extracted), '--version'], env=env)
         command([str(extracted), 'doctor'], env=env, capture_output=True)
         command([str(extracted), 'inspect', str(unpacked / name / 'examples/calculadora.crexe')], env=env, capture_output=True)
+        command([str(extracted), 'inspect', str(unpacked / name / 'examples/calculadora.crexp')], env=env, capture_output=True)
+        command([str(extracted), 'bundle', '--help'], env=env, capture_output=True)
         command([str(extracted), 'open-generating', '--help'], env=env, capture_output=True)
         with checksum_path.open('x', encoding='ascii') as checksum:
             checksum.write(digest(archive_path.read_bytes()) + '  ' + archive_path.name + '\n')

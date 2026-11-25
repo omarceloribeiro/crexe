@@ -24,7 +24,8 @@ export async function checkHttp(root = distRoot) {
         assert(body.equals(await readFile(path.join(root, file))), `HTTP bytes differ from publication: ${file}`);
         const extension = path.extname(file).toLowerCase();
         assert.equal(response.headers.get('content-type'), types[extension] ?? 'application/octet-stream', `Wrong MIME: ${file}`);
-        if (['.md', '.crexe', '.zip', '.gz', '.sha256'].includes(extension)) assert.match(response.headers.get('content-disposition') ?? '', /^attachment/, `Missing download disposition: ${file}`);
+        if (['.md', '.crexe', '.crexp', '.crexb', '.zip', '.gz', '.sha256'].includes(extension)) assert.match(response.headers.get('content-disposition') ?? '', /^attachment/, `Missing download disposition: ${file}`);
+        if (file.startsWith('docs/formatos/originais/') && extension === '.json') assert.match(response.headers.get('content-disposition') ?? '', /^attachment/, `Missing format reference download disposition: ${file}`);
         results.push({ file, status: response.status, bytes: body.length, sha256: createHash('sha256').update(body).digest('hex'), contentType: response.headers.get('content-type'), contentDisposition: response.headers.get('content-disposition'), path: new URL(response.url).pathname });
         if (extension === '.html') pages.push({ file, url: response.url, html: body.toString('utf8') });
       }));

@@ -17,6 +17,8 @@ export async function build() {
   if (!documentation.files.some(([, destination]) => destination === 'LICENSE-GENERATED')) {
     documentation.files.push(['LICENSE-GENERATED', 'LICENSE-GENERATED']);
   }
+  // Preserve the supplied draft schema at the canonical $id declared in it.
+  documentation.files.push(['docs/formatos/originais/crexb-manifest-v1.schema.json', 'schemas/crexb-manifest-v1.schema.json']);
   // Validate source inputs before replacing a previous build.
   await Promise.all(staticFiles.map((file) => readFile(path.join(siteRoot, file))));
   await readFile(path.join(repoRoot, 'LICENSE-GENERATED'));

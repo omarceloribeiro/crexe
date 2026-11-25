@@ -20,6 +20,10 @@ licensed under MIT No Attribution (MIT-0), whose text appears below:
   CREXE-GENERATION.json and generated recipes, including template, instruction
   and contract text from src/project.rs, src/history.rs, src/reader.rs,
   src/profiles.rs, src/profiles/native.rs, src/orchestration.rs and src/generator.rs.
+* CREXE-authored recipe consolidation text, package inventories, bundle
+  manifests, evidence, launch/runtime metadata and test README text emitted
+  by src/crexp.rs and src/crexb.rs. Included user recipes, generated sources
+  and third-party payloads keep their own applicable rights and licenses.
 * The official recipes under examples/ and the example document text included
   in engine packages by scripts/package-engine.py.
 
@@ -53,6 +57,10 @@ acima também são licenciadas sob MIT No Attribution (MIT-0): templates de
 projeto e build, scripts e README exportados, textos e estruturas dos manifestos
 e receitas geradas, instruções e contratos incorporados à saída, receitas
 oficiais em examples/ e documentos de exemplo incluídos nos pacotes da engine.
+Isso inclui os textos CREXE de consolidação de receitas, inventários de pacote,
+manifestos de bundle, evidências, metadados de launch/runtime e README de testes
+emitidos por src/crexp.rs e src/crexb.rs. Receitas do usuário, fontes gerados e
+payloads de terceiros incluídos mantêm seus direitos e licenças aplicáveis.
 Essa concessão abrange seu uso em fontes e aplicativos compilados, inclusive
 os já gerados. Ela não relicencia a implementação Rust, o binário da engine ou
 o restante do repositório. Contribuições futuras a esses materiais seguem

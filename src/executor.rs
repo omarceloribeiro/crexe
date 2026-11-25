@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use std::{
+    collections::BTreeMap,
     env,
     ffi::OsString,
     fs,
@@ -61,7 +62,55 @@ pub(crate) fn run(
     capture: bool,
     secret_names: &[String],
 ) -> Result<()> {
-    execute(args, &[], cwd, timeout, capture, true, secret_names, None).map(|_| ())
+    execute(
+        args,
+        &[],
+        cwd,
+        timeout,
+        capture,
+        true,
+        secret_names,
+        None,
+        None,
+    )
+    .map(|_| ())
+}
+
+/// Environment supplied by the engine, never by an archive's launch manifest.
+pub(crate) fn run_with_env(
+    args: &[String],
+    cwd: &Path,
+    timeout: Option<Duration>,
+    capture: bool,
+    secret_names: &[String],
+    environment: &BTreeMap<String, OsString>,
+) -> Result<()> {
+    if environment.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "CREXE_APP_DIR"
+                | "CREXE_DATA_DIR"
+                | "CREXE_CONFIG_DIR"
+                | "CREXE_STATE_DIR"
+                | "CREXE_CACHE_DIR"
+                | "CREXE_PACKAGE_ID"
+                | "CREXE_BUNDLE_ID"
+        )
+    }) {
+        bail!("Unsupported bundle environment variable");
+    }
+    execute(
+        args,
+        &[],
+        cwd,
+        timeout,
+        capture,
+        true,
+        secret_names,
+        None,
+        Some(environment),
+    )
+    .map(|_| ())
 }
 
 pub(crate) fn launch_with_args(
@@ -81,6 +130,7 @@ pub(crate) fn launch_with_args(
         true,
         secret_names,
         Some(ready),
+        None,
     )
     .map(|_| ())
 }
@@ -104,6 +154,7 @@ pub(crate) fn output_with_args(
         false,
         secret_names,
         None,
+        None,
     )
 }
 
@@ -117,6 +168,7 @@ fn execute(
     print_output: bool,
     secret_names: &[String],
     mut ready: Option<&mut dyn FnMut()>,
+    environment: Option<&BTreeMap<String, OsString>>,
 ) -> Result<String> {
     if args.is_empty() {
         bail!("Empty command");
@@ -137,6 +189,9 @@ fn execute(
     let mut command = Command::new(&executable);
     // Selected documents are opaque OS arguments, never templates or shell text.
     command.args(&args[1..]).args(runtime_args).current_dir(cwd);
+    if let Some(environment) = environment {
+        command.envs(environment);
+    }
     if super::presentation::desktop() {
         // FreeConsole invalidates inherited Windows standard handles. Supply real
         // null handles before spawning the app; build capture replaces these below.

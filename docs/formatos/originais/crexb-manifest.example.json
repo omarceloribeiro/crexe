@@ -1,0 +1,73 @@
+{
+  "format": "crexe.bundle",
+  "schemaVersion": 1,
+  "bundle": {
+    "id": "org.example.bhaskara",
+    "name": "Bhaskara",
+    "version": "1.0.0",
+    "buildId": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "createdAt": "2026-11-25T12:00:00Z",
+    "kind": "executable-snapshot"
+  },
+  "publisher": {
+    "name": "Example Publisher",
+    "id": "org.example",
+    "signatureRequired": false
+  },
+  "recipe": {
+    "kind": "crexe-text",
+    "path": "recipe/original.crexe",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "resolvedPath": "recipe/resolved.yaml",
+    "generationPlanPath": "recipe/generation-plan.json"
+  },
+  "generation": {
+    "generationId": "gen_example",
+    "engineVersion": "2.0.0",
+    "recipeCompilerVersion": "1.0.0",
+    "resolver": {
+      "id": "windows-desktop-dotnet",
+      "version": "1.0.0"
+    },
+    "provider": {
+      "id": "provider-example",
+      "model": "recorded-or-redacted"
+    },
+    "toolchainFingerprint": "sha256:example"
+  },
+  "targets": [
+    {
+      "id": "windows-x64",
+      "os": "windows",
+      "architecture": "x86_64",
+      "abi": "windows",
+      "payloadRoot": "payload/windows-x64/app/",
+      "launchManifest": "payload/windows-x64/launch.json",
+      "runtimeManifest": "payload/windows-x64/runtime-manifest.json",
+      "runtimeModel": "self-contained"
+    }
+  ],
+  "validation": {
+    "status": "accepted",
+    "acceptedAt": "2026-11-25T12:00:00Z",
+    "build": "passed",
+    "tests": "passed",
+    "applicationStart": "passed",
+    "acceptance": "passed"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "checksumsPath": "META-INF/checksums.sha256",
+    "artifactManifestPath": "META-INF/artifact-manifest.json"
+  },
+  "cache": {
+    "contentKey": "sha256:example",
+    "recipeKey": "sha256:example"
+  },
+  "behavior": {
+    "allowRegeneration": true,
+    "onIncompatibleTarget": "ask-to-regenerate",
+    "onMissingRuntime": "ask-to-repair",
+    "onIntegrityFailure": "block"
+  }
+}

@@ -46,6 +46,10 @@ export function validateCatalog(catalog) {
     if (!source.endsWith('.md') || sources.has(source)) throw new Error(`Invalid or duplicate publication source: ${source}`);
     if (entry.language !== undefined) getLocale(entry.language);
     if (entry.originalSource !== undefined) repositoryPath(entry.originalSource);
+    if (entry.originalLanguage !== undefined) {
+      if (!entry.originalSource) throw new Error('An original language requires an original source.');
+      getLocale(entry.originalLanguage);
+    }
     slugs.add(entry.slug);
     sources.add(source);
     return { ...entry, source };
@@ -199,6 +203,8 @@ function publicationCard(entry) {
 
 function articlePage(entry, rendered, catalog) {
   const locale = getLocale(entry.language);
+  const originalLanguage = entry.originalLanguage ?? 'en';
+  const originalLabel = locale.originals[originalLanguage];
   const related = [...catalog.filter((other) => other.slug !== entry.slug && other.category === entry.category),
     ...catalog.filter((other) => other.slug !== entry.slug && other.category !== entry.category)].slice(0, 3);
   const toc = rendered.toc.length ? `<nav class="article-toc" aria-label="${locale.toc}"><details open><summary>${locale.inThisText}</summary><ol>${rendered.toc.map((heading) =>
@@ -210,7 +216,7 @@ function articlePage(entry, rendered, catalog) {
     <header class="article-heading"><p class="eyebrow">${escapeHtml(locale.categoryLabels[entry.category])}</p><h1 id="article-title">${escapeHtml(entry.title)}</h1><p class="article-description">${escapeHtml(entry.description)}</p><div class="article-meta"><span>${escapeHtml(entry.status)}</span><time datetime="${entry.date}">${dateLabel(entry.date, entry.language)}</time><span>${entry.readTime} ${locale.minutes}</span></div></header>
     <aside class="article-notice" aria-label="${locale.scope}">${escapeHtml(entry.notice)}</aside>
     <div class="reading-layout">${toc}<article class="article-prose" id="artigo" lang="${escapeHtml(entry.language ?? 'pt-BR')}" aria-labelledby="article-title">${rendered.html}</article></div>
-    <div class="article-actions"><a href="${locale.assetPrefix}${urlPath(entry.source)}" download>${entry.source === entry.originalSource ? locale.original : locale.download}</a>${entry.originalSource && entry.originalSource !== entry.source ? `<a href="${locale.assetPrefix}${urlPath(entry.originalSource)}" download hreflang="en" data-original-download>${locale.original}</a>` : ''}<button type="button" data-print hidden>${locale.print}</button><a href="index.html">${locale.back}</a></div>
+    <div class="article-actions"><a href="${locale.assetPrefix}${urlPath(entry.source)}" download>${entry.source === entry.originalSource ? originalLabel : locale.download}</a>${entry.originalSource && entry.originalSource !== entry.source ? `<a href="${locale.assetPrefix}${urlPath(entry.originalSource)}" download hreflang="${originalLanguage}" data-original-download>${originalLabel}</a>` : ''}<button type="button" data-print hidden>${locale.print}</button><a href="index.html">${locale.back}</a></div>
     <section class="related-reading" aria-labelledby="related-title"><h2 id="related-title">${locale.related}</h2><div class="publication-grid">${related.map(publicationCard).join('\n')}</div></section>
   </main>`,
   });

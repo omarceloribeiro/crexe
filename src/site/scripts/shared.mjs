@@ -12,6 +12,7 @@ export const examples = [
   ['examples/plaintext/calculadora.crexe', 'examples/calculadora.crexe'],
   ['examples/markdown/regra-de-tres.crexe', 'examples/regra-de-tres.crexe'],
   ['examples/yaml/calculator_native.crexe', 'examples/calculator_native.crexe'],
+  ['examples/crexp/calculadora.crexp', 'examples/calculadora.crexp'],
 ];
 
 export function git(args, options = {}) {
