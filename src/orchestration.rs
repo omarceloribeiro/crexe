@@ -306,6 +306,11 @@ fn exec_inner(
                 .is_some_and(|profile| profile.starts_with("dotnet-"))
         {
             system.push_str("\nFor --crexe-reader-check, serialize an object with lowercase kind, content and truncated keys using System.Text.Json.JsonSerializer. Never construct JSON using string interpolation or manual escaping. Use new UTF8Encoding(false, true) to detect invalid UTF-8; Encoding.UTF8.GetString silently replaces invalid bytes and does not satisfy the contract. Invalid UTF-8 must produce hex even without NUL bytes. The headless self-test must assert actual preview/decoding logic, succeed for correct behavior, and run before GUI initialization. Preserve exact whitespace and Unicode in the unrendered check content.");
+            if get_path(&spec, &["engine_profile"]).and_then(Value::as_str)
+                == Some("dotnet-winforms")
+            {
+                system.push_str("\nFor the Windows Forms reader UI, preserve visible line breaks and blank lines from both LF and CRLF documents. Keep the raw preview unchanged for --crexe-reader-check; normalize only the display string with rawContent.ReplaceLineEndings(Environment.NewLine) before assigning it to a TextBox. Use a read-only multiline control with a readable font, adequate contrast, word wrapping and vertical scrolling, filling the resizable content area. Keep display formatting separate from decoding and include headless self-test assertions for LF, CRLF and blank-line presentation without changing the raw check content.");
+            }
         }
         let previous = baseline.as_ref().map(|b| b.metadata.prompt.as_str());
         let baseline_sources = baseline
