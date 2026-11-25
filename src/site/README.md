@@ -32,6 +32,8 @@ Para hospedar em `crexe.org`, use **apenas o conteúdo de `src/site/dist`** como
 - `assets/`: marca e recursos locais, sem fontes remotas.
 - `scripts/`: build, verificação e servidor local.
 
+A seção de ecossistema distingue `crexe.org`, dedicado ao projeto aberto, do portal comercial planejado `crexe.bestows.solutions`. Os textos de licenciamento seguem a [revisão mantida no repositório](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): preservam GNU GPL v3, não anunciam novas concessões MIT/Apache/CC BY, registro de marca ou produtos futuros como já disponíveis.
+
 Os exemplos `.crexe` e a documentação são copiados de suas fontes mantidas no repositório. Edite os originais e gere novamente o site. Não mantenha uma segunda cópia editorial desses documentos nesta pasta.
 
 O download de código-fonte é criado por `git archive` do **commit HEAD**, com o hash no nome e um arquivo SHA-256 correspondente. Não contém mudanças ainda não commitadas, arquivos ignorados, credenciais locais, caches nem o código do próprio site. Os arquivos históricos de `docs/archive` também ficam fora do ZIP. O `source.json` registra a revisão exata. Os links no HTML são preenchidos no build e funcionam sem JavaScript.

@@ -131,4 +131,4 @@ Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na co
 - [Baseline e arquivos históricos](docs/archive/README.md)
 - [Análise do Ollama local](docs/ANALISE_OLLAMA_LOCAL_2026-09-23.md)
 
-A engine usa a [GNU GPL v3](LICENSE) escolhida para este repositório. O manifest referencia esse arquivo sem acrescentar permissão para versões futuras. A licença de artefatos gerados depende do projeto e das dependências; ela não é definida automaticamente pela licença da engine.
+A engine usa a [GNU GPL v3](LICENSE) escolhida para este repositório. O manifest referencia esse arquivo sem acrescentar permissão para versões futuras. A licença de artefatos gerados depende do projeto, das dependências e do conteúdo incorporado, incluindo templates; ela não é definida automaticamente pela licença da engine. Consulte a [revisão do licenciamento e da organização do ecossistema](docs/LICENCIAMENTO_E_ECOSSISTEMA.md) para distinguir a situação atual das políticas propostas.
