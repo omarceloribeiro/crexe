@@ -3,6 +3,11 @@
 mod windows;
 use std::sync::atomic::{AtomicBool, Ordering};
 static DESKTOP: AtomicBool = AtomicBool::new(false);
+static WINDOW_OBSERVED: AtomicBool = AtomicBool::new(false);
+
+pub(crate) fn window_observed() -> bool {
+    WINDOW_OBSERVED.load(Ordering::SeqCst)
+}
 
 pub(crate) fn desktop() -> bool {
     DESKTOP.load(Ordering::SeqCst)
@@ -16,6 +21,7 @@ pub(crate) struct Progress {
 impl Progress {
     pub fn start(enabled: bool) -> anyhow::Result<Self> {
         DESKTOP.store(enabled && cfg!(windows), Ordering::SeqCst);
+        WINDOW_OBSERVED.store(false, Ordering::SeqCst);
         #[cfg(windows)]
         {
             Ok(Self {
@@ -73,6 +79,22 @@ pub(crate) fn confirm_edit_empty() -> anyhow::Result<bool> {
     #[cfg(not(windows))]
     {
         Ok(false)
+    }
+}
+
+pub(crate) fn confirm_reader_default(extension: &str) -> bool {
+    #[cfg(windows)]
+    {
+        rfd::MessageDialog::new()
+            .set_title("Leitor mantido — CREXE")
+            .set_description(format!("O leitor foi mantido para arquivos .{extension}.\n\nDeseja escolher este leitor como programa padrão no Windows? Nas Configurações, selecione CREXE — Leitor .{extension}.\n\nA escolha vale para todos os arquivos dessa extensão. Você pode cancelar e escolher depois."))
+            .set_buttons(rfd::MessageButtons::YesNo)
+            .show() == rfd::MessageDialogResult::Yes
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = extension;
+        false
     }
 }
 

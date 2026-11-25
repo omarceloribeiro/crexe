@@ -26,6 +26,7 @@ mod format_dispatch;
 mod generator;
 mod history;
 mod installation;
+mod kept_reader;
 mod orchestration;
 mod package;
 mod paths;
@@ -76,7 +77,24 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Generate or reuse a reader and open a local document without sending its contents
-    OpenGenerating { file: PathBuf },
+    OpenGenerating {
+        file: PathBuf,
+        /// Preserve the accepted reader and offer Windows default-app settings
+        #[arg(long, conflicts_with_all = ["no_run", "export"])]
+        keep_as_default: bool,
+    },
+    /// Open a maintained reader without generation, compilation or provider settings
+    OpenKeptReader {
+        #[arg(conflicts_with_all = ["no_run", "export"])]
+        file: PathBuf,
+        #[arg(long)]
+        extension: String,
+    },
+    /// Manage maintained readers and the user-confirmed Windows default choice
+    ReaderDefaults {
+        #[command(subcommand)]
+        command: ReaderDefaultCommands,
+    },
     /// Edit a .crexe document in the built-in text editor; saving never generates
     Edit { file: PathBuf },
     /// Open native provider/model/API-key settings; import only stages changes for review
@@ -172,6 +190,19 @@ enum BundleCommands {
     },
 }
 
+#[derive(Subcommand, Debug)]
+enum ReaderDefaultCommands {
+    List,
+    Forget {
+        #[arg(long)]
+        extension: String,
+    },
+    Choose {
+        #[arg(long)]
+        extension: String,
+    },
+}
+
 #[derive(Debug, Clone)]
 struct RuntimeVars {
     os: String,
@@ -214,14 +245,26 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse_from(args);
 
     match &cli.command {
-        Commands::OpenGenerating { file } => {
-            if let Err(error) = reader::open(file, &cli) {
+        Commands::OpenGenerating {
+            file,
+            keep_as_default,
+        } => {
+            if let Err(error) = reader::open(file, &cli, *keep_as_default) {
                 if cli.ui && !executor::cancelled() {
                     presentation::show_error(&truncate(&format!("{error:#}"), 2000));
                 }
                 return Err(error);
             }
         }
+        Commands::OpenKeptReader { file, extension } => {
+            if let Err(error) = reader::open_kept(file, extension, cli.ui, false) {
+                if cli.ui && !executor::cancelled() {
+                    presentation::show_error(&truncate(&format!("{error:#}"), 2000));
+                }
+                return Err(error);
+            }
+        }
+        Commands::ReaderDefaults { command } => reader::defaults(command)?,
         Commands::Edit { file } => {
             format_dispatch::require_text(file)?;
             edit::open(file)?;

@@ -40,6 +40,30 @@ Open the engine without arguments or run `crexe configure`. Under **Gerar com CR
 
 On Windows, `install` and `associate` register **Gerar com CREXE** in file context menus. On Windows 11, also check **Show more options** (Mostrar mais opções). This action preserves each document's default application. On macOS/Linux, the engine window's picker is this preview's graphical alternative; Finder, GNOME, and Dolphin context menu integration is not implemented. The CLI also works without a graphical session when using a console profile.
 
+## Keep the reader as the default program on Windows
+
+After running `crexe install` and `crexe associate`, Explorer also offers **Gerar com CREXE e Manter como Programa Padrão** (Generate with CREXE and keep as the default program). On Windows 11, it may appear under **Show more options**. It prepares the reader, preserves the accepted version outside the generation cache, and offers the default application choice in Windows. The original **Gerar com CREXE** action still leaves defaults unchanged.
+
+```powershell
+.\crexe.exe open-generating --keep-as-default --ui -- "first document.xyz"
+.\crexe.exe reader-defaults list
+.\crexe.exe reader-defaults choose --extension xyz
+```
+
+After observing a usable reader window, the `--ui` action displays **Leitor mantido — CREXE**, with **Sim/Não** (Yes/No), to offer opening Settings. This invitation also appears when reusing a reader through the new explicit action; ordinary kept-reader openings do not show it. Without `--ui`, or if a usable window cannot be confirmed, the engine prints the `reader-defaults choose` command.
+
+Windows requires the user to confirm the default reader. CREXE registers a candidate for the extension but does not write `UserChoice` or silently replace the preference. After checking the reader, confirm your choice in **Settings → Apps → Default apps**. Where the deep link is supported, the engine opens the reader's settings page; otherwise, select the extension on the general page. Closing Settings does not mean the choice was applied. [Windows requirements](https://learn.microsoft.com/en-us/windows/apps/develop/windows-integration/default-apps-platform).
+
+Once confirmed, double-clicking **another file with the same extension** opens that document with the kept reader, without calling the LLM, recompiling, or loading credentials. The program lives under `reader-apps/` in the installation root, separate from `readers/` and the generation cache. Changing provider/model or clearing only the cache should not remove it. The profile's runtime/libraries are still required.
+
+The association invokes `crexe open-kept-reader --extension xyz --ui -- "another document.xyz"`. This execution-only command checks the expected extension and the program's integrity. A missing, modified or incompatible reader produces a local error without automatic regeneration. Explicit preparation may still require a model and SDK. `--keep-as-default` cannot be combined with `--no-run` or `--export`: this flow must open the prepared reader.
+
+To stop offering a reader, use `crexe reader-defaults forget --extension xyz`. The command removes the candidate and extension index but keeps program objects, source, recipe and state on disk; there is no automatic collection of these files yet. Removal preserves other applications and does not silently restore an earlier default. If needed, choose another application in Windows Settings. `crexe unassociate` also removes this installation's reader registrations and both context menus; that action does not delete kept data or payloads.
+
+This MVP is Windows-only and accepts document extensions. Executable types, scripts, installers, shortcuts and CREXE formats are rejected by the new option. The preview remains read-only with the same 64 KiB limit. During preparation, only the extension goes to the LLM; the selected document's name, path, contents and other metadata remain outside requests.
+
+Implementation and automated tests do not replace actual acceptance of the menu, Windows default confirmation and double-click flow. The [plan and acceptance criteria](PLANO_PROGRAMA_PADRAO_V1.md) and [validation record (Portuguese)](../validation/2026-11-25-kept-reader.md) distinguish these forms of evidence; a graphical run on the target Windows version must be recorded before advertising the flow as validated for publication.
+
 ## SDKs and profile selection
 
 The provider, model, and credentials come from [local configuration](CONFIGURACAO.md). Ollama, OpenAI, and DeepSeek reuse the engine's existing transports. The engine does not automatically switch providers after a failure.
@@ -123,6 +147,7 @@ cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --lib
 cargo test --locked --test cli
+cargo test --locked --test kept_reader
 cargo test --locked --test open_generating -- --ignored --nocapture
 ```
 
@@ -130,7 +155,17 @@ The last command requires .NET 8 SDK and uses a controlled local server, without
 
 The [CI configuration](../../.github/workflows/ci.yml) includes the reader suite on its runners; the presence of that step does not replace checking a run's result for the candidate commit.
 
+`kept_reader` covers the new public command boundaries without installing or registering real applications. Persistence unit tests cover payload/index integrity and recovery; registry unit tests use isolated test keys. Confirming a default application remains a separate graphical acceptance test.
+
+On Windows, the ignored `open_generating` suite includes `windows_kept_reader_roundtrip`: it installs the engine in a temporary directory, generates a console reader and registers only a candidate for a unique synthetic extension. It does not register general context menus, open Settings or choose a default. It checks the registered command, absence of `UserChoice`, reopening through the installed engine without `CREXE_HOME`, without configuration/credentials and after deleting the temporary cache, privacy and candidate removal. A cleanup guard attempts to remove the registration even on failure. This is real integration with a temporary candidate, not graphical default confirmation, and should run in a test environment.
+
 ## Manual acceptance: CLI, context menu, and picker
+
+For the kept-reader flow, use a test Windows user or VM and an invented document extension. Record these additional checks separately from automated tests:
+
+1. Select **Gerar com CREXE e Manter como Programa Padrão**, check the generated reader, then open the system's default-app choice. Appearing in Settings does not prove the app became the default.
+2. Confirm the candidate in Settings and double-click a second file of the same type. Record the correct title/content, zero provider requests and no compilation. Repeat after changing models, removing credentials, and clearing only the test generation cache.
+3. Cancel the choice and verify the earlier default remains. Select another app and verify CREXE respects it. Test `reader-defaults forget` and `unassociate` without removing other registrations. Do not alter personal defaults for this test.
 
 Use synthetic documents and a new directory. Record commit/package, host, profile, SDK, provider/model, results, and timing. For a verifiable first generation, use an unprepared type or an isolated test installation without deleting personal caches.
 

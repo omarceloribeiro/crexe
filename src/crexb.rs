@@ -865,7 +865,7 @@ fn verify_inventory(archive: &Archive) -> Result<()> {
 }
 
 /// Accept a native target executable, never a shell script or a renamed interpreter command.
-fn native_binary(bytes: &[u8], os: &str, arch: &str) -> Result<()> {
+pub(crate) fn native_binary(bytes: &[u8], os: &str, arch: &str) -> Result<()> {
     let machine = match os {
         "windows" if bytes.len() >= 64 && bytes.starts_with(b"MZ") => {
             let offset = u32::from_le_bytes(bytes[60..64].try_into().unwrap()) as usize;

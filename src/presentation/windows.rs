@@ -394,6 +394,7 @@ impl Activation {
         unsafe {
             EnumWindows(Some(visit), &mut search as *mut _ as LPARAM);
             if !search.found.is_null() {
+                super::WINDOW_OBSERVED.store(true, Ordering::SeqCst);
                 if IsIconic(search.found) != 0 {
                     ShowWindowAsync(search.found, SW_RESTORE);
                     // Allow the application's own thread to process the restore.

@@ -2,7 +2,7 @@
 
 [English](en/PLANO_PROGRAMA_PADRAO_V1.md) · [Gerar com CREXE](GERAR_COM_CREXE.md)
 
-**Estado: proposta de implementação; a funcionalidade ainda não está implementada.** Análise de 25/11/2026 sobre a revisão `28e5356`. Este documento não altera associações do Windows nem instala leitores.
+**Estado: implementação mínima adicionada; aceitação gráfica completa ainda pendente.** Plano elaborado em 25/11/2026 sobre a base `28e5356` e adotado nesta entrega. Os comandos estão descritos no [guia atualizado](GERAR_COM_CREXE.md); este documento preserva as decisões e os critérios de aceite, sem alegar uma confirmação gráfica já realizada. O [registro de validação](validation/2026-11-25-kept-reader.md) separa os testes aprovados das etapas ainda não comprovadas.
 
 ## Decisão recomendada
 
@@ -20,22 +20,19 @@ O Windows exige que a escolha do aplicativo padrão aconteça na interface do si
 
 Para o MVP, usar `ms-settings:defaultapps`. No Windows 11 com suporte ao deep link, adicionar `?registeredAppUser=<nome registrado codificado>` para abrir a página do leitor. Em versões anteriores, abrir a página geral e mostrar instruções para selecionar a extensão. Não prometer uma quantidade fixa de cliques em todas as versões. [Deep link oficial](https://learn.microsoft.com/en-us/windows/apps/develop/launch/launch-default-apps-settings) · [Escolher por extensão](https://support.microsoft.com/en-us/windows/apps/change-default-apps-in-windows)
 
-## O que o código já oferece
+## Implementação entregue
 
-Referências de linhas da revisão analisada:
-
-| Base existente | Local | Consequência para o plano |
+| Componente | Arquivo | Responsabilidade |
 |---|---|---|
-| Menu por usuário, seleção única, comando com `%1` entre aspas e `--` | `src/installation/windows.rs:58`, `:149` | Acrescentar um verbo separado, preservando o menu atual. |
-| Instalação em caminho estável | `src/installation.rs:43` | Apontar o registro para a engine instalada, nunca para o ZIP extraído temporariamente. |
-| Planejamento só recebe a extensão; um plano salvo | `src/reader.rs:82`, `:154`, `:218` | Reutilizar o contrato de privacidade e a chamada única. |
-| Identidade inclui provider/modelo e contrato | `src/reader.rs:196` | O padrão não pode depender dessa identidade ser recalculada em cada abertura. |
-| Build e testes antes de aceitar a revisão | `src/orchestration.rs:458`, `:509` | Persistir somente a revisão aceita; falhas conservam o leitor anterior. |
-| Callback de preparação anterior ao lançamento | `src/orchestration.rs:557` | Não confundir “preparado” com aplicativo iniciado com sucesso. |
-| Argumento do documento separado do comando | `src/executor.rs:116`, `:190` | Reutilizar `OsString` e lançamento direto, sem shell. |
-| Revisões com hashes e publicação atômica | `src/cache.rs:55`, `:96` | Reaproveitar validação e cópia limitada em uma área persistente. |
-| CREXB já exporta payload aceito | `src/crexb.rs:343` | Reaproveitar helpers quando fizer sentido; seu lançamento público atual não recebe documento (`:975`). |
-| Registro isolado para testes | `src/installation/windows.rs:228` | Testes automatizados não precisam mudar os padrões reais do usuário. |
+| CLI e controle do fluxo | `src/lib.rs`, `src/reader.rs` | Ação explícita de manter, launcher separado e comandos de gerenciamento. |
+| Revisão aceita | `src/orchestration.rs` | Callback recebe o caminho da revisão aprovada; o fluxo de manter adia a abertura até o payload persistente existir. |
+| Armazenamento e launcher | `src/kept_reader.rs` | Verifica revisão, copia fontes/receita/payload, registra candidato via callback e publica índice; abre sem provider ou compilador. |
+| Raiz instalada | `src/installation.rs` | Recupera a raiz pelo executável instalado quando o Explorer não herda `CREXE_HOME`; exige versão instalada correspondente na preparação. |
+| Menu Windows | `src/installation/windows.rs` | Dois verbos separados, seleção única, caminho e `%1` entre aspas. |
+| Candidato e Settings | `src/installation/reader_defaults.rs` | ProgID/capacidades por extensão, propriedade, rollback e URI de Configurações; sem `UserChoice`. |
+| Abertura observável | `src/executor.rs`, `src/presentation.rs` | Argumento nativo e observação de janela; o diálogo não é prova de escolha de padrão. |
+
+A passagem entre geração e persistência usa o callback da revisão aceita. O store adquire também o lock do cache e confere que essa revisão continua sendo a aceita antes de copiá-la.
 
 ## Experiência do MVP
 
@@ -43,58 +40,64 @@ Referências de linhas da revisão analisada:
 2. A nova opção recebe um arquivo local com extensão suportada pelo fluxo existente. A associação será para todos os arquivos dessa extensão, não apenas para esse documento.
 3. A engine gera ou reutiliza o leitor, compila e verifica o contrato com arquivos sintéticos. O documento real só é fornecido ao aplicativo na abertura.
 4. A engine preserva a revisão aceita em uma área de programas mantidos, registra o leitor como candidato e abre o documento. Não anunciar sucesso de execução apenas porque houve build.
-5. Uma mensagem curta explica: “Leitor preparado para arquivos .xyz. Confirme no Windows para usá-lo como padrão.” O botão **Escolher como padrão no Windows** abre Configurações depois da preparação. Isso também permite que a pessoa veja o leitor antes de escolher.
+5. Depois de observar uma janela utilizável do leitor, mostra **Leitor mantido — CREXE** com **Sim/Não**, oferecendo abrir Configurações de aplicativos padrão. Se não confirmar uma janela utilizável, mantém o leitor e informa o comando `reader-defaults choose`. A escolha efetiva acontece no Windows.
 6. Após a escolha, duplo clique em outro `.xyz` abre o leitor mantido e mostra esse novo conteúdo. Não chama o modelo, não compila e não precisa das credenciais usadas na geração.
 7. Cancelar ou fechar Configurações deixa o leitor disponível como candidato, sem declarar que virou padrão. Se o usuário escolher outro app futuramente, o CREXE respeita essa escolha e não tenta recuperá-la.
 
-Se o leitor já está instalado e é o padrão efetivo, a nova ação pode abrir diretamente e informar o estado. Uma consulta ao padrão deve usar a API do Windows, sem inferir sucesso pela mera presença de nossas chaves. [QueryCurrentDefault](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iapplicationassociationregistration-querycurrentdefault)
+No MVP, a nova ação explícita com `--ui` oferece o diálogo quando observa uma janela utilizável do leitor, inclusive ao reutilizar um leitor. A CLI sem `--ui` informa o comando para abrir Configurações. A otimização de dispensar a confirmação quando o leitor parece ser padrão foi removida: consultas de associação do Shell podem retornar um candidato de fallback para uma extensão inédita antes de qualquer escolha do usuário. O duplo clique normal apenas abre o leitor e não mostra esse convite. A engine não anuncia que a escolha foi confirmada por inferência do registro.
 
-## Contratos propostos
+## Contratos da implementação mínima
 
-Nomes abaixo são propostas para a implementação, não comandos disponíveis hoje:
+Comandos da implementação mínima:
 
 ```text
 crexe open-generating --keep-as-default --ui -- "arquivo.xyz"
-crexe open-kept-reader --ui -- "outro arquivo.xyz"
+crexe open-kept-reader --extension xyz --ui -- "outro arquivo.xyz"
 crexe reader-defaults list
+crexe reader-defaults choose --extension xyz
 crexe reader-defaults forget --extension xyz
 ```
 
-`--keep-as-default` somente no Windows e sem combinação com `--no-run`. A segunda entrada é exclusivamente de execução: não carrega provider, não cria `Session`, não recompila e não recai em `open-generating`. Perfil/contrato antigo, artefato ausente, runtime indisponível ou manifesto inválido resultam em erro local e orientação para uma nova preparação explícita.
+`--keep-as-default` somente no Windows e sem combinação com `--no-run` ou `--export`. A segunda entrada é exclusivamente de execução: não carrega provider, não cria `Session`, não recompila e não recai em `open-generating`. Perfil/contrato antigo, artefato ausente, runtime indisponível ou manifesto inválido resultam em erro local e orientação para uma nova preparação explícita.
 
-Separar preparação de abertura em `reader.rs`, retornando um `PreparedReader` com a revisão aceita, perfil, target e contrato. A instalação do leitor recebe essa estrutura, não um caminho de tentativa escolhido por convenção. Preservar os locks e a concorrência do fluxo existente.
+Uma nova ação de manter reutiliza um leitor íntegro que já esteja mantido para a extensão, mesmo quando o modelo mudou. Não há atualização automática nem comando de substituição direta nesta versão. Para preparar outro leitor deliberadamente, é necessário esquecer o vínculo atual e solicitar uma nova preparação. Objetos antigos permanecem no disco.
 
 ## Persistência e execução
 
-Proposta de estrutura, usando a raiz de `installation::root()`:
+Estrutura implementada sob `installation::reader_root()`:
 
 ```text
 reader-apps/
-  objects/<hash-do-payload>/
+  objects/<sha256-do-manifesto>/
     manifest.json
     app/...
-    recipe/...
-  extensions/<hash-da-extensao>.json
-  registrations.json
+    source/...
+    recipe/original.crexe
+    recipe/resolved.yaml
+  extensions/<sha256-da-extensao>.json
+  extensions/<sha256-da-extensao>.lock
+  state/<sha256-da-extensao>/
 ```
 
-O manifesto tem versão própria, extensão normalizada, perfil, OS/arquitetura, versão do contrato, entrypoint relativo, runtime exigido e hashes dos arquivos. A chave do índice depende da extensão, não do provider atual. Não guardar nome/caminho do documento nem segredos. O payload inclui todos os arquivos de runtime necessários ao perfil, não só um `.exe`.
+O manifesto interno registra schema, contrato, extensão, OS/arquitetura, perfil, entrypoint, nomes das variáveis secretas a filtrar e hashes dos arquivos. O hash do manifesto identifica o objeto e incorpora esses hashes. Não contém o nome/caminho do documento escolhido nem valores de credenciais. O runtime necessário é determinado pelo perfil; o payload .NET inclui os arquivos de publicação da aplicação, sem embutir o runtime .NET.
 
-Copiar a revisão aceita para staging sob a mesma raiz, validar arquivos, hashes, caminhos e ausência de links/reparse points, e publicar o índice atomicamente. Limpeza do cache de geração não deve remover um leitor mantido. Atualização da engine deve preservar esse diretório; atualização do leitor é uma ação explícita e só troca o índice depois de passar nos testes. Arquivos ainda usados por um processo permanecem até uma limpeza segura posterior.
+O store valida a revisão aceita, seus fontes e inventário, copia para staging, verifica o executável e o objeto final, registra o candidato e só então publica o índice por substituição atômica. Falhas conservam o índice anterior; se a primeira publicação do índice falhar após o registro, tenta remover o candidato novo. O manifesto público CREXB não foi ampliado; a validação de binário nativo é reutilizada.
 
-O launcher valida o índice e o payload e executa somente o binário permitido pelo contrato. O novo caminho é passado como um argumento nativo, nunca como template ou texto de `cmd`/PowerShell. Não abrir o documento com `ShellExecute` dentro do handler, pois isso recursaria para a própria associação. A engine mantém a remoção de segredos do ambiente; os nomes de variáveis configuradas podem ser preservados como metadados locais, nunca seus valores. Não depender da resolução de uma credencial para abrir o leitor.
+A preparação e a remoção usam lock por extensão. Uma operação conflitante recebe erro para tentar depois; a abertura do aplicativo não mantém esse lock durante sua vida. A preparação comum de leitores conserva sua coordenação já existente.
 
-Reusar o tratamento de payload/runtime do CREXB é possível, mas não ampliar o manifesto público nem permitir argumentos arbitrários vindos de um bundle só para esta feature. O parâmetro do documento deve continuar vindo exclusivamente da invocação local do launcher. Aberturas simultâneas usam o mesmo payload imutável sem manter um lock exclusivo durante toda a vida dos aplicativos.
+Aberturas consultam o índice da extensão e verificam o objeto, sem recalcular identidade a partir de provider/modelo. O argumento do documento é nativo, nunca texto de shell, e não passa por `ShellExecute` dentro do handler. O diretório de trabalho separado fica em `state/`; a engine filtra credenciais herdadas usando nomes comuns e os nomes salvos no manifesto, sem resolver uma credencial para abrir.
+
+Limpar `readers/` e o cache de geração não remove `reader-apps/`. Os objetos, fontes, receita e diretório de estado sobrevivem inclusive a `forget`; esta versão não inclui coleta automática desses arquivos, evitando apagar dados de processos ainda abertos.
 
 ## Registro, remoção e recuperação
 
 Registrar por usuário, sem administrador: ProgID próprio, comando do launcher, nome amigável **CREXE — Leitor .xyz**, `OpenWithProgids`, `Capabilities/FileAssociations` e `HKCU\Software\RegisteredApplications`. Somente extensões com leitor aceito entram nas capacidades. O registro de candidato e sua propriedade devem ser separados do padrão escolhido pelo sistema. [Registro de capacidades](https://learn.microsoft.com/en-us/windows/win32/shell/default-programs) · [Registro de aplicações](https://learn.microsoft.com/en-us/windows/win32/shell/app-registration)
 
-O guia antigo de Default Programs é referência para a estrutura do registro, não para aplicar padrões no Windows atual. A API atual de deep link confirma o uso de `RegisteredApplications` por usuário. A primeira prova técnica da implementação deve confirmar que uma extensão inédita aparece em Configurações com o leitor correto.
+O guia antigo de Default Programs é referência para a estrutura do registro, não para aplicar padrões no Windows atual. A API atual de deep link confirma o uso de `RegisteredApplications` por usuário. A fixture gráfica local já mostrou o candidato com título correto em Configurações; a seleção efetiva e o duplo clique continuam pendentes no registro de validação.
 
-Prever um journal local das entradas criadas, checagem de proprietário antes de alterar e operações idempotentes. Em falha de registro, não trocar um leitor anterior nem deixar chaves apontando para payload inexistente. Em falha ao abrir Configurações, manter a preparação e explicar como concluir manualmente; não gerar outra vez.
+O registro verifica propriedade antes de alterar e captura os valores anteriores em memória para rollback em caso de erro. Os metadados de propriedade ficam no próprio registro; não há `registrations.json`, journal durável ou transação persistida. Um lock em `%LOCALAPPDATA%\CREXE\registry.lock`, independente de `CREXE_HOME`, serializa as alterações de registro entre instalações do mesmo usuário. Operações são idempotentes e enumeram apenas candidatos de propriedade da instalação. Em falha ao abrir Configurações, o leitor permanece preparado e a mensagem explica como concluir manualmente; não gera outra vez.
 
-`unassociate` deve remover também os dois menus e os registros de leitores pertencentes à instalação. Não apagar chaves de extensão compartilhadas, registros de outros aplicativos ou `UserChoice`. Os payloads mantidos podem permanecer até `forget`, que remove apenas aquele leitor e suas entradas. Se ele ainda for o padrão, orientar a pessoa a escolher outro no Windows; não prometer restauração automática do aplicativo anterior. [Remoção de ProgIDs](https://learn.microsoft.com/en-us/windows/win32/shell/how-to-register-a-file-type-for-a-new-application)
+`unassociate` remove os dois menus e registros de candidatos pertencentes à instalação, preservando os índices e objetos mantidos. `forget` move o índice para uma área recuperável antes de remover o candidato; uma falha no registro tenta restaurar o índice e conserva uma cópia se a restauração falhar. Após sucesso, remove o índice ativo; objetos e estado continuam no disco. Nenhum deles altera `UserChoice`, escolhas de outros aplicativos ou remove chaves de extensão compartilhadas com conteúdo alheio. Se o leitor era o padrão, a pessoa deve escolher outro no Windows; não há restauração automática do aplicativo anterior. [Remoção de ProgIDs](https://learn.microsoft.com/en-us/windows/win32/shell/how-to-register-a-file-type-for-a-new-application)
 
 Para o MVP, preservar as recusas existentes de ausência de extensão e `.crexe`/`.crexp`/`.crexb`. Restringir a nova opção a documentos: recusar explicitamente tipos executáveis, scripts, instaladores e atalhos do sistema, sem mudar a capacidade do comando original de fazer uma prévia de bytes. O conjunto dessa restrição deve ser declarado e testado; não prometer ser leitor padrão de qualquer extensão do Windows.
 
@@ -106,13 +109,13 @@ Depois de mantido, o launcher não deve sequer inicializar a integração de LLM
 
 Ficam fora do MVP: associações macOS/Linux, menu moderno com extensão COM, captura de tipos sem extensão, classificação por bytes, substituição silenciosa de padrões, publicação na Store, gestão corporativa de políticas e galeria de múltiplos leitores por extensão. O menu atual e a geração comum continuam disponíveis nas plataformas já suportadas.
 
-## Etapas de implementação
+## Estado das etapas
 
-1. **Prova do registro no Windows.** Em usuário/VM de teste, registrar um leitor fixture para uma extensão inventada, abrir Configurações, selecionar o padrão e validar o duplo clique. Conferir Windows 11 e fallback Windows 10 antes de prometer suporte aos dois.
-2. **Persistência e launcher.** Implementar o manifesto, promoção atômica e execução local independente de provider/cache. Essa é a parte central do MVP.
-3. **Integração com geração.** Extrair o resultado preparado sem alterar orçamento, privacidade, validação e concorrência existentes. Só promover após aceitação; preservar revisão anterior nas falhas.
-4. **Menu e escolha do sistema.** Adicionar o verbo, registro de capacidades, nome amigável, abertura de Settings e mensagens distintas para preparado, escolha pendente e padrão confirmado. Não usar o callback genérico de processo terminado como prova de janela aberta.
-5. **Remoção, docs e entrega.** Cobrir `unassociate`/`forget`, atualizar guias e site PT/EN, executar testes e publicar a mudança em commit próprio, separado do contador.
+1. **Persistência, launcher, menu e registro:** implementados, com testes automatizados de armazenamento, comandos e propriedade/rollback do registro.
+2. **Geração e reutilização:** o roundtrip Windows com provider controlado aprovou uma chamada de planejamento e uma de geração, leitura de outros documentos sem novas requisições e sobrevivência à remoção do cache/configuração.
+3. **Primeira janela e Settings:** a fixture WinForms mostrou o primeiro conteúdo e a tela de Settings com o candidato correto. O binário seguinte mostrou também o leitor e o diálogo completo Sim/Não. Isso não comprova seleção nem cancelamento do padrão.
+4. **Aceitação gráfica restante:** confirmar/cancelar escolha, duplo clique em segundo documento, mudança para outro app e remoção, registrando versão/build do Windows. A automação disponível não conseguiu operar a tela de Settings nem os controles do convite com segurança.
+5. **Entrega:** a suíte local final aprovou 148 testes e mais 9 testes de geração executados explicitamente. Registrar a última conferência de formatação/clippy após o ajuste do teste de timeout e conferir CI. Não declarar suporte gráfico completo a Windows 10 e 11 com base somente nesses testes locais.
 
 ## Validação necessária
 

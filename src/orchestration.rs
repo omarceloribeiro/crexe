@@ -41,7 +41,7 @@ pub(crate) fn exec_reader(
     cli: &Cli,
     settings: &config::Settings,
     generation: &mut generator::Session,
-    prepared: &mut dyn FnMut() -> Result<()>,
+    prepared: &mut dyn FnMut(&Path) -> Result<bool>,
 ) -> Result<()> {
     exec_inner(
         recipe,
@@ -64,7 +64,8 @@ struct ReaderInvocation<'a> {
     document: &'a Path,
     settings: &'a config::Settings,
     generation: &'a mut generator::Session,
-    prepared: &'a mut dyn FnMut() -> Result<()>,
+    // true: caller owns final launch (e.g. a persisted reader); false: launch here.
+    prepared: &'a mut dyn FnMut(&Path) -> Result<bool>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -272,7 +273,9 @@ fn exec_inner(
                     )?;
                 }
                 if let Some(prepared) = reader_prepared.as_deref_mut() {
-                    prepared()?;
+                    if prepared(&base.revision)? {
+                        return Ok(());
+                    }
                 }
                 return launch(
                     &base.metadata.spec,
@@ -555,7 +558,9 @@ fn exec_inner(
     println!("Validated revision: {}", revision.display());
     drop(_cache_lock);
     if let Some(prepared) = reader_prepared {
-        prepared()?;
+        if prepared(&revision)? {
+            return Ok(());
+        }
     }
     launch(
         &spec,

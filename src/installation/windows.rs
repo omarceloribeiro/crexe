@@ -1,11 +1,16 @@
 use anyhow::{bail, Context, Result};
-use std::{io, path::Path};
+use fs2::FileExt;
+use std::{fs, io, path::Path};
 use winreg::{enums::*, RegKey};
+
+#[path = "reader_defaults.rs"]
+mod reader_defaults;
 
 const PROG_ID: &str = "CREXE.Intent.v1";
 const EXTENSION: &str = ".crexe";
 const PREVIOUS: &str = "PreviousDefault";
 const GENERATE_VERB: &str = "*\\shell\\CREXE.Generate";
+const KEEP_VERB: &str = "*\\shell\\CREXE.GenerateAndKeep";
 const ASSOCIATIONS: [(&str, &str, &str, bool); 3] = [
     (EXTENSION, PROG_ID, "Creative Executable", true),
     (
@@ -21,6 +26,36 @@ const ASSOCIATIONS: [(&str, &str, &str, bool); 3] = [
         false,
     ),
 ];
+
+// Registry identities are shared by every installation for this Windows user.
+// CREXE_HOME must not relocate this lock: two separate installations must not
+// both pass ownership checks and then interleave their journaled writes.
+fn registry_lock() -> Result<fs::File> {
+    let local = std::env::var_os("LOCALAPPDATA")
+        .context("LOCALAPPDATA não está disponível para proteger o registro do CREXE")?;
+    lock_registry_at(&Path::new(&local).join("CREXE"))
+}
+
+fn lock_registry_at(directory: &Path) -> Result<fs::File> {
+    if !directory.is_absolute() {
+        bail!("O diretório do lock de registro deve ser absoluto");
+    }
+    crate::paths::reject_links(directory)?;
+    fs::create_dir_all(directory)?;
+    let path = directory.join("registry.lock");
+    crate::paths::reject_links(&path)?;
+    let lock = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .context("Não foi possível abrir o lock de registro do CREXE")?;
+    lock.try_lock_exclusive().context(
+        "Outra operação está atualizando a integração do CREXE com o Windows. Tente novamente após concluir.",
+    )?;
+    Ok(lock)
+}
 
 #[link(name = "shell32")]
 unsafe extern "system" {
@@ -39,14 +74,64 @@ fn notify_shell() {
     }
 }
 
-fn executable_text(exe: &Path) -> Result<&str> {
+fn executable_text(exe: &Path) -> Result<String> {
+    use std::path::{Component, Prefix};
     let text = exe
         .to_str()
         .context("Windows association requires a Unicode executable path")?;
-    if !exe.is_absolute() || text.contains(['"', '\r', '\n']) {
+    if text.contains('"') || text.chars().any(char::is_control) {
         bail!("Invalid association path");
     }
-    Ok(text)
+    // current_exe may be verbatim while CREXE_HOME contains forward slashes.
+    // Use one lexical representation for commands and ownership; do not require
+    // the executable to exist (registration fixtures and removals need this).
+    let text = text.replace('/', "\\");
+    let text = if text
+        .get(..8)
+        .is_some_and(|value| value.eq_ignore_ascii_case("\\\\?\\UNC\\"))
+    {
+        format!("\\\\{}", &text[8..])
+    } else if let Some(drive) = text.strip_prefix("\\\\?\\") {
+        drive.to_owned()
+    } else {
+        text
+    };
+    let path = Path::new(&text);
+    if !path.is_absolute() {
+        bail!("Invalid association path");
+    }
+    let mut prefix = None;
+    let mut parts = Vec::new();
+    for component in path.components() {
+        match component {
+            Component::Prefix(value) => {
+                prefix = Some(match value.kind() {
+                    Prefix::Disk(drive) => format!("{}:", drive.to_ascii_uppercase() as char),
+                    Prefix::UNC(server, share) => format!(
+                        "\\\\{}\\{}",
+                        server.to_str().context("Invalid UNC server")?,
+                        share.to_str().context("Invalid UNC share")?
+                    ),
+                    _ => bail!("Unsupported Windows executable namespace"),
+                });
+            }
+            Component::RootDir | Component::CurDir => {}
+            Component::ParentDir => {
+                parts.pop();
+            }
+            Component::Normal(part) => {
+                parts.push(part.to_str().context("Invalid executable path")?)
+            }
+        }
+    }
+    if parts.is_empty() {
+        bail!("Association path must name an executable");
+    }
+    Ok(format!(
+        "{}\\{}",
+        prefix.context("Missing Windows path prefix")?,
+        parts.join("\\")
+    ))
 }
 
 fn open_command(exe: &Path) -> Result<String> {
@@ -58,6 +143,57 @@ fn generate_command(exe: &Path) -> Result<String> {
         "\"{}\" open-generating --ui -- \"%1\"",
         executable_text(exe)?
     ))
+}
+
+fn keep_command(exe: &Path) -> Result<String> {
+    Ok(format!(
+        "\"{}\" open-generating --keep-as-default --ui -- \"%1\"",
+        executable_text(exe)?
+    ))
+}
+
+fn same_executable(left: &str, right: &str) -> bool {
+    match (
+        executable_text(Path::new(left)),
+        executable_text(Path::new(right)),
+    ) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
+}
+
+fn same_command(left: &str, right: &str) -> bool {
+    let split = |value: &str| -> Option<(String, String)> {
+        let quoted = value.strip_prefix('"')?;
+        let (executable, arguments) = quoted.split_once('"')?;
+        Some((
+            executable_text(Path::new(executable)).ok()?,
+            arguments.to_owned(),
+        ))
+    };
+    match (split(left), split(right)) {
+        (Some(left), Some(right)) => left == right,
+        _ => false,
+    }
+}
+
+pub(super) fn register_reader(exe: &Path, extension: &str) -> Result<()> {
+    let _lock = registry_lock()?;
+    reader_defaults::register_reader(exe, extension)
+}
+
+pub(super) fn validate_reader_registration(exe: &Path, extension: &str) -> Result<()> {
+    let _lock = registry_lock()?;
+    reader_defaults::validate_reader_registration(exe, extension)
+}
+
+pub(super) fn unregister_reader(exe: &Path, extension: &str) -> Result<()> {
+    let _lock = registry_lock()?;
+    reader_defaults::unregister_reader(exe, extension)
+}
+
+pub(super) fn choose_reader_default(extension: &str) -> Result<()> {
+    reader_defaults::choose_reader_default(extension)
 }
 
 fn string(key: &RegKey, name: &str) -> Result<Option<String>> {
@@ -79,7 +215,10 @@ fn optional_key(parent: &RegKey, path: &str) -> Result<Option<RegKey>> {
 fn check_registration_owner(classes: &RegKey, path: &str, accepted: &[String]) -> Result<()> {
     if let Some(key) = optional_key(classes, path)? {
         if let Some(existing) = string(&key, "")? {
-            if !accepted.contains(&existing) {
+            if !accepted
+                .iter()
+                .any(|candidate| same_command(&existing, candidate))
+            {
                 bail!(
                     "Another CREXE installation owns this association or menu; unregister it first"
                 );
@@ -90,6 +229,7 @@ fn check_registration_owner(classes: &RegKey, path: &str, accepted: &[String]) -
 }
 
 pub(super) fn associate(exe: &Path) -> Result<()> {
+    let _lock = registry_lock()?;
     let (classes, _) = RegKey::predef(HKEY_CURRENT_USER).create_subkey("Software\\Classes")?;
     register(&classes, exe)?;
     notify_shell();
@@ -99,12 +239,13 @@ pub(super) fn associate(exe: &Path) -> Result<()> {
 fn register(classes: &RegKey, exe: &Path) -> Result<()> {
     let command = open_command(exe)?;
     let generate = generate_command(exe)?;
+    let keep = keep_command(exe)?;
     // Verify every handler and the menu before changing any integration. A second
     // installation must not leave a mixture of different owners behind.
     for (_, prog_id, _, _) in ASSOCIATIONS {
         let mut accepted = vec![command.clone()];
         if prog_id == PROG_ID {
-            accepted.push(format!("\"{}\" \"%1\"", exe.display()));
+            accepted.push(format!("\"{}\" \"%1\"", executable_text(exe)?));
         }
         check_registration_owner(
             classes,
@@ -116,6 +257,11 @@ fn register(classes: &RegKey, exe: &Path) -> Result<()> {
         classes,
         &format!("{GENERATE_VERB}\\command"),
         std::slice::from_ref(&generate),
+    )?;
+    check_registration_owner(
+        classes,
+        &format!("{KEEP_VERB}\\command"),
+        std::slice::from_ref(&keep),
     )?;
     for (extension_name, prog_id, label, editable) in ASSOCIATIONS {
         let (app, _) = classes.create_subkey(prog_id)?;
@@ -135,7 +281,7 @@ fn register(classes: &RegKey, exe: &Path) -> Result<()> {
             let (edit, _) = app.create_subkey("shell\\edit")?;
             edit.set_value("", &"Editar")?;
             let (edit_command, _) = edit.create_subkey("command")?;
-            edit_command.set_value("", &format!("\"{}\" edit \"%1\"", exe.display()))?;
+            edit_command.set_value("", &format!("\"{}\" edit \"%1\"", executable_text(exe)?))?;
         }
         let (with, _) = extension.create_subkey("OpenWithProgids")?;
         with.set_raw_value(
@@ -155,36 +301,73 @@ fn register(classes: &RegKey, exe: &Path) -> Result<()> {
     generate_verb.set_value("MultiSelectModel", &"Single")?;
     let (generate_key, _) = generate_verb.create_subkey("command")?;
     generate_key.set_value("", &generate)?;
+    let (keep_verb, _) = classes.create_subkey(KEEP_VERB)?;
+    keep_verb.set_value("", &"Gerar com CREXE e Manter como Programa Padrão")?;
+    keep_verb.set_value("NeverDefault", &"")?;
+    keep_verb.set_value("MultiSelectModel", &"Single")?;
+    keep_verb.create_subkey("command")?.0.set_value("", &keep)?;
     Ok(())
 }
 
 pub(super) fn unassociate(exe: &Path) -> Result<()> {
+    let _lock = registry_lock()?;
     let (classes, _) = RegKey::predef(HKEY_CURRENT_USER).create_subkey("Software\\Classes")?;
+    // Preflight both groups before changing either integration.
+    check_unregister(&classes, exe)?;
+    reader_defaults::unregister_all_readers(exe)?;
     unregister(&classes, exe)?;
     notify_shell();
     Ok(())
 }
 
-fn unregister(classes: &RegKey, exe: &Path) -> Result<()> {
+fn check_unregister(classes: &RegKey, exe: &Path) -> Result<()> {
+    let expected_open = open_command(exe)?;
+    let expected_generate = generate_command(exe)?;
+    let expected_keep = keep_command(exe)?;
     let apps = ASSOCIATIONS
         .iter()
         .map(|(_, prog_id, _, _)| optional_key(classes, prog_id))
         .collect::<Result<Vec<_>>>()?;
     let generate = optional_key(classes, GENERATE_VERB)?;
+    let keep = optional_key(classes, KEEP_VERB)?;
     // Missing one integration must not prevent removing the others. Verify every
     // present owner first so refusal never partially removes an installation.
     for app in apps.iter().flatten() {
         let command = app.open_subkey("shell\\open\\command")?;
-        if string(&command, "")?.as_deref() != Some(open_command(exe)?.as_str()) {
+        if !string(&command, "")?
+            .as_deref()
+            .is_some_and(|value| same_command(value, &expected_open))
+        {
             bail!("Association belongs to another installation; nothing was removed");
         }
     }
     if let Some(generate) = &generate {
         let command = generate.open_subkey("command")?;
-        if string(&command, "")?.as_deref() != Some(generate_command(exe)?.as_str()) {
+        if !string(&command, "")?
+            .as_deref()
+            .is_some_and(|value| same_command(value, &expected_generate))
+        {
             bail!("Generate menu belongs to another installation; nothing was removed");
         }
     }
+    if let Some(keep) = &keep {
+        let command = keep.open_subkey("command")?;
+        if !string(&command, "")?
+            .as_deref()
+            .is_some_and(|value| same_command(value, &expected_keep))
+        {
+            bail!("Keep-reader menu belongs to another installation; nothing was removed");
+        }
+    }
+    Ok(())
+}
+
+fn unregister(classes: &RegKey, exe: &Path) -> Result<()> {
+    check_unregister(classes, exe)?;
+    let apps = ASSOCIATIONS
+        .iter()
+        .map(|(_, prog_id, _, _)| optional_key(classes, prog_id))
+        .collect::<Result<Vec<_>>>()?;
     for ((extension_name, prog_id, _, _), app) in ASSOCIATIONS.iter().zip(apps) {
         let Some(app) = app else {
             continue;
@@ -209,9 +392,12 @@ fn unregister(classes: &RegKey, exe: &Path) -> Result<()> {
         // Only our verified ProgID; never delete extension keys or UserChoice.
         classes.delete_subkey_all(prog_id)?;
     }
-    if generate.is_some() {
+    if optional_key(classes, GENERATE_VERB)?.is_some() {
         // Do not remove the shared *\\shell key or any neighbouring verb.
         classes.delete_subkey_all(GENERATE_VERB)?;
+    }
+    if optional_key(classes, KEEP_VERB)?.is_some() {
+        classes.delete_subkey_all(KEEP_VERB)?;
     }
     Ok(())
 }
@@ -219,6 +405,25 @@ fn unregister(classes: &RegKey, exe: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn registry_lock_serializes_handles_and_releases_on_drop() {
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("CREXE");
+        let first = lock_registry_at(&directory).unwrap();
+        let error = lock_registry_at(&directory).unwrap_err();
+        assert!(error.to_string().contains("Outra operação"));
+        drop(first);
+        let second = lock_registry_at(&directory).unwrap();
+        assert!(directory.join("registry.lock").is_file());
+        drop(second);
+        assert!(lock_registry_at(&directory).is_ok());
+    }
+
+    #[test]
+    fn registry_lock_refuses_a_relative_directory() {
+        assert!(lock_registry_at(Path::new("relative-crexe-registry")).is_err());
+    }
 
     struct RegistryFixture {
         user: RegKey,
@@ -277,6 +482,20 @@ mod tests {
             Some("Single")
         );
         assert_eq!(string(&menu, "NeverDefault").unwrap().as_deref(), Some(""));
+        let keep = classes.open_subkey(KEEP_VERB).unwrap();
+        assert_eq!(
+            string(&keep, "").unwrap().as_deref(),
+            Some("Gerar com CREXE e Manter como Programa Padrão")
+        );
+        assert_eq!(
+            string(&keep, "MultiSelectModel").unwrap().as_deref(),
+            Some("Single")
+        );
+        assert_eq!(string(&keep, "NeverDefault").unwrap().as_deref(), Some(""));
+        assert_eq!(
+            string(&keep.open_subkey("command").unwrap(), "").unwrap(),
+            Some(keep_command(&fixture.exe).unwrap())
+        );
         assert_eq!(
             string(&menu.open_subkey("command").unwrap(), "").unwrap(),
             Some(format!(
@@ -295,6 +514,7 @@ mod tests {
         unregister(classes, &fixture.exe).unwrap();
         unregister(classes, &fixture.exe).unwrap();
         assert!(optional_key(classes, GENERATE_VERB).unwrap().is_none());
+        assert!(optional_key(classes, KEEP_VERB).unwrap().is_none());
         assert_eq!(
             string(&markdown, "").unwrap().as_deref(),
             Some("Existing.Markdown")
@@ -343,6 +563,36 @@ mod tests {
     }
 
     #[test]
+    fn foreign_keep_menu_blocks_registration_and_removal_without_partial_changes() {
+        let fixture = RegistryFixture::new();
+        let (command, _) = fixture
+            .classes
+            .create_subkey(format!("{KEEP_VERB}\\command"))
+            .unwrap();
+        command.set_value("", &"another installation").unwrap();
+        assert!(register(&fixture.classes, &fixture.exe).is_err());
+        assert!(optional_key(&fixture.classes, GENERATE_VERB)
+            .unwrap()
+            .is_none());
+        assert!(optional_key(&fixture.classes, PROG_ID).unwrap().is_none());
+        command
+            .set_value("", &keep_command(&fixture.exe).unwrap())
+            .unwrap();
+        register(&fixture.classes, &fixture.exe).unwrap();
+        command.set_value("", &"another installation").unwrap();
+        assert!(unregister(&fixture.classes, &fixture.exe).is_err());
+        assert!(optional_key(&fixture.classes, GENERATE_VERB)
+            .unwrap()
+            .is_some());
+        assert!(optional_key(&fixture.classes, PROG_ID).unwrap().is_some());
+        command
+            .set_value("", &keep_command(&fixture.exe).unwrap())
+            .unwrap();
+        unregister(&fixture.classes, &fixture.exe).unwrap();
+        assert!(optional_key(&fixture.classes, KEEP_VERB).unwrap().is_none());
+    }
+
+    #[test]
     fn removal_checks_both_owners_and_can_remove_an_orphaned_menu() {
         let fixture = RegistryFixture::new();
         register(&fixture.classes, &fixture.exe).unwrap();
@@ -377,7 +627,36 @@ mod tests {
         ] {
             assert!(open_command(Path::new(path)).is_err());
             assert!(generate_command(Path::new(path)).is_err());
+            assert!(keep_command(Path::new(path)).is_err());
         }
+    }
+
+    #[test]
+    fn commands_normalize_separators_and_verbatim_prefix_without_touching_disk() {
+        let expected = r"C:\Users\Nome com espaço\CREXE\releases\v1\crexe.exe";
+        for path in [
+            r"C:/Users/Nome com espaço/CREXE/releases/v1/crexe.exe",
+            r"c:\Users\Nome com espaço\CREXE\releases/v1\crexe.exe",
+            r"\\?\C:\Users\Nome com espaço\CREXE\releases\v1\crexe.exe",
+            r"C:\Users\Nome com espaço\CREXE\unused\..\releases\.\v1\crexe.exe",
+        ] {
+            assert_eq!(executable_text(Path::new(path)).unwrap(), expected);
+        }
+        assert_eq!(
+            executable_text(Path::new(r"\\?\UNC\server\share\crexe.exe")).unwrap(),
+            r"\\server\share\crexe.exe"
+        );
+    }
+
+    #[test]
+    fn association_registration_and_removal_accept_equivalent_path_spellings() {
+        let fixture = RegistryFixture::new();
+        let forward = std::path::PathBuf::from(fixture.exe.to_str().unwrap().replace('\\', "/"));
+        register(&fixture.classes, &forward).unwrap();
+        register(&fixture.classes, &fixture.exe).unwrap();
+        unregister(&fixture.classes, &fixture.exe).unwrap();
+        assert!(optional_key(&fixture.classes, KEEP_VERB).unwrap().is_none());
+        assert!(optional_key(&fixture.classes, PROG_ID).unwrap().is_none());
     }
 
     #[test]

@@ -253,8 +253,12 @@ fn execute(
     let failure;
     loop {
         if let Some(status) = child.try_wait()? {
-            if let Some(callback) = ready.take() {
-                callback();
+            // A failed startup must never offer default-app selection as if the
+            // reader had opened. The caller handles errors and closes progress.
+            if status.success() {
+                if let Some(callback) = ready.take() {
+                    callback();
+                }
             }
             #[cfg(windows)]
             drop(job);

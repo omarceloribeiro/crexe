@@ -8,6 +8,11 @@ use std::{
 mod windows;
 
 pub(crate) fn root() -> Result<PathBuf> {
+    if env::var_os("CREXE_HOME").is_none() {
+        if let Some(root) = installed_root(&env::current_exe()?) {
+            return Ok(root);
+        }
+    }
     let root = if let Some(root) = env::var_os("CREXE_HOME") {
         PathBuf::from(root)
     } else {
@@ -45,6 +50,93 @@ pub(crate) fn executable() -> Result<PathBuf> {
         .join("releases")
         .join("v1")
         .join(if cfg!(windows) { "crexe.exe" } else { "crexe" }))
+}
+
+/// Shell invocations do not inherit a custom CREXE_HOME from the installing shell.
+/// An installed launcher can recover its maintained-reader root from its own path.
+pub(crate) fn reader_root() -> Result<PathBuf> {
+    root()
+}
+
+fn installed_root(executable: &Path) -> Option<PathBuf> {
+    let filename = if cfg!(windows) { "crexe.exe" } else { "crexe" };
+    if executable.file_name()? != filename {
+        return None;
+    }
+    let version = executable.parent()?;
+    if version.file_name()? != "v1" {
+        return None;
+    }
+    let releases = version.parent()?;
+    if releases.file_name()? != "releases" {
+        return None;
+    }
+    Some(releases.parent()?.to_owned())
+}
+
+pub(crate) fn reader_engine() -> Result<PathBuf> {
+    let executable =
+        reader_root()?
+            .join("releases/v1")
+            .join(if cfg!(windows) { "crexe.exe" } else { "crexe" });
+    super::paths::reject_links(&executable)?;
+    if !executable.is_file() {
+        bail!("Instale esta versão antes de manter um leitor: crexe install e crexe associate.");
+    }
+    use sha2::{Digest, Sha256};
+    if Sha256::digest(fs::read(&executable)?) != Sha256::digest(fs::read(env::current_exe()?)?) {
+        bail!("A engine instalada é diferente desta versão. Execute crexe install e crexe associate antes de manter um leitor.");
+    }
+    Ok(executable)
+}
+
+pub(crate) fn register_reader(extension: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        windows::register_reader(&reader_engine()?, extension)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = extension;
+        bail!("Programas padrão mantidos pelo CREXE estão disponíveis somente no Windows.")
+    }
+}
+
+pub(crate) fn validate_reader_registration(extension: &str) -> Result<()> {
+    let executable = reader_engine()?;
+    #[cfg(windows)]
+    {
+        windows::validate_reader_registration(&executable, extension)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (executable, extension);
+        bail!("Programas padrão mantidos pelo CREXE estão disponíveis somente no Windows.")
+    }
+}
+
+pub(crate) fn unregister_reader(extension: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        windows::unregister_reader(&reader_engine()?, extension)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = extension;
+        bail!("Programas padrão mantidos pelo CREXE estão disponíveis somente no Windows.")
+    }
+}
+
+pub(crate) fn choose_reader_default(extension: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        windows::choose_reader_default(extension)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = extension;
+        bail!("Programas padrão mantidos pelo CREXE estão disponíveis somente no Windows.")
+    }
 }
 
 pub(crate) fn install() -> Result<()> {
@@ -124,6 +216,23 @@ pub(crate) fn unassociate() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shell_launch_recovers_only_the_installed_directory_shape() {
+        let temp = tempfile::tempdir().unwrap();
+        let filename = if cfg!(windows) { "crexe.exe" } else { "crexe" };
+        assert_eq!(
+            installed_root(&temp.path().join("releases/v1").join(filename)),
+            Some(temp.path().into())
+        );
+        assert_eq!(
+            installed_root(&temp.path().join("target/debug").join(filename)),
+            None
+        );
+        assert_eq!(
+            installed_root(&temp.path().join("releases/v1/another-program")),
+            None
+        );
+    }
     #[test]
     fn installation_replaces_bytes_and_is_idempotent() {
         let temp = tempfile::tempdir().unwrap();

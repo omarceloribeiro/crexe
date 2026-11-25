@@ -879,6 +879,19 @@ fn explicit_run_timeout_terminates_the_child() {
     spec["policies"]["timeoutSeconds"] = json!({"run": 1});
     let file = temp.path().join("timeout.crexe");
     fs::write(&file, serde_json::to_vec(&spec).unwrap()).unwrap();
+    // Measure the run timeout, not compiler scheduling under the parallel suite.
+    // Build the accepted fixture first, then require the timed open to reuse it.
+    success(
+        Command::new(engine())
+            .arg(&file)
+            .args(["--no-run", "--max-repairs", "0"])
+            .current_dir(temp.path())
+            .env("CREXE_HOME", temp.path().join("engine"))
+            .env("CREXE_TEST_KEY", "fake-not-a-secret")
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
     let start = std::time::Instant::now();
     let output = invoke(
         Path::new(engine()),
@@ -889,7 +902,9 @@ fn explicit_run_timeout_terminates_the_child() {
     );
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("Command timed out"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Cache hit"));
     assert!(start.elapsed() < Duration::from_secs(20));
+    assert_eq!(provider.count.load(Ordering::SeqCst), 1);
 }
 
 #[test]

@@ -199,6 +199,15 @@ As duas receitas .crexe anteriores continuam usando o fluxo normal de receitas.
 Gerar o primeiro leitor exige provider/modelo e SDK configurados, e um provider
 remoto pode cobrar pelo planejamento, geração e reparos.
 
+No Windows, o segundo menu **Gerar com CREXE e Manter como Programa Padrão**
+preserva o leitor aprovado fora do cache e oferece a escolha nas Configurações.
+Confira o leitor e confirme o padrão para a extensão no próprio Windows.
+A abertura pelo leitor mantido dispensa modelo, credenciais e compilação, mesmo
+após limpar o cache de geração. É uma prévia somente leitura para documentos.
+Use `reader-defaults list`, `reader-defaults choose --extension xyz` ou
+`reader-defaults forget --extension xyz` para gerenciar. Forget remove o candidato
+e o índice, mas conserva objetos para não interromper leitores em execução.
+
 Use Configurações para escolher provider/modelo e salvar a API key no cofre do sistema.
 config.example.toml é apenas um exemplo: editá-lo não altera a configuração ativa.
 Na tela, importe o TOML editado, revise e salve. Reinstalar preserva as escolhas já salvas.
@@ -286,6 +295,14 @@ Generate with CREXE rejects all three recipe/package/bundle extensions. For ordi
 documents that feature uses only the extension to plan a reader; it does not send
 the document's name, path, contents, or metadata to the model. This differs from
 explicit CREXP execution, where specifications are the recipe sent for generation.
+
+On Windows, **Gerar com CREXE e Manter como Programa Padrão** keeps the accepted
+reader outside the generation cache and offers Windows default-app settings.
+Inspect the reader and confirm the extension-wide choice in Windows. Its launcher
+needs no model, generation credentials, or compiler, even after clearing that
+cache. This is a read-only document preview. Use `reader-defaults list`,
+`reader-defaults choose --extension xyz`, or `reader-defaults forget --extension xyz`.
+Forget removes the candidate and index while retaining objects used by running apps.
 
 The engine uses MIT (LICENSE). CREXE-authored output materials and official examples
 use MIT-0 (LICENSE-GENERATED). You choose your app's license, subject to applicable

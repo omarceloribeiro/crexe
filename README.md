@@ -64,6 +64,8 @@ Extensões desconhecidas válidas são aceitas. Arquivos sem extensão ou com ex
 
 O nome, caminho e corpo do documento não entram nas requisições ao modelo, no histórico de geração ou no ZIP dos fontes. O aplicativo recebe o caminho como argumento separado e lê os dados localmente em runtime. A configuração ativa salva fornece provider, modelo e limites; selecionar um documento na janela não salva nem descarta alterações pendentes nas configurações. Cancelar o seletor não chama a IA.
 
+**Manter como programa padrão (Windows).** Use o novo menu ou `crexe open-generating --keep-as-default --ui -- "documento.xyz"`. Confira o leitor e confirme a escolha no Windows; depois, outro documento da mesma extensão abre por duplo clique sem geração. O programa é preservado fora do cache e não depende das credenciais do provider para reabrir. [Uso, remoção e critérios de aceite](docs/GERAR_COM_CREXE.md).
+
 O contrato desta prévia é **somente leitura**, preservando o original: conteúdo ou erro legível, indicação de arquivo vazio e limite de leitura. Para formatos desconhecidos, o leitor pode mostrar texto ou uma prévia hexadecimal identificada. Não há promessa de interpretar integralmente formatos proprietários. O contrato orienta o código gerado; ele não oferece sandbox nem garantia de segurança. Provider/modelo e SDK do perfil continuam necessários para gerar o primeiro leitor, e provedores remotos podem cobrar pelo planejamento, geração e reparos.
 
 ## Provider e credenciais
@@ -102,7 +104,7 @@ A associação aponta para `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` e habili
 
 Cliques repetidos durante a preparação avisam a execução existente, sem gerar ou compilar novamente. Se a intenção/opções mudaram, a espera orienta concluir ou cancelar primeiro. Depois que o aplicativo abre, outro clique pode abrir outra instância pelo cache.
 
-O Windows pode exigir escolher CREXE como aplicativo padrão de `.crexe`. A ação genérica **Gerar com CREXE** não altera os aplicativos padrão dos demais documentos. `unassociate` remove a associação e o menu pertencentes a esta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; a abertura gráfica de documentos comuns usa o seletor da janela. A associação de `.crexe` e os menus dos gerenciadores dessas plataformas ainda não estão implementados. [Guia de plataformas](docs/platforms/README.md).
+O Windows pode exigir escolher CREXE como aplicativo padrão de `.crexe`. A ação genérica **Gerar com CREXE** não altera os aplicativos padrão dos demais documentos. A nova opção **Gerar com CREXE e Manter como Programa Padrão** preserva um leitor e oferece a confirmação do padrão nas Configurações do Windows; as aberturas seguintes usam o programa mantido sem LLM nem compilação. `unassociate` remove as associações, os registros de leitores e os dois menus pertencentes a esta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; a abertura gráfica de documentos comuns usa o seletor da janela. A associação de `.crexe` e os menus dos gerenciadores dessas plataformas ainda não estão implementados. [Guia de plataformas](docs/platforms/README.md).
 
 `CREXE_HOME` seleciona uma raiz absoluta para instalação, configuração e cache, útil em testes e instalações portáteis.
 

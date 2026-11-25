@@ -96,7 +96,20 @@ struct SavedPlan {
     recipe: String,
 }
 
-pub(crate) fn open(file: &Path, cli: &Cli) -> Result<()> {
+pub(crate) fn open(file: &Path, cli: &Cli, keep_as_default: bool) -> Result<()> {
+    if keep_as_default {
+        require_windows()?;
+        if cli.no_run || cli.export.is_some() {
+            bail!("Manter um leitor requer abrir o programa e não pode ser combinado com --no-run ou --export.");
+        }
+        let extension = kept_reader::document_extension(file)?;
+        installation::validate_reader_registration(&extension)?;
+        let mut register =
+            |kept: &kept_reader::KeptReader| installation::register_reader(&kept.extension);
+        if kept_reader::ensure_registered(&extension, &mut register)? {
+            return open_kept(file, &extension, cli.ui, true);
+        }
+    }
     let document = file
         .canonicalize()
         .context("Não foi possível localizar o arquivo selecionado")?;
@@ -120,6 +133,9 @@ pub(crate) fn open(file: &Path, cli: &Cli) -> Result<()> {
         .profile
         .as_deref()
         .unwrap_or_else(|| profiles::default_profile());
+    if keep_as_default && !matches!(profile, "dotnet-winforms" | "dotnet-console" | "cpp-win32") {
+        bail!("Sem suporte para manter o perfil {profile}. Use dotnet-winforms ou cpp-win32; dotnet-console está disponível para testes. Nenhuma chamada ao modelo foi feita.");
+    }
     // Resolve the engine-owned profile before touching managed state or a provider.
     let preflight_spec = profiles::resolve(NAME, READER_CONTRACT, Some(profile))?;
     let key = reader_key(&kind, profile, &settings)?;
@@ -171,7 +187,23 @@ pub(crate) fn open(file: &Path, cli: &Cli) -> Result<()> {
                 save_recipe(&directory, &key, &kind, profile, recipe)?
             }
         };
-        let mut on_prepared = || lease.finish(Outcome::Ready);
+        let mut on_prepared = |revision: &Path| {
+            if keep_as_default {
+                presentation::phase("Mantendo o leitor para os próximos documentos…");
+                let mut register =
+                    |kept: &kept_reader::KeptReader| installation::register_reader(&kept.extension);
+                let mut rollback = || installation::unregister_reader(&kind.identifier);
+                kept_reader::keep(
+                    &kind.identifier,
+                    revision,
+                    &effective.secret_names,
+                    &mut register,
+                    &mut rollback,
+                )?;
+            }
+            lease.finish(Outcome::Ready)?;
+            Ok(keep_as_default)
+        };
         orchestration::exec_reader(
             &recipe,
             &document,
@@ -186,7 +218,84 @@ pub(crate) fn open(file: &Path, cli: &Cli) -> Result<()> {
     if result.is_err() && lease.lock.is_some() {
         let _ = lease.finish(Outcome::Failed);
     }
-    result
+    result?;
+    if keep_as_default {
+        presentation::finish();
+        drop(_progress);
+        open_kept(&document, &kind.identifier, cli.ui, true)?;
+    }
+    Ok(())
+}
+
+fn require_windows() -> Result<()> {
+    if !cfg!(windows) {
+        bail!("Programas padrão mantidos pelo CREXE estão disponíveis somente no Windows.");
+    }
+    Ok(())
+}
+
+fn normalized_kept_extension(extension: &str) -> Result<String> {
+    let extension = extension.strip_prefix('.').unwrap_or(extension);
+    if extension.is_empty()
+        || extension.len() > 64
+        || !extension
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '-' | '_'))
+    {
+        bail!("Extensão inválida para programa mantido.");
+    }
+    kept_reader::document_extension(Path::new(&format!("document.{extension}")))
+}
+
+pub(crate) fn open_kept(file: &Path, extension: &str, ui: bool, offer_default: bool) -> Result<()> {
+    require_windows()?;
+    let extension = normalized_kept_extension(extension)?;
+    let mut ready = || {
+        presentation::finish();
+        println!("CREXE_READER_READY");
+        if offer_default {
+            // Shell resolution can return our only OpenWith candidate before
+            // the user has chosen any default. Never infer consent from that.
+            if ui {
+                if !presentation::window_observed() {
+                    eprintln!("Leitor mantido, mas uma janela utilizável não foi confirmada. Para escolher depois: crexe reader-defaults choose --extension {extension}");
+                    return;
+                }
+                if presentation::confirm_reader_default(&extension) {
+                    if let Err(error) = installation::choose_reader_default(&extension) {
+                        presentation::show_error(&format!("O leitor foi mantido, mas não foi possível abrir as Configurações: {error:#}. Abra Aplicativos padrão no Windows e selecione CREXE — Leitor .{extension}."));
+                    }
+                }
+            } else {
+                println!("Leitor mantido para .{extension}. Confirme a escolha no Windows: crexe reader-defaults choose --extension {extension}");
+            }
+        }
+    };
+    kept_reader::open(file, &extension, ui, &mut ready)
+}
+
+pub(crate) fn defaults(command: &ReaderDefaultCommands) -> Result<()> {
+    require_windows()?;
+    match command {
+        ReaderDefaultCommands::List => kept_reader::list(),
+        ReaderDefaultCommands::Forget { extension } => {
+            let extension = normalized_kept_extension(extension)?;
+            kept_reader::forget(&extension, &mut || {
+                installation::unregister_reader(&extension)
+            })?;
+            println!("Leitor .{extension} removido da lista. Se era o padrão, escolha outro aplicativo nas Configurações do Windows.");
+            Ok(())
+        }
+        ReaderDefaultCommands::Choose { extension } => {
+            let extension = normalized_kept_extension(extension)?;
+            let mut register =
+                |kept: &kept_reader::KeptReader| installation::register_reader(&kept.extension);
+            if !kept_reader::ensure_registered(&extension, &mut register)? {
+                bail!("Não há leitor mantido para esta extensão; use Gerar com CREXE e Manter como Programa Padrão primeiro.");
+            }
+            installation::choose_reader_default(&extension)
+        }
+    }
 }
 
 fn sha(bytes: &[u8]) -> String {

@@ -739,3 +739,211 @@ fn non_utf8_unix_filename_is_passed_as_native_argument() {
         "NATIVE_ARGUMENT_DOCUMENT"
     );
 }
+
+#[cfg(windows)]
+#[test]
+#[ignore = "requires .NET 8 SDK; registers and removes only a unique synthetic extension, never selects a Windows default"]
+fn windows_kept_reader_roundtrip() {
+    use std::path::PathBuf;
+    use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+
+    // The cleanup guard is declared after the temp directory, so it removes the
+    // candidate while its owning installed engine still exists, even on panic.
+    struct CandidateCleanup {
+        engine: PathBuf,
+        home: PathBuf,
+        extension: String,
+        armed: bool,
+    }
+    impl CandidateCleanup {
+        fn invoke(&self) -> std::io::Result<Output> {
+            Command::new(&self.engine)
+                .args(["reader-defaults", "forget", "--extension", &self.extension])
+                .env("CREXE_HOME", &self.home)
+                .output()
+        }
+        fn remove(&mut self) {
+            success(self.invoke().unwrap());
+            self.armed = false;
+        }
+    }
+    impl Drop for CandidateCleanup {
+        fn drop(&mut self) {
+            if self.armed {
+                match self.invoke() {
+                    Ok(output) if output.status.success() => {}
+                    result => eprintln!(
+                        "Synthetic reader candidate cleanup failed for .{} at {}: {result:?}",
+                        self.extension,
+                        self.home.display()
+                    ),
+                }
+            }
+        }
+    }
+
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("kept-reader-home com espaços");
+    let extension = format!(
+        "crexekeptqa{}{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    let user = RegKey::predef(HKEY_CURRENT_USER);
+    let extension_key = format!("Software\\Classes\\.{extension}");
+    let user_choice = format!(
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.{extension}\\UserChoice"
+    );
+    assert!(
+        user.open_subkey(&extension_key).is_err(),
+        "Synthetic type must be new"
+    );
+    assert!(
+        user.open_subkey(&user_choice).is_err(),
+        "Never reuse an existing user choice"
+    );
+    configure(&provider, &home, 3);
+    success(run(Command::new(env!("CARGO_BIN_EXE_crexe"))
+        .arg("install")
+        .env("CREXE_HOME", &home)));
+    let installed = home.join("releases").join("v1").join("crexe.exe");
+    assert!(installed.is_file());
+    let mut cleanup = CandidateCleanup {
+        engine: installed.clone(),
+        home: home.clone(),
+        extension: extension.clone(),
+        armed: true,
+    };
+    let folder = temp.path().join("synthetic documents ü & spaces");
+    fs::create_dir(&folder).unwrap();
+    let first = folder.join(format!("-PRIVATE_KEPT_FIRST ç &.{extension}"));
+    let second = folder.join(format!("PRIVATE_KEPT_SECOND.{}", extension.to_uppercase()));
+    let third = folder.join(format!("PRIVATE_KEPT_THIRD.{extension}"));
+    let first_data = "KEPT_FIRST_SYNTHETIC_CONTENT\nlinha um é\n";
+    let second_data = "KEPT_SECOND_SYNTHETIC_CONTENT\nlinha dois\n";
+    let third_data = "KEPT_THIRD_WITHOUT_CACHE_OR_CREDENTIALS\n";
+    fs::write(&first, first_data).unwrap();
+    fs::write(&second, second_data).unwrap();
+    fs::write(&third, third_data).unwrap();
+
+    assert_eq!(
+        preview(run(command(&home, &folder)
+            .arg("--keep-as-default")
+            .arg("--")
+            .arg(&first)))["content"],
+        first_data
+    );
+    assert_eq!(provider.counts(), (1, 1));
+    // Read only our new candidate. The extension's default and UserChoice must
+    // remain absent: this test never invokes Settings, associate or ShellExecute.
+    let ext = user.open_subkey(&extension_key).unwrap();
+    assert!(ext.get_raw_value("").is_err());
+    assert!(user.open_subkey(&user_choice).is_err());
+    let with = ext.open_subkey("OpenWithProgids").unwrap();
+    let candidates = with
+        .enum_values()
+        .map(|value| value.unwrap().0)
+        .collect::<Vec<_>>();
+    assert_eq!(candidates.len(), 1);
+    let prog_id = &candidates[0];
+    assert!(prog_id.starts_with("CREXE.Reader."));
+    let command_key = user
+        .open_subkey(format!(
+            "Software\\Classes\\{prog_id}\\shell\\open\\command"
+        ))
+        .unwrap();
+    let registered_command: String = command_key.get_value("").unwrap();
+    assert_eq!(
+        registered_command,
+        format!(
+            "\"{}\" open-kept-reader --extension={extension} --ui -- \"%1\"",
+            installed.display()
+        )
+    );
+    drop(command_key);
+    drop(with);
+    drop(ext);
+
+    // Explorer does not inherit CREXE_HOME from the installing shell. The
+    // installed executable must recover its own maintained-reader root instead.
+    let reopen = |document: &Path| {
+        let mut command = Command::new(&installed);
+        command
+            .args(["open-kept-reader", "--extension", &extension, "--config"])
+            .arg(temp.path().join("configuration-that-does-not-exist.toml"))
+            .args([
+                "--provider",
+                "unavailable-provider",
+                "--model",
+                "different-model",
+                "--env-file",
+            ])
+            .arg(temp.path().join("credentials-that-do-not-exist.env"))
+            .arg("--")
+            .arg(document)
+            .env_remove("CREXE_HOME")
+            .env_remove("OPENAI_API_KEY")
+            .env_remove("CREXE_DEEPSEEK_API_KEY")
+            .env_remove("DEEPSEEK_API_KEY")
+            .env_remove("ANTHROPIC_API_KEY")
+            .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+            .current_dir(&folder);
+        preview(run(&mut command))
+    };
+    assert_eq!(reopen(&second)["content"], second_data);
+    assert_eq!(provider.counts(), (1, 1));
+
+    // Delete only generated state inside this test-owned temporary home. The
+    // immutable kept payload is deliberately outside both deleted directories.
+    let canonical_home = home.canonicalize().unwrap();
+    for name in ["readers", "cache"] {
+        let directory = home.join(name).canonicalize().unwrap();
+        assert_eq!(directory.parent(), Some(canonical_home.as_path()));
+        assert!(directory.starts_with(&canonical_home));
+        fs::remove_dir_all(directory).unwrap();
+    }
+    fs::write(home.join("config.toml"), "invalid unavailable provider = [").unwrap();
+    assert_eq!(reopen(&third)["content"], third_data);
+    assert_eq!(provider.counts(), (1, 1));
+    assert!(!home.join("readers").exists() && !home.join("cache").exists());
+    for (document, expected) in [
+        (&first, first_data),
+        (&second, second_data),
+        (&third, third_data),
+    ] {
+        assert_eq!(fs::read_to_string(document).unwrap(), expected);
+    }
+    let private = [
+        "PRIVATE_KEPT_FIRST",
+        "PRIVATE_KEPT_SECOND",
+        "PRIVATE_KEPT_THIRD",
+        first_data,
+        second_data,
+        third_data,
+    ];
+    provider.assert_private(&private);
+    tree_private(&home.join("reader-apps"), &private);
+
+    cleanup.remove();
+    assert!(user
+        .open_subkey(format!("Software\\Classes\\{prog_id}"))
+        .is_err());
+    assert!(user.open_subkey(&user_choice).is_err());
+    if let Ok(ext) = user.open_subkey(&extension_key) {
+        assert!(ext.get_raw_value("").is_err());
+        // Registration deliberately preserves shared extension keys; remove
+        // this freshly invented fixture key only when it is completely empty.
+        if ext.enum_keys().next().is_none() && ext.enum_values().next().is_none() {
+            drop(ext);
+            user.delete_subkey(&extension_key).unwrap();
+        }
+    }
+    let listed = success(run(Command::new(&installed)
+        .args(["reader-defaults", "list"])
+        .env_remove("CREXE_HOME")));
+    assert_eq!(serde_json::from_str::<Value>(&listed).unwrap(), json!([]));
+}
