@@ -305,7 +305,7 @@ fn exec_inner(
                 .and_then(Value::as_str)
                 .is_some_and(|profile| profile.starts_with("dotnet-"))
         {
-            system.push_str("\nFor --crexe-reader-check, serialize an object with lowercase kind, content and truncated keys using the platform's standard JSON serializer (System.Text.Json.JsonSerializer on .NET). Never construct JSON using string interpolation or manual escaping. The headless self-test must assert actual preview/decoding logic, succeed for correct behavior, and run before GUI initialization. Preserve exact whitespace and Unicode in the unrendered check content.");
+            system.push_str("\nFor --crexe-reader-check, serialize an object with lowercase kind, content and truncated keys using System.Text.Json.JsonSerializer. Never construct JSON using string interpolation or manual escaping. Use new UTF8Encoding(false, true) to detect invalid UTF-8; Encoding.UTF8.GetString silently replaces invalid bytes and does not satisfy the contract. Invalid UTF-8 must produce hex even without NUL bytes. The headless self-test must assert actual preview/decoding logic, succeed for correct behavior, and run before GUI initialization. Preserve exact whitespace and Unicode in the unrendered check content.");
         }
         let previous = baseline.as_ref().map(|b| b.metadata.prompt.as_str());
         let baseline_sources = baseline

@@ -561,7 +561,7 @@ pub(crate) fn validate_application(
         let output = executor::output_with_args(&command, &args, workspace, &settings.secret_names)
             .map_err(|_| anyhow!("Reader contract check {} could not execute. Implement the headless --crexe-reader-check PATH branch before GUI initialization; emit JSON and exit zero.", index + 1))?;
         validate_check(&output, &input).map_err(|_| anyhow!(
-            "Reader contract check {} failed: emit exact bounded text/hex JSON from the file passed at runtime, preserve bytes and report truncation correctly.", index + 1
+            "Reader contract check {} failed: emit exact bounded text/hex JSON from the file passed at runtime, preserve bytes and report truncation correctly. Decode UTF-8 strictly: invalid byte sequences must produce hex even when there are no NUL bytes.", index + 1
         ))?;
         let unchanged = read_optional(&path, input.len())
             .map_err(|_| anyhow!("Reader contract check {} replaced, expanded or modified its input. The reader must be read-only.", index + 1))?;
@@ -590,6 +590,7 @@ fn check_fixtures() -> Vec<(&'static str, Vec<u8>)> {
         ("empty.unknown", Vec::new()),
         ("binary.unknown", vec![0, 255, 65, 128]),
         ("large.unknown", vec![b'x'; PREVIEW_BYTES + 1]),
+        ("invalid-utf8.unknown", vec![255, 65, 128]),
     ]
 }
 
