@@ -17,13 +17,37 @@ for (const script of ['main.js', 'library.js', ...(await readdir(path.join(siteR
 execFileSync(process.execPath, ['--test', path.join(siteRoot, 'scripts/publications.test.mjs')], { stdio: 'inherit', windowsHide: true });
 const htmlPages = new Map();
 const pageIds = new Map();
-for (const page of ['index.html', ...publications.pages]) {
+for (const page of ['index.html', 'en/index.html', ...publications.pages]) {
   const html = await readFile(path.join(distRoot, page), 'utf8');
   const ids = [...html.matchAll(/\bid\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]);
   assert.equal(ids.length, new Set(ids).size, `Duplicate HTML IDs in ${page}.`);
   assert.equal([...html.matchAll(/<h1\b/g)].length, 1, `Expected one page title in ${page}.`);
   htmlPages.set(page, html);
   pageIds.set(path.join(distRoot, page), new Set(ids));
+}
+// Both editions must stay discoverable without JavaScript and retain the same
+// document when changing language. Check destinations as well as link labels.
+for (const [page, html] of htmlPages) {
+  const language = page.startsWith('en/') ? 'en' : 'pt-BR';
+  assert(html.includes(`<html lang="${language}">`), `Incorrect language in ${page}.`);
+  const counterpart = page === 'index.html' ? 'en/index.html' : page === 'en/index.html' ? 'index.html'
+    : page.startsWith('en/library/') ? page.replace('en/library/', 'biblioteca/') : page.replace('biblioteca/', 'en/library/');
+  assert(htmlPages.has(counterpart), `Missing translated page: ${counterpart}`);
+  const selector = html.match(/<div\b[^>]*data-language-switch[^>]*>([\s\S]*?)<\/div>/)?.[1];
+  assert(selector, `Missing language selector in ${page}.`);
+  const links = [...selector.matchAll(/<a\b([^>]+)>/g)].map((match) => Object.fromEntries(
+    [...match[1].matchAll(/([\w-]+)="([^"]*)"/g)].map((attribute) => [attribute[1], attribute[2]])));
+  assert.equal(links.length, 2, `Expected both languages in ${page}.`);
+  for (const link of links) {
+    const target = path.posix.normalize(path.posix.join(path.posix.dirname(page), link.href));
+    assert.equal(target, link.hreflang === language ? page : counterpart, `Wrong language target in ${page}.`);
+    assert.equal(link['aria-current'] === 'page', link.hreflang === language, `Wrong selected language in ${page}.`);
+  }
+  for (const target of [page, counterpart]) {
+    const targetLanguage = target.startsWith('en/') ? 'en' : 'pt-BR';
+    const canonical = target.endsWith('index.html') ? target.slice(0, -10) : target;
+    assert(html.includes(`rel="alternate" hreflang="${targetLanguage}" href="https://crexe.org/${canonical}"`), `Missing reciprocal alternate in ${page}.`);
+  }
 }
 let localLinks = 0;
 
@@ -62,6 +86,10 @@ for (const [source, destination] of [...documentation.files, ...examples]) {
   assert((await readFile(path.join(repoRoot, source))).equals(await readFile(path.join(distRoot, destination))),
     `${destination} must match its maintained repository source byte for byte.`);
 }
+const originalRfc = 'docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md';
+assert.equal(createHash('sha256').update(await readFile(path.join(distRoot, originalRfc))).digest('hex'),
+  'b889ddc77e9d156da5a656c3abefaf49c0b46a5a54c3759542f83e12421bb1f8', 'The supplied English RFC original must remain unchanged.');
+assert(htmlPages.get('biblioteca/rfc-draft.html').includes(`href="../${originalRfc}" download`), 'The Portuguese RFC must offer the original English download.');
 
 const manifest = validateDownloads(await readJson(path.join(distRoot, 'downloads.json')));
 assert.deepEqual(manifest, await readJson(path.join(siteRoot, 'downloads.json')));

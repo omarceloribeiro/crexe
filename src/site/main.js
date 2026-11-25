@@ -1,5 +1,22 @@
 document.documentElement.classList.add('js');
 
+const english = document.documentElement.lang.startsWith('en');
+const messages = english ? {
+  copied: 'Command copied.',
+  copyFallback: 'Select and copy the command with Ctrl+C or Cmd+C.',
+  error: 'Error', invalidOperation: 'Invalid operation', decimal: '.',
+  release: 'Versioned packages with SHA-256 checksums. Read the release notes for supported platforms and the limits of this version.',
+  source: (revision) => `Source at commit ${revision}. Requires Rust/Cargo and native build tools.`,
+} : {
+  copied: 'Comando copiado.',
+  copyFallback: 'Selecione e copie o comando com Ctrl+C ou Cmd+C.',
+  error: 'Erro', invalidOperation: 'Operação inválida', decimal: ',',
+  release: 'Pacotes versionados com checksum SHA-256. Consulte as notas da release para conhecer o suporte e os limites desta versão.',
+  source: (revision) => `Fontes no commit ${revision}. Requer Rust/Cargo e ferramentas nativas de compilação.`,
+};
+const sharedUrl = (relative) => new URL(relative, import.meta.url);
+const formatValue = (value) => String(value).replace('.', messages.decimal);
+
 const menu = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('#navigation');
 menu.addEventListener('click', () => {
@@ -21,7 +38,11 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-const requirements = {
+const requirements = english ? {
+  windows: 'Windows: .NET 8 SDK for Windows Forms. To build the engine from source, install Rust/Cargo and the Visual C++ linker.',
+  macos: 'macOS: Apple Clang and the Cocoa SDK for the experimental native profile. To build the engine, install Rust/Cargo. Configuration and the editor require a graphical session.',
+  linux: 'Linux: GCC, Make, pkg-config and GTK3 development libraries for the experimental native profile. To build the engine, install Rust/Cargo and the desktop libraries required by the build.',
+} : {
   windows: 'Windows: .NET 8 SDK para Windows Forms. Para compilar a engine a partir dos fontes, prepare Rust/Cargo e o linker Visual C++.',
   macos: 'macOS: Apple Clang e SDK Cocoa para o perfil nativo experimental. Para compilar a engine, prepare Rust/Cargo. Configuração e editor precisam de uma sessão gráfica.',
   linux: 'Linux: GCC, Make, pkg-config e bibliotecas de desenvolvimento GTK3 para o perfil nativo experimental. Para compilar a engine, prepare Rust/Cargo e as bibliotecas de desktop exigidas pelo build.'
@@ -48,7 +69,7 @@ document.querySelectorAll('[data-copy]').forEach((button) => {
     clearTimeout(copyTimer);
     try {
       await navigator.clipboard.writeText(content.textContent);
-      status.textContent = 'Comando copiado.';
+      status.textContent = messages.copied;
     } catch {
       // Selection remains a useful fallback in file previews or denied clipboard contexts.
       const range = document.createRange();
@@ -57,7 +78,7 @@ document.querySelectorAll('[data-copy]').forEach((button) => {
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
-      status.textContent = 'Selecione e copie o comando com Ctrl+C ou Cmd+C.';
+      status.textContent = messages.copyFallback;
     }
     copyTimer = setTimeout(() => { status.textContent = ''; }, 6000);
   });
@@ -73,11 +94,11 @@ let replaceValue = true;
 const operatorLabels = { '+': '+', '-': '−', '*': '×', '/': '÷' };
 function paint() {
   const number = Number(value);
-  const rendered = value !== 'Erro' && value.length > 11 && Number.isFinite(number)
+  const rendered = value !== messages.error && value.length > 11 && Number.isFinite(number)
     ? number.toExponential(5)
     : value;
-  display.textContent = rendered.replace('.', ',');
-  display.title = value.replace('.', ',');
+  display.textContent = formatValue(rendered);
+  display.title = formatValue(value);
   display.classList.toggle('compact', rendered.length > 9);
 }
 function calculate(left, right, operation) {
@@ -92,30 +113,30 @@ function input(key) {
     if (replaceValue) { value = key === '.' ? '0.' : key; replaceValue = false; if (!operator) equation.textContent = '\u00a0'; }
     else if (key === '.' && !value.includes('.')) value += '.';
     else if (key !== '.' && value.replace(/[-.]/g, '').length < 10) value = value === '0' ? key : value + key;
-  } else if (key === 'sign' && value !== 'Erro') {
+  } else if (key === 'sign' && value !== messages.error) {
     value = String(-Number(value));
-  } else if (key === 'percent' && value !== 'Erro') {
+  } else if (key === 'percent' && value !== messages.error) {
     value = String(Number((Number(value) / 100).toPrecision(10)));
-  } else if (Object.hasOwn(operatorLabels, key) && value !== 'Erro') {
+  } else if (Object.hasOwn(operatorLabels, key) && value !== messages.error) {
     if (operator && !replaceValue) {
       const result = calculate(previous, Number(value), operator);
       if (result === null) { showError(); return; }
       value = String(result);
     }
     previous = Number(value); operator = key; replaceValue = true;
-    equation.textContent = `${value.replace('.', ',')} ${operatorLabels[key]}`;
-  } else if (key === '=' && operator && value !== 'Erro') {
+    equation.textContent = `${formatValue(value)} ${operatorLabels[key]}`;
+  } else if (key === '=' && operator && value !== messages.error) {
     const right = Number(value);
     const result = calculate(previous, right, operator);
-    equation.textContent = `${String(previous).replace('.', ',')} ${operatorLabels[operator]} ${value.replace('.', ',')} =`;
+    equation.textContent = `${formatValue(previous)} ${operatorLabels[operator]} ${formatValue(value)} =`;
     if (result === null) { showError(); return; }
     value = String(result); previous = null; operator = null; replaceValue = true;
   }
   paint();
 }
 function showError() {
-  value = 'Erro'; previous = null; operator = null; replaceValue = true;
-  equation.textContent = 'Operação inválida'; paint();
+  value = messages.error; previous = null; operator = null; replaceValue = true;
+  equation.textContent = messages.invalidOperation; paint();
 }
 document.querySelectorAll('[data-key]').forEach((button) => button.addEventListener('click', () => input(button.dataset.key)));
 document.querySelector('.calculator-keys').addEventListener('keydown', (event) => {
@@ -135,7 +156,7 @@ function httpsUrl(value) {
 }
 async function loadDownloads() {
   try {
-    const response = await fetch('downloads.json');
+    const response = await fetch(sharedUrl('downloads.json'));
     if (!response.ok) return;
     const manifest = await response.json();
     const releaseUrl = httpsUrl(manifest.releaseUrl);
@@ -155,7 +176,7 @@ async function loadDownloads() {
     }
     if (available) {
       document.querySelector('#release-label').textContent = manifest.version;
-      document.querySelector('#release-summary').textContent = 'Pacotes versionados com checksum SHA-256. Consulte as notas da release para conhecer o suporte e os limites desta versão.';
+      document.querySelector('#release-summary').textContent = messages.release;
       const notes = document.querySelector('#release-notes');
       notes.href = releaseUrl; notes.hidden = false;
     }
@@ -165,15 +186,15 @@ async function loadDownloads() {
 }
 async function loadSource() {
   try {
-    const response = await fetch('source.json');
+    const response = await fetch(sharedUrl('source.json'));
     if (!response.ok) return;
     const source = await response.json();
     if (!/^[a-f0-9]{40,64}$/.test(source.revision)) return;
     const sourcePath = /^downloads\/crexe-source-[a-f0-9]+\.zip$/;
     if (!sourcePath.test(source.url) || source.checksumUrl !== `${source.url}.sha256`) return;
-    document.querySelector('#source-download').href = source.url;
-    document.querySelector('#source-checksum').href = source.checksumUrl;
-    document.querySelector('#source-revision').textContent = `Fontes no commit ${source.revision.slice(0, 7)}. Requer Rust/Cargo e ferramentas nativas de compilação.`;
+    document.querySelector('#source-download').href = sharedUrl(source.url).href;
+    document.querySelector('#source-checksum').href = sharedUrl(source.checksumUrl).href;
+    document.querySelector('#source-revision').textContent = messages.source(source.revision.slice(0, 7));
   } catch { /* Build-time links remain usable without this enhancement. */ }
 }
 loadDownloads();

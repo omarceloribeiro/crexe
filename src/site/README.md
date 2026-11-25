@@ -1,6 +1,6 @@
 # Site público — crexe.org
 
-Código da landing pública e da biblioteca do CREXE, separado da engine Rust. Site estático em português, responsivo e sem dependências de runtime, serviços de terceiros, analytics ou chamadas a modelos. O build usa Node.js 22+, Git e `markdown-it`, instalado pelo lockfile; o parser não é enviado ao navegador.
+Código da landing pública e da biblioteca do CREXE, separado da engine Rust. Site estático em português e inglês, responsivo e sem dependências de runtime, serviços de terceiros, analytics ou chamadas a modelos. O build usa Node.js 22+, Git e `markdown-it`, instalado pelo lockfile; o parser não é enviado ao navegador.
 
 ## Executar localmente
 
@@ -27,9 +27,10 @@ Para hospedar em `crexe.org`, use **apenas o conteúdo de `src/site/dist`** como
 ## Conteúdo e downloads
 
 - `index.html`: conteúdo, navegação, exemplos, início rápido, documentação e limites.
+- `en/index.html`: edição completa da landing em inglês; assets, exemplos e downloads são compartilhados.
 - `styles.css`: identidade visual e adaptação a desktop/celular, com preferência de movimento reduzido.
 - `main.js`: menu móvel, calculadora ilustrativa, seleção de sistema, copiar comandos e catálogo de downloads. A calculadora é somente uma demonstração no navegador.
-- `publications.json`: catálogo editorial com fonte, título, categoria, data, descrição e escopo de cada publicação.
+- `publications.json` e `publications.en.json`: catálogos editoriais PT/EN com fonte, título, categoria, data, descrição e escopo de cada publicação.
 - `publications.css` e `library.js`: apresentação das páginas de leitura e impressão pelo navegador.
 - `downloads.json`: links revisados de pacotes publicados e seus checksums.
 - `assets/`: marca e recursos locais, sem fontes remotas.
@@ -43,9 +44,13 @@ Os exemplos `.crexe` e a documentação são copiados de suas fontes mantidas no
 
 A coleção editorial está em [docs/publicacoes](../../docs/publicacoes/README.md). Os white papers, artigos, guias e o manifesto distinguem fatos da implementação, análise e visão de futuro. O catálogo também apresenta referências técnicas existentes como páginas de leitura. Os rascunhos históricos permanecem disponíveis, identificados como históricos.
 
-O build cria `dist/biblioteca/index.html` e uma página por entrada do catálogo, com sumário, tempo estimado de leitura, data, escopo, links relacionados e download do Markdown original. A leitura, navegação e os sumários funcionam sem JavaScript; o botão de impressão é um aprimoramento opcional e usa os recursos do navegador, inclusive salvar como PDF quando disponível.
+O build cria `dist/biblioteca/index.html` (português), `dist/en/library/index.html` (inglês) e uma página por entrada de cada catálogo, com sumário, tempo estimado de leitura, data, escopo, links relacionados e download do Markdown. A leitura, navegação, troca de idioma e os sumários funcionam sem JavaScript; o botão de impressão é um aprimoramento opcional e usa os recursos do navegador, inclusive salvar como PDF quando disponível.
 
-Para adicionar um texto, mantenha seu Markdown no repositório e inclua uma entrada em `publications.json`. Use um `slug` único, data da revisão editorial em `YYYY-MM-DD`, categoria existente e um aviso de escopo preciso. Coloque os novos documentos sob controle do Git antes do build: a coleta de documentação aceita apenas arquivos rastreados. Execute `check` após alterar conteúdo ou links.
+Para adicionar um texto, mantenha o Markdown e sua tradução no repositório e inclua uma entrada em cada catálogo. Use o mesmo `slug` único e categoria nas duas edições, data da revisão editorial em `YYYY-MM-DD` e um aviso de escopo preciso. O build rejeita uma edição incompleta. Coloque os novos documentos sob controle do Git antes do build: a coleta de documentação aceita apenas arquivos rastreados. Execute `check` após alterar conteúdo ou links.
+
+As traduções inglesas ficam em `docs/en/`. O RFC português está em `docs/publicacoes/rfc-draft.pt-BR.md`; o original inglês histórico permanece intacto e tem download próprio na tradução. A GNU GPL v3 e os exemplos executáveis são preservados como arquivos originais. O acervo histórico não pertencente à coleção publicada mantém seus idiomas originais.
+
+Os links PT/EN levam à página equivalente. `lang`, `hreflang`, canonical e sitemap identificam as duas edições; não há redirecionamento automático por idioma do navegador. As mensagens dinâmicas usam o idioma da página. O site traduz a documentação, não a interface nativa da engine.
 
 O renderer não permite HTML bruto no Markdown nem URLs de scripts. Links relativos para textos do catálogo levam à versão HTML; outros apontam para as fontes incluídas no site. Os testes verificam essa transformação e a navegação entre páginas. As datas não são inferidas do relógio da máquina. O sitemap inclui automaticamente as páginas da biblioteca.
 

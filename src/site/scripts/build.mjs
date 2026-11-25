@@ -3,6 +3,7 @@ import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildPublications } from './publications.mjs';
+import { canonicalPath } from './locales.mjs';
 import {
   collectDocumentation, distRoot, examples, git, readJson, repoRoot, siteRoot,
   staticFiles, validateDownloads, within,
@@ -32,9 +33,14 @@ export async function build() {
   }
   await rm(distRoot, { recursive: true, force: true });
   await mkdir(path.join(distRoot, 'downloads'), { recursive: true });
-  await Promise.all(staticFiles.map((file) => copyFile(path.join(siteRoot, file), path.join(distRoot, file))));
-  const landing = await readFile(path.join(distRoot, 'index.html'), 'utf8');
-  await writeFile(path.join(distRoot, 'index.html'), landing.replaceAll('downloads/crexe-source.zip', `downloads/${archiveName}`), 'utf8');
+  await Promise.all(staticFiles.map(async (file) => {
+    await mkdir(path.dirname(path.join(distRoot, file)), { recursive: true });
+    await copyFile(path.join(siteRoot, file), path.join(distRoot, file));
+  }));
+  for (const page of ['index.html', 'en/index.html']) {
+    const landing = await readFile(path.join(distRoot, page), 'utf8');
+    await writeFile(path.join(distRoot, page), landing.replaceAll('downloads/crexe-source.zip', `downloads/${archiveName}`), 'utf8');
+  }
   await cp(path.join(siteRoot, 'assets'), path.join(distRoot, 'assets'), { recursive: true });
   await Promise.all([...documentation.files, ...examples].map(async ([source, destination]) => {
     const output = path.join(distRoot, destination);
@@ -42,13 +48,12 @@ export async function build() {
     await copyFile(path.join(repoRoot, source), output);
   }));
   const publications = await buildPublications();
-  const sitemap = await readFile(path.join(distRoot, 'sitemap.xml'), 'utf8');
-  const publicationUrls = publications.pages.map((page) => {
+  const publicationUrls = ['index.html', 'en/index.html', ...publications.pages].map((page) => {
     const entry = publications.catalog.find((item) => item.url === page);
-    const url = page === 'biblioteca/index.html' ? 'biblioteca/' : page;
+    const url = canonicalPath(page);
     return `  <url><loc>https://crexe.org/${url}</loc>${entry ? `<lastmod>${entry.date}</lastmod>` : ''}</url>`;
   });
-  await writeFile(path.join(distRoot, 'sitemap.xml'), sitemap.replace('</urlset>', `${publicationUrls.join('\n')}\n</urlset>`), 'utf8');
+  await writeFile(path.join(distRoot, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicationUrls.join('\n')}\n</urlset>\n`, 'utf8');
   const archivePath = path.join(distRoot, 'downloads', archiveName);
   git(['archive', '--format=zip', `--output=${archivePath}`, `--prefix=crexe-${shortRevision}/`, revision, '--', ...archivePaths]);
   const checksum = createHash('sha256').update(await readFile(archivePath)).digest('hex');

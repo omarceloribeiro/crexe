@@ -4,6 +4,8 @@ Coleção em português preparada em 24/11/2026 a partir do handoff de 23/09/202
 
 Os documentos originais do projeto permanecem no [acervo histórico](../crexe_handoff_docs/README.md). O nome vigente é **CREXE — Creative Executable**. Uma publicação informativa ou uma visão editorial não transforma o projeto em padrão aprovado por uma organização de normalização.
 
+A coleção também tem [edição completa em inglês](../en/publicacoes/README.md). O site oferece navegação PT/EN entre as páginas equivalentes.
+
 ## White papers
 
 - [Fundamentos da distribuição por intenção](whitepaper-fundamentos.md): modelo, contratos, custos e limites da implementação.
@@ -11,7 +13,8 @@ Os documentos originais do projeto permanecem no [acervo histórico](../crexe_ha
 
 ## RFCs
 
-- [RFC Draft 0.1 — CREXE Specification](../crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md): original em inglês, preservado como proposta histórica. Também disponível em HTML na biblioteca, com sumário e download do Markdown.
+- [RFC Draft 0.1 em português](rfc-draft.pt-BR.md): tradução integral, com sumário e download no site.
+- [RFC Draft 0.1 — original em inglês](../crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md): preservado integralmente como proposta histórica e disponível para download nas duas edições do site.
 
 ## Guias técnicos
 
@@ -41,6 +44,6 @@ O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.
 
 ## Edição e publicação no site
 
-Estes arquivos são a fonte editorial. O catálogo em `src/site/publications.json` define títulos, resumos, categorias, status e fontes. O build do site gera a biblioteca e páginas HTML com sumário, links entre textos, opção de impressão e download do Markdown. As referências técnicas são renderizadas a partir de seus arquivos originais, evitando cópias divergentes.
+Estes arquivos são a fonte editorial. Os catálogos em `src/site/publications.json` e `src/site/publications.en.json` definem títulos, resumos, categorias, status e fontes por idioma. O build do site gera a biblioteca e páginas HTML com sumário, links entre textos, opção de impressão e download do Markdown. As referências técnicas são renderizadas a partir de seus arquivos originais ou de suas traduções mantidas em `docs/en/`.
 
-Para alterar um texto, edite seu Markdown; para acrescentar uma publicação, inclua o arquivo e sua entrada no catálogo. Rode `npm --prefix src/site run check` depois de instalar as dependências do site. A data do catálogo identifica a edição desta coleção; atualize-a quando publicar uma revisão editorial.
+Para alterar um texto, edite seu Markdown e sincronize a tradução; para acrescentar uma publicação, inclua os arquivos e suas entradas nos dois catálogos, com o mesmo slug. Rode `npm --prefix src/site run check` depois de instalar as dependências do site. A data do catálogo identifica a edição desta coleção; atualize-a quando publicar uma revisão editorial.

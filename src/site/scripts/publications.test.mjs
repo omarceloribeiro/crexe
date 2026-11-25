@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { escapeHtml, renderPublication, validateCatalog } from './publications.mjs';
+import { escapeHtml, renderPublication, validateCatalog, validateEditions } from './publications.mjs';
 
 const current = {
   slug: 'exemplo', source: 'docs/publicacoes/exemplo.md', title: 'Texto de exemplo',
@@ -76,4 +76,28 @@ test('catalog rejects unsafe filenames, duplicate destinations and invalid dates
   assert.throws(() => validateCatalog([{ ...current, date: '2026-02-30' }]));
   assert.throws(() => validateCatalog([current, { ...reference, slug: current.slug }]));
   assert.throws(() => validateCatalog([current, { ...reference, source: current.source }]));
+});
+
+test('English pages keep resource downloads at the site root and links in their edition', () => {
+  const english = { ...current, language: 'en', source: 'docs/en/publicacoes/example.md' };
+  const englishReference = { ...reference, language: 'en', source: 'docs/en/PERFIS_V1.md', sourceAliases: ['docs/PERFIS_V1.md'] };
+  const result = renderPublication('[reference](../../PERFIS_V1.md)\n\n[recipe](../../../examples/plaintext/calculadora.crexe)\n\n| A | B |\n| --- | --- |\n| 1 | 2 |', english, [english, englishReference]);
+  assert.match(result.html, /href="perfis.html"/);
+  assert.match(result.html, /href="\.\.\/\.\.\/examples\/plaintext\/calculadora.crexe"/);
+  assert.match(result.html, /aria-label="Horizontally scrollable table"/);
+});
+
+test('every publication must have a matching translated edition', () => {
+  const editions = new Map([['pt-BR', catalog], ['en', catalog.map((entry) => ({ ...entry, language: 'en' }))]]);
+  validateEditions(editions);
+  assert.throws(() => validateEditions(new Map([['pt-BR', catalog], ['en', [current]]])), /Incomplete/);
+  assert.throws(() => validateEditions(new Map([['pt-BR', catalog], ['en', [current, { ...reference, slug: 'wrong' }]]])), /Missing or mismatched/);
+});
+
+test('an explicit original document link must not become a link to its own translation', () => {
+  const originalSource = 'docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md';
+  const translated = { ...current, originalSource, sourceAliases: [current.source, originalSource] };
+  const result = renderPublication('[original](../crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md)', translated, [translated]);
+  assert.match(result.html, /href="\.\.\/docs\/crexe_handoff_docs\/01_RFC_CREXE_SPEC_DRAFT.md"/);
+  assert.doesNotMatch(result.html, /href="exemplo.html"/);
 });
