@@ -64,6 +64,13 @@
     "notice": "Declaração de princípios. Não é uma especificação normativa, uma nova licença ou uma garantia de recursos já entregues."
   },
   {
+    "slug": "rfc-draft", "title": "RFC Draft 0.1 — CREXE Specification",
+    "description": "O rascunho original da especificação Creative Executable: estrutura do arquivo, geração, execução, cache e propostas de segurança. Texto em inglês.",
+    "category": "rfc", "status": "Draft 0.1 · Histórico", "language": "en",
+    "source": "docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md", "date": "2026-11-24",
+    "notice": "Rascunho histórico preservado em inglês; esta data identifica sua inclusão na biblioteca. Não é um padrão aprovado nem o contrato integral da v1 atual. Configuração do gerador na receita e isolamento de rede são propostas deste draft, não funcionalidades atuais. Consulte Formatos .crexe na v1 para o contrato implementado."
+  },
+  {
     "slug": "formatos-v1", "title": "Formatos .crexe na v1",
     "description": "O contrato implementado de texto puro, Markdown e YAML, incluindo migração e histórico de revisões.",
     "category": "reference", "status": "Referência da v1",

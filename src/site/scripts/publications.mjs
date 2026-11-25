@@ -5,10 +5,11 @@ import { distRoot, readJson, repoRoot, siteRoot, within } from './shared.mjs';
 
 const categoryLabels = {
   whitepaper: 'White paper', guide: 'Guia', article: 'Artigo',
-  manifesto: 'Manifesto', reference: 'Referência',
+  manifesto: 'Manifesto', reference: 'Referência', rfc: 'RFC',
 };
 const groups = [
   { id: 'whitepapers', title: 'White papers', categories: ['whitepaper'], description: 'Fundamentos da implementação e propostas para investigar o futuro.' },
+  { id: 'rfcs', title: 'RFCs', categories: ['rfc'], description: 'Rascunhos da especificação, preservados como propostas históricas e disponíveis para leitura e download.' },
   { id: 'guias', title: 'Guias e análises', categories: ['guide'], description: 'Contexto para avaliar modelos, preparar o ambiente e entender as fronteiras de confiança.' },
   { id: 'artigos', title: 'Artigos, ensaio e manifesto', categories: ['article', 'manifesto'], description: 'Perspectivas editoriais sobre intenção, criação e transformação de software.' },
   { id: 'referencias', title: 'Referências da implementação', categories: ['reference'], description: 'Documentação mantida no repositório, com os contratos e limites da versão atual.' },
@@ -204,7 +205,7 @@ function articlePage(entry, rendered, catalog) {
     <div class="article-breadcrumb"><a href="index.html">Biblioteca</a><span aria-hidden="true">/</span><span>${escapeHtml(categoryLabels[entry.category])}</span></div>
     <header class="article-heading"><p class="eyebrow">${escapeHtml(categoryLabels[entry.category])}</p><h1 id="article-title">${escapeHtml(entry.title)}</h1><p class="article-description">${escapeHtml(entry.description)}</p><div class="article-meta"><span>${escapeHtml(entry.status)}</span><time datetime="${entry.date}">${dateLabel(entry.date)}</time><span>${entry.readTime} min de leitura</span></div></header>
     <aside class="article-notice" aria-label="Status e escopo do texto">${escapeHtml(entry.notice)}</aside>
-    <div class="reading-layout">${toc}<article class="article-prose" id="artigo" aria-labelledby="article-title">${rendered.html}</article></div>
+    <div class="reading-layout">${toc}<article class="article-prose" id="artigo" lang="${escapeHtml(entry.language ?? 'pt-BR')}" aria-labelledby="article-title">${rendered.html}</article></div>
     <div class="article-actions"><a href="../${urlPath(entry.source)}" download>Baixar fonte em Markdown</a><button type="button" data-print hidden>Imprimir texto</button><a href="index.html">Voltar à biblioteca</a></div>
     <section class="related-reading" aria-labelledby="related-title"><h2 id="related-title">Continue a leitura</h2><div class="publication-grid">${related.map(publicationCard).join('\n')}</div></section>
   </main>`,

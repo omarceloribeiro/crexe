@@ -9,6 +9,10 @@ Os documentos originais do projeto permanecem no [acervo histórico](../crexe_ha
 - [Fundamentos da distribuição por intenção](whitepaper-fundamentos.md): modelo, contratos, custos e limites da implementação.
 - [Computação regenerável](whitepaper-computacao-regeneravel.md): investigação de longo prazo, incluindo utilitários de sistema e critérios de validação.
 
+## RFCs
+
+- [RFC Draft 0.1 — CREXE Specification](../crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md): original em inglês, preservado como proposta histórica. Também disponível em HTML na biblioteca, com sumário e download do Markdown.
+
 ## Guias técnicos
 
 - [Segurança e confiança](guia-seguranca-e-confianca.md): fronteiras atuais e propostas de isolamento.
