@@ -113,6 +113,6 @@ Não há redução garantida de banda ou processamento. Uma receita pequena pode
 
 ## Abertura e próximos passos
 
-A engine mantém a GNU GPL v3 do repositório. O usuário escolhe a licença do aplicativo gerado, inclusive proprietária, sem obrigação de abrir os fontes ou creditar o CREXE. A concessão MIT-0 dos materiais que o CREXE incorpora à saída e das receitas oficiais está formalizada em [LICENSE-GENERATED](../../LICENSE-GENERATED); este whitepaper apenas a descreve. Dependências, assets e receitas de terceiros, assim como os termos do modelo/provider, mantêm suas condições.
+A engine usa [MIT](../../LICENSE), permitindo ports e integrações abertas ou proprietárias com preservação de seus avisos. O usuário escolhe a licença do aplicativo gerado, inclusive proprietária, sem obrigação de abrir os fontes ou creditar o CREXE pelos materiais de saída designados. A concessão MIT-0 desses materiais e das receitas oficiais está formalizada em [LICENSE-GENERATED](../../LICENSE-GENERATED); este whitepaper apenas a descreve. Dependências, assets e receitas de terceiros, assim como os termos do modelo/provider, mantêm suas condições.
 
 O avanço depende de evidências sobre qualidade, compatibilidade, segurança e operação em máquinas reais. A [visão de computação regenerável](whitepaper-computacao-regeneravel.md) amplia a hipótese para um horizonte mais longo, preservando essa separação entre capacidade demonstrada e pesquisa proposta.

@@ -2,7 +2,9 @@
 
 A implementação ativa é o pacote Cargo na raiz, derivado de `baseline/pre-v1`. Experimentos estão em `docs/archive`; arquivos contextuais da outra máquina permanecem privados e ignorados.
 
-A engine é GNU GPL v3. Materiais fornecidos pelo CREXE que são incorporados à saída e receitas oficiais têm também a concessão MIT-0 delimitada em [LICENSE-GENERATED](LICENSE-GENERATED). Contribuições a esses materiais devem preservar essa liberdade, para que o usuário escolha a licença do aplicativo. Não incorporar conteúdo de terceiros com condições incompatíveis a esses templates ou exemplos; dependências com licença própria precisam continuar identificadas separadamente.
+A engine é [MIT](LICENSE). Contribuições à engine seguem essa licença, com os avisos de copyright e licença aplicáveis. Materiais fornecidos pelo CREXE que são incorporados à saída e receitas oficiais têm também a concessão MIT-0 delimitada em [LICENSE-GENERATED](LICENSE-GENERATED); contribuições a esses materiais devem manter explicitamente essa concessão, para que o usuário escolha a licença do aplicativo sem obrigação de atribuição ao CREXE.
+
+Envie somente contribuições que você tenha direito de licenciar nesses termos. A licença não transfere automaticamente a titularidade ao mantenedor, e este projeto não exige cessão de direitos ou um CLA separado. Identifique material e dependências de terceiros, preservando seus avisos; não incorporar conteúdo com condições incompatíveis aos materiais designados MIT-0.
 
 Use `rust-toolchain.toml`. Antes de propor alterações:
 

@@ -113,6 +113,6 @@ There is no guaranteed reduction in bandwidth or processing. A small recipe may 
 
 ## Openness and next steps
 
-The engine retains the repository's GNU GPL v3 license. Users choose the generated application's license, including a proprietary license, without an obligation to publish its source or credit CREXE. The MIT-0 grant for materials CREXE incorporates into output and official recipes is formalized in [LICENSE-GENERATED](../../../LICENSE-GENERATED); this whitepaper only describes it. Third-party dependencies, assets and recipes, as well as model/provider terms, retain their conditions.
+The engine uses [MIT](../../../LICENSE), allowing ports and open or proprietary integrations while preserving its notices. Users choose the generated application's license, including a proprietary license, without an obligation to publish its source or credit CREXE for the designated output materials. The MIT-0 grant for those materials and official recipes is formalized in [LICENSE-GENERATED](../../../LICENSE-GENERATED); this whitepaper only describes it. Third-party dependencies, assets and recipes, as well as model/provider terms, retain their conditions.
 
 Progress depends on evidence about quality, compatibility, security, and operation on real machines. The [vision for regenerable computing](whitepaper-computacao-regeneravel.md) extends the hypothesis to a longer horizon while preserving the distinction between demonstrated capabilities and proposed research.

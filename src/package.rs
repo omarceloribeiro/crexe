@@ -1,6 +1,7 @@
 use super::{paths, project::Project, GeneratedFile};
 use anyhow::{bail, Context, Result};
 use serde_yaml::Value;
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -11,6 +12,11 @@ use std::{
 const ARCHIVE: &str = "source.zip";
 const OUTPUT_LICENSE_FILE: &str = "CREXE-OUTPUT-LICENSE.txt";
 const OUTPUT_LICENSE: &str = include_str!("../LICENSE-GENERATED");
+// Exact historical MIT-0 policy from ba2e508, before the engine's MIT migration.
+// Its references to the former GPL engine license must not block old exports.
+const HISTORICAL_OUTPUT_LICENSE_SHA256: &str =
+    "fbca894ec6e0602c502ae31b69a5c3ad8f08795debaf6fee7417d78fc9985732";
+const HISTORICAL_OUTPUT_LICENSE_LF_BYTES: usize = 5191;
 
 pub(crate) fn create(
     spec: &Value,
@@ -79,7 +85,7 @@ pub(crate) fn bundle(plan: &Project, root: &Path) -> Result<()> {
         fs::write(root.join(&filename), script)?;
         sources.insert(filename.into());
     }
-    let instructions = format!("# {}\n\nGenerated with Creative Executable. Target: {} / {}; profile: {}.\n\nThis ZIP contains sources and scripts, not installed compilers or provider credentials.\n\n1. Install the toolchain indicated by the project/build script (.NET 8 SDK for dotnet profiles).\n2. Run build.{} from this directory.\n3. Run run.{} to open the app.\n\nAvailable operations: {}. They are recorded in CREXE-PROJECT.json; scripts and CREXE use the same command lists. The .NET publish is framework-dependent and does not bundle the runtime.\n\n## Licensing\n\nYou choose your application's license, including a proprietary or commercial license. CREXE does not require you to disclose application source code or credit CREXE. CREXE-supplied output materials are covered by the scoped MIT-0 permission in CREXE-OUTPUT-LICENSE.txt; that permission does not assign a license to your whole application. Recipes, dependencies, assets and provider terms may have their own conditions. Preserve and review any applicable third-party notices. CREXE does not create or replace your application's LICENSE file.\n\nGenerated tests are not independent assurance of correctness. Review the code. Builds run on the local host; the working directory is not security isolation.\n", plan.name, plan.os, plan.arch, plan.profile, if windows { "bat" } else { "sh" }, if windows { "bat" } else { "sh" }, plan.commands.keys().cloned().collect::<Vec<_>>().join(", "));
+    let instructions = format!("# {}\n\nGenerated with Creative Executable. Target: {} / {}; profile: {}.\n\nThis ZIP contains sources and scripts, not installed compilers or provider credentials.\n\n1. Install the toolchain indicated by the project/build script (.NET 8 SDK for dotnet profiles).\n2. Run build.{} from this directory.\n3. Run run.{} to open the app.\n\nAvailable operations: {}. They are recorded in CREXE-PROJECT.json; scripts and CREXE use the same command lists. The .NET publish is framework-dependent and does not bundle the runtime.\n\n## Licensing\n\nYou choose your application's license, including a proprietary or commercial license. CREXE does not require you to disclose application source code or credit CREXE. CREXE-supplied output materials are covered by the scoped MIT-0 permission in CREXE-OUTPUT-LICENSE.txt; that permission does not assign a license to your whole application. MIT-0 does not require retaining this notice or attributing CREXE. The engine implementation is separately licensed under MIT; its notice conditions do not transfer to the designated MIT-0 output materials. Recipes, dependencies, assets and provider terms may have their own conditions. Preserve and review any applicable third-party notices. CREXE does not create or replace your application's LICENSE file.\n\nGenerated tests are not independent assurance of correctness. Review the code. Builds run on the local host; the working directory is not security isolation.\n", plan.name, plan.os, plan.arch, plan.profile, if windows { "bat" } else { "sh" }, if windows { "bat" } else { "sh" }, plan.commands.keys().cloned().collect::<Vec<_>>().join(", "));
     paths::reject_links(&root.join("CREXE-README.md"))?;
     fs::write(root.join("CREXE-README.md"), instructions)?;
     sources.insert("CREXE-README.md".into());
@@ -108,8 +114,8 @@ fn write_output_license(root: &Path) -> Result<()> {
     let notice = root.join(OUTPUT_LICENSE_FILE);
     paths::reject_links(&notice)?;
     if notice.try_exists()?
-        && (fs::metadata(&notice)?.len() > (OUTPUT_LICENSE.len() * 2) as u64
-            || !same_output_license(&fs::read(&notice)?))
+        && (fs::metadata(&notice)?.len() > output_license_size_limit()
+            || !recognized_output_license(&fs::read(&notice)?))
     {
         bail!("{OUTPUT_LICENSE_FILE} already contains different material; preserve or rename it before exporting");
     }
@@ -117,11 +123,20 @@ fn write_output_license(root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn same_output_license(content: &[u8]) -> bool {
+fn output_license_size_limit() -> u64 {
+    (OUTPUT_LICENSE.len().max(HISTORICAL_OUTPUT_LICENSE_LF_BYTES) * 2) as u64
+}
+
+fn recognized_output_license(content: &[u8]) -> bool {
     // Git checkouts can use CRLF; exporting on another OS still recognizes the
     // same policy and writes the current build's exact text into the new ZIP.
-    std::str::from_utf8(content)
-        .is_ok_and(|text| text.replace("\r\n", "\n") == OUTPUT_LICENSE.replace("\r\n", "\n"))
+    let Ok(text) = std::str::from_utf8(content) else {
+        return false;
+    };
+    let normalized = text.replace("\r\n", "\n");
+    normalized == OUTPUT_LICENSE.replace("\r\n", "\n")
+        || format!("{:x}", Sha256::digest(normalized.as_bytes()))
+            == HISTORICAL_OUTPUT_LICENSE_SHA256
 }
 
 // Cached revisions can predate the output policy. Upgrade only the requested
@@ -158,12 +173,12 @@ fn export_with_output_license(source: &Path, output: &mut fs::File) -> Result<()
             );
         }
         if normalized.eq_ignore_ascii_case(OUTPUT_LICENSE_FILE) {
-            if entry.is_dir() || entry.size() > (OUTPUT_LICENSE.len() * 2) as u64 {
+            if entry.is_dir() || entry.size() > output_license_size_limit() {
                 bail!("{OUTPUT_LICENSE_FILE} already contains different material; the cached archive was preserved");
             }
             let mut existing = Vec::new();
             entry.read_to_end(&mut existing)?;
-            if !same_output_license(&existing) {
+            if !recognized_output_license(&existing) {
                 bail!("{OUTPUT_LICENSE_FILE} already contains different material; the cached archive was preserved");
             }
         } else {
@@ -218,6 +233,22 @@ pub(crate) fn export(revision: &Path, destination: Option<&Path>) -> Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Historical document copied byte-for-byte from ba2e508:LICENSE-GENERATED.
+    // Its GPL references describe that old engine version, not current licensing.
+    const HISTORICAL_OUTPUT_POLICY: &str =
+        include_str!("../tests/fixtures/output-license-ba2e508.txt");
+
+    fn historical_policy_variants() -> [String; 2] {
+        let lf = HISTORICAL_OUTPUT_POLICY.replace("\r\n", "\n");
+        assert_eq!(lf.len(), HISTORICAL_OUTPUT_LICENSE_LF_BYTES);
+        assert_eq!(
+            format!("{:x}", Sha256::digest(lf.as_bytes())),
+            HISTORICAL_OUTPUT_LICENSE_SHA256
+        );
+        assert_ne!(lf, OUTPUT_LICENSE.replace("\r\n", "\n"));
+        [lf.clone(), lf.replace('\n', "\r\n")]
+    }
 
     fn project(root: &Path, user_license: Option<&[u8]>) -> Project {
         fs::write(root.join("Program.cs"), "// user's application source\n").unwrap();
@@ -344,6 +375,101 @@ mod tests {
             archive_files(&output)[OUTPUT_LICENSE_FILE],
             OUTPUT_LICENSE.as_bytes()
         );
+    }
+
+    #[test]
+    fn bundle_migrates_the_known_historical_notice_and_preserves_user_license() {
+        let user_license = b"My proprietary license remains unchanged.\r\n";
+        for historical in historical_policy_variants() {
+            let temp = tempfile::tempdir().unwrap();
+            let plan = project(temp.path(), Some(user_license));
+            fs::write(temp.path().join(OUTPUT_LICENSE_FILE), historical).unwrap();
+            bundle(&plan, temp.path()).unwrap();
+            assert_eq!(
+                fs::read(temp.path().join(OUTPUT_LICENSE_FILE)).unwrap(),
+                OUTPUT_LICENSE.as_bytes()
+            );
+            assert_eq!(fs::read(temp.path().join("LICENSE")).unwrap(), user_license);
+            let files = archive_files(&temp.path().join(ARCHIVE));
+            assert_eq!(files[OUTPUT_LICENSE_FILE], OUTPUT_LICENSE.as_bytes());
+            assert_eq!(files["LICENSE"], user_license);
+            assert_eq!(files["Program.cs"], b"// user's application source\n");
+            assert!(String::from_utf8(files["CREXE-README.md"].clone())
+                .unwrap()
+                .contains("MIT-0 does not require retaining this notice"));
+        }
+    }
+
+    #[test]
+    fn cached_historical_notice_migrates_without_changing_revision_or_destination() {
+        let user_license = b"Copyright Example. All rights reserved.\r\n";
+        for historical in historical_policy_variants() {
+            let cache = tempfile::tempdir().unwrap();
+            legacy_archive(
+                cache.path(),
+                &[
+                    (OUTPUT_LICENSE_FILE, historical.as_bytes()),
+                    ("LICENSE", user_license),
+                    ("Program.cs", b"// cached source remains unchanged\n"),
+                ],
+            );
+            fs::write(
+                cache.path().join("CREXE-GENERATION.json"),
+                b"historical revision metadata",
+            )
+            .unwrap();
+            let original_archive = fs::read(cache.path().join(ARCHIVE)).unwrap();
+            let delivery = tempfile::tempdir().unwrap();
+            let destination = delivery.path().join("migrated.zip");
+            export(cache.path(), Some(&destination)).unwrap();
+            let files = archive_files(&destination);
+            assert_eq!(files.len(), 3);
+            assert_eq!(files[OUTPUT_LICENSE_FILE], OUTPUT_LICENSE.as_bytes());
+            assert_eq!(files["LICENSE"], user_license);
+            assert_eq!(files["Program.cs"], b"// cached source remains unchanged\n");
+            assert_eq!(
+                fs::read(cache.path().join(ARCHIVE)).unwrap(),
+                original_archive
+            );
+            assert_eq!(
+                fs::read(cache.path().join("CREXE-GENERATION.json")).unwrap(),
+                b"historical revision metadata"
+            );
+            assert_eq!(fs::read_dir(cache.path()).unwrap().count(), 2);
+            let original_export = fs::read(&destination).unwrap();
+            assert!(export(cache.path(), Some(&destination)).is_err());
+            assert_eq!(fs::read(&destination).unwrap(), original_export);
+            assert_eq!(
+                fs::read(cache.path().join(ARCHIVE)).unwrap(),
+                original_archive
+            );
+        }
+    }
+
+    #[test]
+    fn a_modified_historical_notice_is_not_mistaken_for_engine_owned_material() {
+        let historical = HISTORICAL_OUTPUT_POLICY.replace("\r\n", "\n");
+        for changed in [
+            format!("{historical}\nAdditional user-owned conditions.\n"),
+            historical.replace("CREXE", "Another project"),
+            historical.replace("GNU GPL v3", "custom conditions"),
+        ] {
+            assert!(!recognized_output_license(changed.as_bytes()));
+            let temp = tempfile::tempdir().unwrap();
+            let plan = project(temp.path(), None);
+            fs::write(temp.path().join(OUTPUT_LICENSE_FILE), &changed).unwrap();
+            assert!(bundle(&plan, temp.path()).is_err());
+            assert_eq!(
+                fs::read_to_string(temp.path().join(OUTPUT_LICENSE_FILE)).unwrap(),
+                changed
+            );
+            legacy_archive(temp.path(), &[(OUTPUT_LICENSE_FILE, changed.as_bytes())]);
+            let original = fs::read(temp.path().join(ARCHIVE)).unwrap();
+            let output = temp.path().join("export.zip");
+            assert!(export(temp.path(), Some(&output)).is_err());
+            assert!(!output.exists());
+            assert_eq!(fs::read(temp.path().join(ARCHIVE)).unwrap(), original);
+        }
     }
 
     #[test]

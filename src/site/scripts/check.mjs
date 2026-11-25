@@ -88,7 +88,25 @@ for (const [source, destination] of [...documentation.files, ...examples]) {
   assert((await readFile(path.join(repoRoot, source))).equals(await readFile(path.join(distRoot, destination))),
     `${destination} must match its maintained repository source byte for byte.`);
 }
+// The public license file and every page footer must describe the same current
+// engine license. Historical publication bodies retain their original wording.
+const engineLicense = await readFile(path.join(distRoot, 'LICENSE.txt'), 'utf8');
+assert.match(engineLicense, /^MIT License\r?$/m, 'The engine license download must be MIT.');
+assert.match(engineLicense, /The above copyright notice and this permission notice shall be included in all\s+copies or substantial portions of the Software\./,
+  'The MIT download must retain its copyright and permission notice condition.');
+for (const [page, html] of htmlPages) {
+  const footer = html.match(/<footer\b[^>]*>([\s\S]*?)<\/footer>/)?.[1];
+  assert(footer, `Missing project footer in ${page}.`);
+  const licenseLinks = [...footer.matchAll(/<a\b[^>]*href="([^"]*LICENSE\.txt)"[^>]*>([\s\S]*?)<\/a>/g)];
+  assert.equal(licenseLinks.length, 1, `Expected one engine license link in ${page}.`);
+  const [, href, label] = licenseLinks[0];
+  assert.equal(path.posix.normalize(path.posix.join(path.posix.dirname(page), href)), 'LICENSE.txt',
+    `The footer must link to the maintained engine license in ${page}.`);
+  assert.equal(label.replace(/<[^>]*>/g, '').trim(), 'MIT', `Outdated engine license label in ${page}.`);
+  assert.doesNotMatch(footer, /\bGPL(?:v?\d)?\b/i, `Outdated GPL footer in ${page}.`);
+}
 for (const [page, licenseUrl] of [['index.html', 'LICENSE-GENERATED'], ['en/index.html', '../LICENSE-GENERATED']]) {
+  assert.doesNotMatch(htmlPages.get(page), /\bGPL(?:v?\d)?\b/i, `Outdated engine licensing in ${page}.`);
   assert(htmlPages.get(page).includes(`href="${licenseUrl}" download`),
     `The output-material license must be downloadable from ${page}.`);
 }

@@ -181,7 +181,7 @@ function shell({ title, description, language, slug = 'index', bodyClass, conten
     <div class="language-switch" data-language-switch role="group" aria-label="${locale.languages}">${languageLinks}</div>
   </div></header>
   ${content}
-  <footer class="library-footer container"><p>CREXE · Creative Executable</p><nav aria-label="${locale.projectLinks}"><a href="../index.html">${locale.project}</a><a href="${locale.assetPrefix}LICENSE.txt">GNU GPL v3</a><a href="security.html">${locale.security}</a></nav></footer>
+  <footer class="library-footer container"><p>CREXE · Creative Executable</p><nav aria-label="${locale.projectLinks}"><a href="../index.html">${locale.project}</a><a href="${locale.assetPrefix}LICENSE.txt">MIT</a><a href="security.html">${locale.security}</a></nav></footer>
 </body>
 </html>
 `;

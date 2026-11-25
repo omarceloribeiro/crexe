@@ -146,13 +146,13 @@
   {
     "slug": "licenciamento",
     "title": "Licensing and ecosystem",
-    "description": "The GNU GPL v3 engine, MIT-0 output materials, and freedom to choose the app’s license, including a proprietary license.",
+    "description": "The MIT-licensed engine, MIT-0 output materials, and freedom to choose the app’s license, including a proprietary license.",
     "category": "reference",
     "status": "Licensing review",
     "language": "en",
     "source": "docs/en/LICENCIAMENTO_E_ECOSSISTEMA.md",
     "date": "2026-11-25",
-    "notice": "The engine remains GNU GPL v3. CREXE materials incorporated into output use MIT-0, without requiring source disclosure or CREXE attribution. Third-party and provider terms still apply; see the scope in LICENSE-GENERATED."
+    "notice": "The engine uses MIT, with its copyright and license notices preserved. CREXE materials incorporated into output use MIT-0, without requiring source disclosure or CREXE attribution. Third-party and provider terms still apply; see the scope in LICENSE-GENERATED."
   },
   {
     "slug": "project-overview",

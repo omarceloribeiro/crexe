@@ -32,9 +32,9 @@ A engine atual executa programas com as permissões do usuário e não oferece i
 
 ## Abertura exige compromissos concretos
 
-A engine permanece sob GNU GPL v3. Formatos, fontes e documentação devem permitir compreender o projeto e discutir sua evolução. A intenção de abertura também precisa de contratos claros, contribuições responsáveis e respeito ao conteúdo incorporado.
+A engine usa MIT para facilitar a adoção, os ports e a integração a outros projetos. Formatos, fontes e documentação devem permitir compreender o projeto e discutir sua evolução. A intenção de abertura também precisa de contratos claros, contribuições responsáveis e respeito ao conteúdo incorporado.
 
-O usuário escolhe a licença do programa gerado, inclusive proprietária. O CREXE não exige abrir os fontes ou receber crédito; seus materiais incorporados à saída e as receitas oficiais são MIT-0. A engine continua GPLv3. Condições de dependências, assets, receitas de terceiros e do modelo/provider permanecem aplicáveis. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) detalha esse escopo.
+O usuário escolhe a licença do programa gerado, inclusive proprietária. O CREXE não exige abrir os fontes ou receber crédito pelos materiais designados que incorpora à saída e pelas receitas oficiais, oferecidos sob MIT-0. Redistribuir a própria engine exige preservar seus avisos MIT. Condições de dependências, assets, receitas de terceiros e do modelo/provider permanecem aplicáveis. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) detalha esse escopo.
 
 ## O futuro é um trabalho compartilhado
 

@@ -12,7 +12,7 @@ English editions of the CREXE website's white papers, guides, articles, and mani
 - [RFC Draft 0.1 — original English specification](../../crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md)
 - [Portuguese translation of RFC Draft 0.1](../../publicacoes/rfc-draft.pt-BR.md)
 
-The RFC is a historical proposal, not an approved standard or a complete description of the current implementation. Its original English file remains unchanged and available for download.
+The RFC is a historical proposal, not an approved standard or a complete description of the current implementation. Its original English file remains unchanged and available for download. The RFC and original handoffs preserve their proposals and notices. The current policy, decided on 25 November 2026, uses MIT for the engine and the MIT-0 grant for designated output materials and examples. See the [current licensing policy](../LICENCIAMENTO_E_ECOSSISTEMA.md); neither the original nor its Portuguese translation was rewritten to reflect this decision. GPL references in the [v1 plan's historical assessment](../../PLANO_V1.md) record the earlier policy.
 
 ## Technical guides
 
@@ -34,6 +34,6 @@ The RFC is a historical proposal, not an approved standard or a complete descrip
 - [Security](../SECURITY.md) and [contributing](../CONTRIBUTING.md)
 - [Licensing and ecosystem](../LICENCIAMENTO_E_ECOSSISTEMA.md)
 
-The translations do not introduce a new license, change the engine's user interface, or turn proposed capabilities into implemented features. Code identifiers, commands, and original downloadable examples retain their original spelling. Historical documents outside this collection remain available in their original languages.
+The maintained publications describe the engine's MIT license, the MIT-0 grant for output materials and official examples, and third-party rights. They do not establish separate CC BY or Apache licenses or trademark permissions. Historical originals preserve their own notices. Translations do not change the engine's user interface or turn proposed capabilities into implemented features. Code identifiers, commands, and original downloadable examples retain their original spelling. Historical documents outside this collection remain available in their original languages.
 
 The website builds each edition from its Markdown source. Portuguese pages remain at the original paths; English pages are under `en/`. Language links open the equivalent document without requiring JavaScript.

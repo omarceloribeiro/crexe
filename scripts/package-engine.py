@@ -15,6 +15,7 @@ import subprocess
 import tarfile
 import tempfile
 import zipfile
+from package_licenses import collect_notices
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,6 +38,14 @@ def main():
         raise SystemExit('Commit the repository changes before packaging a source-linked snapshot.')
     revision = command(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
     command(['cargo', 'build', '--release', '--locked'])
+    compiler = command(['rustc', '-vV'], capture_output=True, text=True, encoding='utf-8').stdout
+    host = next((line.removeprefix('host: ') for line in compiler.splitlines() if line.startswith('host: ')), None)
+    if not host:
+        raise SystemExit('Cannot determine the native Cargo target for dependency notices.')
+    metadata = json.loads(command(
+        ['cargo', 'metadata', '--locked', '--format-version', '1', '--filter-platform', host],
+        capture_output=True, text=True, encoding='utf-8').stdout)
+    notices = collect_notices(metadata, host)
     binary = ROOT / 'target/release' / ('crexe.exe' if os.name == 'nt' else 'crexe')
     with tempfile.TemporaryDirectory(prefix='crexe-package-check-') as check:
         env = dict(os.environ, CREXE_HOME=str(Path(check) / 'home'), PATH='')
@@ -58,6 +67,9 @@ def main():
             'examples/outra-leitura.md': ('# Outro documento, mesmo leitor\n\n- Agora esta janela deve mostrar o segundo arquivo.\n\nEdite este texto externamente e reabra para conferir a leitura do disco.\n'.encode('utf-8'), 0o644),
             'SOURCE.txt': ((source_url + '\n').encode(), 0o644),
         }
+        if files.keys() & notices.keys():
+            raise SystemExit('Dependency notice paths collide with engine package files.')
+        files.update({path: (content, 0o644) for path, content in notices.items()})
         if system == 'windows':
             install = '@echo off\r\nsetlocal\r\n"%~dp0crexe.exe" install\r\nif errorlevel 1 exit /b %errorlevel%\r\n"%~dp0crexe.exe" associate\r\nif errorlevel 1 exit /b %errorlevel%\r\ncall "%~dp0configure.cmd"\r\nexit /b %errorlevel%\r\n'
             files['install.cmd'] = (install.encode(), 0o644)
@@ -141,12 +153,18 @@ Não execute receitas/código nos quais você não confia. Windows Sandbox é pr
 
 Confira a documentação, requisitos e limites: https://github.com/omarceloribeiro/crexe/tree/{revision}
 Código-fonte correspondente: {source_url}
-A licença GPL da engine está em LICENSE. LICENSE-GENERATED descreve a permissão MIT-0
-para os materiais de saída fornecidos pelo CREXE, incluindo as receitas oficiais.
+A engine usa MIT (LICENSE); seus avisos se aplicam a cópias da própria engine.
+LICENSE-GENERATED descreve a permissão MIT-0 para os materiais de saída fornecidos
+pelo CREXE, incluindo as receitas oficiais. Esses materiais MIT-0 podem ser
+redistribuídos sem manter o aviso ou atribuir crédito ao CREXE.
 Você escolhe a licença do seu aplicativo, inclusive proprietária ou comercial; o CREXE
 não exige publicar seus fontes nem dar crédito ao CREXE. Dependências, receitas de
 terceiros, assets e termos do provider podem ter condições próprias. A permissão
 dos materiais CREXE não licencia automaticamente o aplicativo inteiro.
+THIRD-PARTY-NOTICES.txt e third-party-licenses/ preservam os avisos e textos das
+dependências. A licença MIT da engine não altera esses termos. O conjunto é
+conservador: pode incluir dependências de build/teste não incorporadas ao binário
+e não representa certificação de conformidade de todas as licenças.
 '''
         files['LEIA-ME.md'] = (readme.encode('utf-8'), 0o644)
         manifest = {'schema': 1, 'status': 'development snapshot', 'version': version,

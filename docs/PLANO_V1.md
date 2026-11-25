@@ -2,6 +2,8 @@
 
 Data inicial: 2026-09-23. Atualização de escopo: 2026-09-24. Status: execução iniciada em `feature/v1`; resultados e pendências em [IMPLEMENTACAO_V1.md](IMPLEMENTACAO_V1.md). As observações de baseline abaixo permanecem históricas, não descrevem todas as mudanças posteriores.
 
+Decisão de licenciamento atualizada em 25/11/2026: engine sob MIT; materiais de saída e exemplos designados sob MIT-0. As referências à GPL no diagnóstico do baseline registram o estado anterior. Consulte a [política vigente](LICENCIAMENTO_E_ECOSSISTEMA.md).
+
 Ponto de partida preservado: commit de baseline identificado pela tag `baseline/pre-v1`, na branch `feature/v1`, antes da implementação deste plano. O [registro do baseline](BASELINE.md) descreve conteúdo, backup local, exclusões do remoto e comandos de comparação.
 
 Complemento de 25/09/2026 após testes do autor: [plano de abertura, configuração visual e cliques repetidos](PLANO_UX_V1.md). Esse incremento foi implementado; evidências e aceitação manual pendente estão no registro de implementação.
@@ -754,7 +756,7 @@ As RFCs precisam separar requisitos normativos, escolhas da implementação de r
 
 Revisar os artigos antes de publicação para não afirmar isolamento, detecção de toolchains ou reproducibilidade que a versão entregue não garanta. Manter a visão de longo prazo identificada como visão.
 
-Alinhar os manifests à GNU GPL v3 escolhida e registrar explicitamente a variante de licença pretendida (`GPL-3.0-only` ou `GPL-3.0-or-later`) antes de alterar os identificadores. A presença do texto GPL na raiz não resolve, por si só, a intenção sobre versões futuras. Documentar separadamente engine, documentos, exemplos e artefatos gerados; não inferir automaticamente a licença de toda saída do gerador. Atualizar a discussão histórica sobre produto fechado para não parecer a política vigente.
+Conforme a decisão de 25/11/2026, alinhar os manifests e a apresentação pública à MIT da engine e à concessão MIT-0 dos materiais de saída e exemplos designados. O usuário escolhe a licença do aplicativo gerado, inclusive proprietária, respeitando direitos e termos de terceiros. Documentar separadamente os escopos, preservar os avisos exigidos para a engine e distinguir a discussão histórica da política vigente, sem reescrever os originais fornecidos ou atribuir uma licença automática a toda a saída do gerador.
 
 Para `crexe.org`, preparar uma publicação estática com páginas de apresentação, início rápido, RFCs, exemplos, downloads e limites conhecidos. README e RFCs devem ter uma fonte mantida no repositório, evitando duas cópias divergentes. Os downloads apontam para releases versionadas com checksums e instruções de verificação. Hospedagem/DNS e publicação efetiva ficam para a etapa de entrega, após existir conteúdo revisável; este plano não altera o domínio.
 

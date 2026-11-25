@@ -16,6 +16,8 @@ A coleção também tem [edição completa em inglês](../en/publicacoes/README.
 - [RFC Draft 0.1 em português](rfc-draft.pt-BR.md): tradução integral, com sumário e download no site.
 - [RFC Draft 0.1 — original em inglês](../crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md): preservado integralmente como proposta histórica e disponível para download nas duas edições do site.
 
+O RFC e os handoffs preservam suas propostas e avisos originais. A política atual, definida em 25/11/2026, usa MIT para a engine e a concessão MIT-0 para os materiais de saída e exemplos designados. Consulte o [licenciamento vigente](../LICENCIAMENTO_E_ECOSSISTEMA.md); o original e sua tradução não foram reescritos para refletir essa decisão. As referências à GPL no diagnóstico histórico do [plano da v1](../PLANO_V1.md) registram a política anterior.
+
 ## Guias técnicos
 
 - [Segurança e confiança](guia-seguranca-e-confianca.md): fronteiras atuais e propostas de isolamento.
@@ -30,7 +32,7 @@ A coleção também tem [edição completa em inglês](../en/publicacoes/README.
 
 ## Referências da implementação
 
-O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.md), a [configuração](../CONFIGURACAO.md), os [perfis](../PERFIS_V1.md), os [projetos exportados](../PROJETOS_V1.md) e os [limites de segurança](../../SECURITY.md) descrevem o comportamento entregue. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) distingue a GNU GPL v3 da engine, a MIT-0 vigente para os materiais de saída e exemplos oficiais e as demais políticas futuras propostas.
+O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.md), a [configuração](../CONFIGURACAO.md), os [perfis](../PERFIS_V1.md), os [projetos exportados](../PROJETOS_V1.md) e os [limites de segurança](../../SECURITY.md) descrevem o comportamento entregue. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) distingue a MIT da engine, a MIT-0 para os materiais de saída e exemplos oficiais e os direitos de terceiros.
 
 ## Critérios editoriais
 
@@ -40,7 +42,7 @@ O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.
 - Não anunciar integrações com APIs nativas, suporte a novos sistemas, assinaturas ou certificações antes de existirem e serem verificados.
 - Não prometer redução universal de tamanho, custo ou tempo sem medições comparáveis.
 - Manter exemplos executáveis alinhados aos contratos atuais; marcar pseudocódigo e propostas como tais.
-- Preservar as licenças existentes. Os textos desta coleção não recebem uma nova licença CC BY, MIT ou Apache nem concedem permissões de marca; descrevem separadamente a concessão MIT-0 dos materiais de saída e exemplos em `LICENSE-GENERATED`.
+- Respeitar os textos de licença e avisos aplicáveis. A coleção descreve a MIT da engine e a concessão MIT-0 dos materiais de saída e exemplos em `LICENSE-GENERATED`; não institui licenças CC BY ou Apache nem permissões de marca. Os originais históricos preservam seus próprios avisos.
 
 ## Edição e publicação no site
 

@@ -37,7 +37,7 @@ A recipe and an exported project serve distinct purposes. A recipe lets the reci
 
 Distributing intent therefore does not eliminate source distribution. In CREXE, export includes project files, a manifest, and scripts. The recipient can work on that material without depending on the engine to recompile it, according to the [project operations contract](../PROJETOS_V1.md). The result remains subject to dependencies and environmental conditions.
 
-Users choose the application's license, including a proprietary license, and may sell it without an obligation to publish its source or credit CREXE. The engine remains GNU GPL v3; its materials incorporated into output and official recipes have an MIT-0 grant. Third-party dependencies, assets and recipes, as well as model/provider terms, retain their conditions. The [licensing record](../LICENCIAMENTO_E_ECOSSISTEMA.md) explains the scope of that freedom and the notice included in exports.
+Users choose the application's license, including a proprietary license, and may sell it without an obligation to publish its source or credit CREXE for the designated output materials. The engine uses MIT; its materials incorporated into output and official recipes have an additional MIT-0 grant. Third-party dependencies, assets and recipes, as well as model/provider terms, retain their conditions. The [licensing record](../LICENCIAMENTO_E_ECOSSISTEMA.md) explains the scope of that freedom and the notice included in exports.
 
 ## Freedom needs criteria
 

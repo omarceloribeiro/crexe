@@ -2,7 +2,9 @@
 
 The active implementation is the Cargo package at the repository root, derived from `baseline/pre-v1`. Experiments are in `docs/archive`; contextual files from the other machine remain private and ignored.
 
-The engine is GNU GPL v3. CREXE-provided materials incorporated into output and official recipes also have the MIT-0 grant scoped in [LICENSE-GENERATED](../../LICENSE-GENERATED). Contributions to those materials must preserve that freedom so users can choose their application's license. Do not incorporate third-party content with incompatible terms into those templates or examples; dependencies with their own licenses must remain separately identified.
+Engine contributions are made under [MIT](../../LICENSE). Contributions to the CREXE-provided output materials and official examples designated in [LICENSE-GENERATED](../../LICENSE-GENERATED) are also made under MIT-0, in addition to the repository license, unless explicitly agreed otherwise. This separate grant lets users choose their application's license, including a proprietary license, without a CREXE attribution requirement for those materials.
+
+The license does not automatically transfer ownership to the maintainer; the project does not require a copyright assignment or CLA as a general condition of contribution. Submit only material you have the rights to license on the applicable terms. Identify third-party content and preserve its notices; do not place incompatible content into the designated MIT-0 templates or examples. Dependencies with their own licenses remain separately identified. See the [licensing policy](LICENCIAMENTO_E_ECOSSISTEMA.md).
 
 Use `rust-toolchain.toml`. Before proposing changes:
 

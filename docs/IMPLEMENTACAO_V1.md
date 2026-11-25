@@ -33,7 +33,7 @@ A CI foi ampliada com o ensaio OpenGL nos três hosts, .NET 8 no Windows e libep
 - Cache transacional, revisões imutáveis, hashes, trava por entrada, rejeição de artefatos alterados e preservação da revisão anterior na falha.
 - Geração com vários fontes, build, autoteste de perfil, até duas correções e ZIP com fontes/scripts/instruções. Exportação funciona também em cache hit. O perfil .NET inclui scripts de publish dependente do runtime.
 
-A licença do pacote referencia `LICENSE`, sem presumir `-or-later`. Não se atribui automaticamente a licença da engine aos aplicativos gerados.
+Naquele primeiro conjunto de incrementos, o pacote passou a referenciar `LICENSE`, sem presumir `-or-later`. Desde a decisão de 25/11/2026, a engine usa MIT e os materiais de saída designados usam MIT-0, conforme a [política vigente](LICENCIAMENTO_E_ECOSSISTEMA.md). Não se atribui automaticamente a licença da engine aos aplicativos gerados.
 
 ## Segundo incremento: operações e limites locais
 

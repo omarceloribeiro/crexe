@@ -60,7 +60,7 @@ Os pacotes da engine pertencem ao GitHub Releases. Enquanto a release não estiv
 - `assets/`: marca e recursos locais, sem fontes remotas.
 - `scripts/`: build, verificação e servidor local.
 
-A seção do projeto aberto apresenta a implementação, a biblioteca e os caminhos de contribuição e segurança. Os textos seguem a [revisão de licenciamento](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): a engine permanece GNU GPL v3 e a concessão MIT-0 dos materiais de saída está vigente no escopo de [LICENSE-GENERATED](../../LICENSE-GENERATED). Outras políticas, registro de marca e produtos futuros permanecem propostas, sem anúncio de disponibilidade.
+A seção do projeto aberto apresenta a implementação, a biblioteca e os caminhos de contribuição e segurança. Os textos seguem a [revisão de licenciamento](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): a engine usa MIT, com preservação dos avisos de copyright e licença, e a concessão MIT-0 dos materiais de saída está vigente no escopo de [LICENSE-GENERATED](../../LICENSE-GENERATED). Outras políticas, registro de marca e produtos futuros permanecem propostas, sem anúncio de disponibilidade.
 
 As duas landings apresentam **Gerar com CREXE**: selecionar um documento comum para gerar ou reutilizar um leitor que o abra. O texto distingue o menu Windows do seletor da janela em macOS/Linux, descreve o contrato inicial de leitura, a chamada única de planejamento por preparação do leitor e o uso do cache. O site não recebe documentos nem gera programas no navegador. A referência de implementação vem dos guias do projeto em português e inglês; ensaios de CI, modelo real e desktop não devem ser apresentados como equivalentes.
 
@@ -74,7 +74,7 @@ O build cria `dist/biblioteca/index.html` (português), `dist/en/library/index.h
 
 Para adicionar um texto, mantenha o Markdown e sua tradução no repositório e inclua uma entrada em cada catálogo. Use o mesmo `slug` único e categoria nas duas edições, data da revisão editorial em `YYYY-MM-DD` e um aviso de escopo preciso. O build rejeita uma edição incompleta. Coloque os novos documentos sob controle do Git antes do build: a coleta de documentação aceita apenas arquivos rastreados. Execute `check` após alterar conteúdo ou links.
 
-As traduções inglesas ficam em `docs/en/`. O RFC português está em `docs/publicacoes/rfc-draft.pt-BR.md`; o original inglês histórico permanece intacto e tem download próprio na tradução. A GNU GPL v3 e os exemplos executáveis são preservados como arquivos originais. O acervo histórico não pertencente à coleção publicada mantém seus idiomas originais.
+As traduções inglesas ficam em `docs/en/`. O RFC português está em `docs/publicacoes/rfc-draft.pt-BR.md`; o original inglês histórico permanece intacto e tem download próprio na tradução. A licença MIT da engine, a licença MIT-0 dos materiais de saída e os exemplos executáveis são publicados a partir dos arquivos mantidos no repositório. O acervo histórico não pertencente à coleção publicada mantém seus idiomas originais.
 
 Os links PT/EN levam à página equivalente. `lang`, `hreflang`, canonical e sitemap identificam as duas edições; não há redirecionamento automático por idioma do navegador. As mensagens dinâmicas usam o idioma da página. O site traduz a documentação, não a interface nativa da engine.
 

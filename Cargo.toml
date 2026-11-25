@@ -3,7 +3,7 @@ name = "crexe"
 version = "1.0.0"
 edition = "2021"
 description = "CREXE v1 Rust executor - Creative Executable runtime"
-license-file = "LICENSE"
+license = "MIT"
 readme = "README.md"
 repository = "https://github.com/omarceloribeiro/crexe"
 

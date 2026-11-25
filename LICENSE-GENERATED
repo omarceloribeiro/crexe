@@ -5,9 +5,9 @@ ENGLISH — SCOPE
 
 The user chooses the license of the application they generate with CREXE,
 including a proprietary license. CREXE does not require publication of the
-application's source, royalties, or attribution to CREXE. The engine remains
-under GNU GPL v3 in LICENSE; merely generating, building or exporting an
-application does not make that application GPL.
+application's source, royalties, or attribution to CREXE. The engine is
+licensed under MIT in LICENSE; merely generating, building or exporting an
+application does not impose the engine's license on that application.
 
 The CREXE-authored portions of the following materials are additionally
 licensed under MIT No Attribution (MIT-0), whose text appears below:
@@ -45,8 +45,8 @@ PORTUGUÊS — ESCOPO
 
 O usuário escolhe a licença do aplicativo que gerar com CREXE, inclusive uma
 licença proprietária. O CREXE não exige publicação dos fontes do aplicativo,
-royalties ou atribuição ao CREXE. A engine permanece sob GNU GPL v3 em LICENSE;
-gerar, compilar ou exportar um aplicativo não torna esse aplicativo GPL.
+royalties ou atribuição ao CREXE. A engine é licenciada sob MIT em LICENSE;
+gerar, compilar ou exportar um aplicativo não impõe a licença da engine a ele.
 
 As partes de autoria do CREXE dos materiais enumerados no escopo em inglês
 acima também são licenciadas sob MIT No Attribution (MIT-0): templates de

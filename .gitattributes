@@ -34,3 +34,5 @@
 
 # LICENSE was already tracked with normalized line endings in the initial commit.
 LICENSE text
+# Upstream notice snapshots are checked by byte hash on every platform.
+/scripts/third_party_licenses/** -text !eol

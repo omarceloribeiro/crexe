@@ -146,12 +146,12 @@
   {
     "slug": "licenciamento",
     "title": "Licenciamento e ecossistema",
-    "description": "Engine GNU GPL v3, materiais de saída MIT-0 e liberdade para escolher a licença do app, inclusive proprietária.",
+    "description": "Engine MIT, materiais de saída MIT-0 e liberdade para escolher a licença do app, inclusive proprietária.",
     "category": "reference",
     "status": "Revisão de licenciamento",
     "source": "docs/LICENCIAMENTO_E_ECOSSISTEMA.md",
     "date": "2026-11-25",
-    "notice": "A engine permanece GNU GPL v3. Os materiais CREXE incorporados à saída usam MIT-0, sem exigir abertura de fontes ou crédito ao CREXE. As condições de terceiros e do provider continuam aplicáveis; consulte o escopo de LICENSE-GENERATED.",
+    "notice": "A engine usa MIT, com preservação dos avisos de copyright e licença. Os materiais CREXE incorporados à saída usam MIT-0, sem exigir abertura de fontes ou crédito ao CREXE. As condições de terceiros e do provider continuam aplicáveis; consulte o escopo de LICENSE-GENERATED.",
     "language": "pt-BR"
   },
   {

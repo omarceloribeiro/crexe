@@ -33,6 +33,8 @@ jobs:
         run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
       - name: Format
         run: cargo +1.98.1 fmt --all --check
+      - name: Dependency license packaging tests
+        run: python -m unittest discover -s scripts -p test_package_licenses.py
       - name: Lint
         run: cargo +1.98.1 clippy --locked --all-targets -- -D warnings
       - name: Tests (local provider only)
