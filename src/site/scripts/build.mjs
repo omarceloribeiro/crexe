@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { buildPublications } from './publications.mjs';
 import {
   collectDocumentation, distRoot, examples, git, readJson, repoRoot, siteRoot,
   staticFiles, validateDownloads, within,
@@ -40,6 +41,14 @@ export async function build() {
     await mkdir(path.dirname(output), { recursive: true });
     await copyFile(path.join(repoRoot, source), output);
   }));
+  const publications = await buildPublications();
+  const sitemap = await readFile(path.join(distRoot, 'sitemap.xml'), 'utf8');
+  const publicationUrls = publications.pages.map((page) => {
+    const entry = publications.catalog.find((item) => item.url === page);
+    const url = page === 'biblioteca/index.html' ? 'biblioteca/' : page;
+    return `  <url><loc>https://crexe.org/${url}</loc>${entry ? `<lastmod>${entry.date}</lastmod>` : ''}</url>`;
+  });
+  await writeFile(path.join(distRoot, 'sitemap.xml'), sitemap.replace('</urlset>', `${publicationUrls.join('\n')}\n</urlset>`), 'utf8');
   const archivePath = path.join(distRoot, 'downloads', archiveName);
   git(['archive', '--format=zip', `--output=${archivePath}`, `--prefix=crexe-${shortRevision}/`, revision, '--', ...archivePaths]);
   const checksum = createHash('sha256').update(await readFile(archivePath)).digest('hex');
@@ -52,7 +61,7 @@ export async function build() {
   }, null, 2)}\n`, 'utf8');
   console.log(`Built ${distRoot}`);
   console.log(`Source download contains committed HEAD ${shortRevision}; current uncommitted edits are excluded.`);
-  return { revision, shortRevision, documentation };
+  return { revision, shortRevision, documentation, publications };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

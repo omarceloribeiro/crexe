@@ -125,6 +125,7 @@ Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na co
 ## Documentação e licença
 
 - [Site público de crexe.org](src/site/README.md): landing estática, exemplos e downloads; build e preview locais independentes da engine.
+- [Biblioteca CREXE](docs/publicacoes/README.md): white papers, guias, artigos e manifesto; implementação atual e visão de futuro identificadas em cada texto.
 - [Contrato implementado dos formatos](docs/FORMATOS_V1.md)
 - [Configuração](docs/CONFIGURACAO.md), [contribuição](CONTRIBUTING.md) e [limites de segurança](SECURITY.md)
 - [RFCs e visão histórica](docs/crexe_handoff_docs/README.md), em reconciliação com a implementação

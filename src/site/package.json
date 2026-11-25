@@ -11,5 +11,8 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "markdown-it": "15.0.3"
   }
 }

@@ -9,13 +9,22 @@ import {
   validateDownloads, within,
 } from './shared.mjs';
 
-const { documentation } = await build();
-for (const script of ['main.js', ...(await readdir(path.join(siteRoot, 'scripts')))
+const { documentation, publications } = await build();
+for (const script of ['main.js', 'library.js', ...(await readdir(path.join(siteRoot, 'scripts')))
   .filter((file) => file.endsWith('.mjs')).map((file) => `scripts/${file}`)]) {
   execFileSync(process.execPath, ['--check', path.join(siteRoot, script)], { stdio: 'pipe', windowsHide: true });
 }
-const html = await readFile(path.join(distRoot, 'index.html'), 'utf8');
-const ids = new Set([...html.matchAll(/\bid\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]));
+execFileSync(process.execPath, ['--test', path.join(siteRoot, 'scripts/publications.test.mjs')], { stdio: 'inherit', windowsHide: true });
+const htmlPages = new Map();
+const pageIds = new Map();
+for (const page of ['index.html', ...publications.pages]) {
+  const html = await readFile(path.join(distRoot, page), 'utf8');
+  const ids = [...html.matchAll(/\bid\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]);
+  assert.equal(ids.length, new Set(ids).size, `Duplicate HTML IDs in ${page}.`);
+  assert.equal([...html.matchAll(/<h1\b/g)].length, 1, `Expected one page title in ${page}.`);
+  htmlPages.set(page, html);
+  pageIds.set(path.join(distRoot, page), new Set(ids));
+}
 let localLinks = 0;
 
 async function checkLink(raw, from = 'index.html') {
@@ -26,15 +35,27 @@ async function checkLink(raw, from = 'index.html') {
   assert(!localPath.startsWith('/'), `Use a relative URL for folder hosting: ${raw}`);
   const filename = path.resolve(distRoot, path.dirname(from), localPath || path.basename(from));
   assert(within(distRoot, filename), `Link escapes the site: ${raw}`);
-  assert((await stat(filename)).isFile(), `Missing local file: ${raw}`);
-  if (fragment && filename === path.join(distRoot, 'index.html')) {
-    assert(ids.has(decodeURIComponent(fragment)), `Missing anchor: ${raw}`);
+  assert((await stat(filename)).isFile(), `Missing local file in ${from}: ${raw}`);
+  if (fragment && pageIds.has(filename)) {
+    assert(pageIds.get(filename).has(decodeURIComponent(fragment)), `Missing anchor in ${from}: ${raw}`);
   }
   localLinks += 1;
 }
-for (const match of html.matchAll(/\b(?:href|src)\s*=\s*["']([^"']*)["']/g)) await checkLink(match[1]);
-const css = await readFile(path.join(distRoot, 'styles.css'), 'utf8');
-for (const match of css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) await checkLink(match[1].trim(), 'styles.css');
+for (const [page, html] of htmlPages) {
+  for (const match of html.matchAll(/\b(?:href|src)\s*=\s*["']([^"']*)["']/g)) await checkLink(match[1], page);
+}
+for (const file of ['styles.css', 'publications.css']) {
+  const css = await readFile(path.join(distRoot, file), 'utf8');
+  for (const match of css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) await checkLink(match[1].trim(), file);
+}
+const sitemap = await readFile(path.join(distRoot, 'sitemap.xml'), 'utf8');
+const sitemapPages = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => {
+  const url = new URL(match[1]);
+  assert.equal(url.origin, 'https://crexe.org', 'Unexpected sitemap origin.');
+  const pathname = url.pathname.slice(1);
+  return pathname.endsWith('/') || !pathname ? `${pathname}index.html` : pathname;
+});
+assert.deepEqual(sitemapPages.sort(), [...htmlPages.keys()].sort(), 'Sitemap must include every public HTML page.');
 
 for (const { from, url } of documentation.links) await checkLink(url, from);
 for (const [source, destination] of [...documentation.files, ...examples]) {
@@ -100,5 +121,5 @@ const committedFiles = git(['ls-tree', '-r', '-z', '--name-only', source.revisio
   .filter((name) => name && !name.startsWith('src/site/') && !name.startsWith('docs/archive/'));
 assert.deepEqual(archivedFiles.sort(), committedFiles.sort(), 'The ZIP must contain only the selected committed sources.');
 assert(archivedFiles.includes('Cargo.toml') && archivedFiles.includes('src/main.rs') && archivedFiles.includes('LICENSE'));
-console.log(`Checked JavaScript syntax, ${localLinks} local links (${documentation.links.length} in Markdown), ${documentation.files.length} documentation files and ${examples.length} example downloads.`);
+console.log(`Checked ${htmlPages.size} HTML pages, sitemap, JavaScript syntax, ${localLinks} local links (${documentation.links.length} in Markdown), ${documentation.files.length} documentation files and ${examples.length} example downloads.`);
 console.log(`Checked release manifest rejection cases and SHA-256/inventory of ${archivedFiles.length} committed source files.`);
