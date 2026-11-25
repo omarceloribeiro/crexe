@@ -300,6 +300,9 @@ fn exec_inner(
         }
         let guidance = "\nWhen previous approved sources are supplied, evolve that application: preserve unrelated behavior, layout, tests and source code. A complete rewrite or a supported profile change is allowed when the new request requires it. The CURRENT REQUEST takes precedence over the PREVIOUS REQUEST. Return a FULL files[] snapshot, not a patch. Optional metadata: profile (chosen supported profile), change_kind (incremental or recreate), reason (short explanation; required for a profile change). A visual 3D effect does not automatically require OpenGL; choose according to actual requirements. Engine-owned project files supplied as context must not be returned in files[].";
         system.push_str(guidance);
+        if reader_mode {
+            system.push_str("\nFor --crexe-reader-check, serialize an object with lowercase kind, content and truncated keys using the platform's standard JSON serializer (System.Text.Json.JsonSerializer on .NET). Never construct JSON using string interpolation or manual escaping. The headless self-test must assert actual preview/decoding logic, succeed for correct behavior, and run before GUI initialization. Preserve exact whitespace and Unicode in the unrendered check content.");
+        }
         let previous = baseline.as_ref().map(|b| b.metadata.prompt.as_str());
         let baseline_sources = baseline
             .as_ref()

@@ -115,7 +115,7 @@ cargo test --locked --test cli
 cargo test --locked --test open_generating -- --ignored --nocapture
 ```
 
-The last command requires .NET 8 SDK and uses a controlled local server, without a real LLM, paid API, or window interaction. It covers cache, arbitrary/missing extensions, text/empty/binary/truncated inputs, repairs sharing the budget, privacy/export, concurrent success/failure, invalid prerequisites, `.crexe` delegation, and rejection of a reader with fixed placeholder content. Unix has one additional case for a path containing non-UTF-8 bytes. Transport unit tests cover all three providers and the planning contract.
+The last command requires .NET 8 SDK and uses a controlled local server, without a real LLM, paid API, or window interaction. It covers cache, arbitrary/missing extensions, text/empty/binary/truncated inputs, repairs sharing the budget, privacy/export, concurrent success/failure, invalid prerequisites, `.crexe` delegation, and rejection of a reader with fixed placeholder content. Linux has one additional case for a path containing non-UTF-8 bytes; the macOS runner filesystem rejects that filename before engine execution. Transport unit tests cover all three providers and the planning contract.
 
 The [CI configuration](../../.github/workflows/ci.yml) includes the reader suite on its runners; the presence of that step does not replace checking a run's result for the candidate commit.
 

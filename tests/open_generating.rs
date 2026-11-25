@@ -140,6 +140,15 @@ fn serve(mut stream: TcpStream, state: &ProviderState) {
     }
     let payload: Value = serde_json::from_slice(&bytes[start..start + length]).unwrap();
     let planning = payload["format"]["required"] == json!(["prompt"]);
+    if let Some(diagnostics) = payload["messages"][1]["content"]
+        .as_str()
+        .and_then(|text| text.split_once("Compiler/test diagnostics:\n"))
+        .map(|(_, diagnostics)| diagnostics)
+    {
+        // Keep transient SDK/process failures observable on every CI host.
+        // This provider handles only synthetic test data.
+        eprintln!("Reader fixture repair diagnostics: {diagnostics}");
+    }
     state.requests.lock().unwrap().push(payload);
     let generation = if planning {
         state.plans.fetch_add(1, Ordering::SeqCst);
@@ -612,7 +621,12 @@ fn recipe_delegation_does_not_plan_a_reader() {
     .unwrap();
     let stdout = success(run(command(&home, temp.path()).arg(&recipe)));
     assert!(stdout.contains("RECIPE_LEGACY_NO_DOCUMENT"));
-    assert_eq!(provider.counts(), (0, 1));
+    assert_eq!(
+        provider.counts(),
+        (0, 1),
+        "{stdout}\nProvider requests: {:?}",
+        provider.state.requests.lock().unwrap()
+    );
 }
 
 #[test]
@@ -644,7 +658,9 @@ fn reader_that_displays_a_placeholder_is_rejected_before_publication() {
     );
 }
 
-#[cfg(unix)]
+// Linux permits arbitrary filename bytes; the macOS CI filesystem rejects them
+// before CREXE can be invoked (EILSEQ). Unicode paths are covered on every host.
+#[cfg(target_os = "linux")]
 #[test]
 #[ignore = "requires .NET 8 SDK; native argv bytes are checked using the controlled fixture"]
 fn non_utf8_unix_filename_is_passed_as_native_argument() {

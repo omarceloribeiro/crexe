@@ -113,6 +113,8 @@ pub(crate) fn resolve(name: &str, prompt: &str, requested: Option<&str>) -> Resu
     if opengl {
         system = format!("Develop a Windows C# .NET 8 application with OpenTK 4.9.4 and desktop OpenGL 3.3 core. Display name: {name}. Use OpenTK.Windowing.Desktop.GameWindow, NativeWindowSettings.ClientSize and OpenTK.Graphics.OpenGL4. The engine supplies CrexeApp.csproj and restores the exact NuGet package; do not return project files, package lockfiles or scripts. Return complete sources in files[]. Use inline vertex/fragment shaders, separate UI/rendering and application logic, and one explicit Program.Main. Before creating ANY window, handle --crexe-self-test with meaningful deterministic logic assertions and no graphics, device or external service access, exiting 0/nonzero. Handle --crexe-graphics-check by creating a context, compiling shaders, rendering one frame and exiting 0/nonzero. In normal startup validate the context/version and show a clear error if the driver cannot provide OpenGL 3.3; never silently replace 3D with an unrelated 2D UI. No network on startup or global installs. Support mouse/keyboard interaction and resizing. Only standard .NET and the supplied OpenTK dependency are allowed.");
     }
+    // Commands own their process groups and terminate descendants at completion.
+    // Do not share a persistent compiler/server with another concurrent build.
     let mut spec = serde_yaml::to_value(json!({
         "version": "1.0", "meta": {"name": name},
         "engine_profile": profile, "engine_project": project,
@@ -120,15 +122,15 @@ pub(crate) fn resolve(name: &str, prompt: &str, requested: Option<&str>) -> Resu
         "prompt": {"system": system, "user_by_target": {"host": prompt}},
         "policies": {"timeoutSeconds": {"build": 180, "test": 30}, "commandAllowlist": { std::env::consts::OS: ["dotnet"] }},
         "targets": {"host": {
-            "build": {"steps": [{"cmd": ["dotnet", "build", "CrexeApp.csproj", "--configuration", "Release", "--output", "build", "--nologo"]}]},
+            "build": {"steps": [{"cmd": ["dotnet", "build", "CrexeApp.csproj", "--disable-build-servers", "--configuration", "Release", "--output", "build", "--nologo"]}]},
             "test": {"steps": [{"cmd": ["dotnet", "build/CrexeApp.dll", "--crexe-self-test"]}]},
             "run": {"cmd": ["build/CrexeApp{{EXE_EXT}}"]}
         }}
     }))?;
     if opengl {
         spec["targets"]["host"]["build"]["steps"] = serde_yaml::to_value(json!([
-            {"cmd": ["dotnet", "restore", "CrexeApp.csproj", "--use-lock-file", "--nologo"]},
-            {"cmd": ["dotnet", "build", "CrexeApp.csproj", "--no-restore", "--configuration", "Release", "--output", "build", "--nologo"]}
+            {"cmd": ["dotnet", "restore", "CrexeApp.csproj", "--disable-build-servers", "--use-lock-file", "--nologo"]},
+            {"cmd": ["dotnet", "build", "CrexeApp.csproj", "--disable-build-servers", "--no-restore", "--configuration", "Release", "--output", "build", "--nologo"]}
         ]))?;
     }
     Ok(spec)

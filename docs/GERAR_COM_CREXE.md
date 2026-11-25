@@ -115,7 +115,7 @@ cargo test --locked --test cli
 cargo test --locked --test open_generating -- --ignored --nocapture
 ```
 
-O último comando requer .NET 8 SDK e usa um servidor local controlado, sem LLM real, API paga ou interação com janelas. Cobre cache, extensão arbitrária/ausente, texto/vazio/binário/truncamento, reparo com orçamento compartilhado, privacidade/exportação, concorrência com sucesso/falha, pré-requisitos inválidos, delegação de `.crexe` e rejeição de leitor com conteúdo fixo. Há um caso adicional em Unix para caminho com bytes não UTF-8. Os testes unitários do transporte cobrem os três providers e o contrato de planejamento.
+O último comando requer .NET 8 SDK e usa um servidor local controlado, sem LLM real, API paga ou interação com janelas. Cobre cache, extensão arbitrária/ausente, texto/vazio/binário/truncamento, reparo com orçamento compartilhado, privacidade/exportação, concorrência com sucesso/falha, pré-requisitos inválidos, delegação de `.crexe` e rejeição de leitor com conteúdo fixo. Há um caso adicional em Linux para caminho com bytes não UTF-8; o sistema de arquivos do runner macOS rejeita esse nome antes da execução da engine. Os testes unitários do transporte cobrem os três providers e o contrato de planejamento.
 
 A [configuração da CI](../.github/workflows/ci.yml) inclui a suíte de leitores nos runners; a existência dessa etapa não substitui conferir o resultado de uma execução no commit candidato.
 

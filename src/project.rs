@@ -63,6 +63,7 @@ impl Project {
                     "dotnet",
                     "publish",
                     "CrexeApp.csproj",
+                    "--disable-build-servers",
                     "-c",
                     "Release",
                     "-o",
