@@ -16,7 +16,9 @@ await mkdir(output, { recursive: true });
 if ((await readdir(output)).length) throw new Error('Publication output is not empty. Refusing to overwrite.');
 await mkdir(reports, { recursive: true });
 execFileSync(process.execPath, [path.join(siteRoot, 'scripts/check.mjs')], { cwd: repoRoot, stdio: 'inherit', windowsHide: true });
-await cp(distRoot, output, { recursive: true, force: false, errorOnExist: true });
+for (const entry of await readdir(distRoot)) {
+  await cp(path.join(distRoot, entry), path.join(output, entry), { recursive: true, force: false, errorOnExist: true });
+}
 const records = [];
 for (const file of await inventory(output)) {
   const contents = await readFile(path.join(output, file));
