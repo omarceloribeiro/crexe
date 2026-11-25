@@ -121,7 +121,7 @@ struct Manifest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     publisher: Option<Publisher>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    cache: Option<Value>,
+    cache: Option<CacheMetadata>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -136,10 +136,20 @@ struct Bundle {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Publisher {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     #[serde(default)]
     signature_required: bool,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CacheMetadata {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    content_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    recipe_key: Option<String>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -177,7 +187,9 @@ struct Validation {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Integrity {
     algorithm: String,
+    #[serde(rename = "checksumsPath")]
     checksums: String,
+    #[serde(rename = "artifactManifestPath")]
     artifact_manifest: String,
 }
 #[derive(Serialize, Deserialize)]
@@ -683,6 +695,22 @@ fn checked_archive(archive: Archive) -> Result<Checked> {
         if manifest.generation[key].as_str().is_none_or(str::is_empty) {
             bail!("Missing generation provenance: {key}");
         }
+    }
+    for key in ["recipeCompilerVersion", "toolchainFingerprint"] {
+        if manifest
+            .generation
+            .get(key)
+            .is_some_and(|value| !value.is_string())
+        {
+            bail!("Invalid generation provenance type: {key}");
+        }
+    }
+    if manifest
+        .generation
+        .get("provider")
+        .is_some_and(|value| !value.is_object())
+    {
+        bail!("Generation provider provenance must be an object");
     }
     for key in ["id", "version"] {
         if manifest.generation["resolver"][key]
@@ -1270,6 +1298,57 @@ mod tests {
     }
 
     #[test]
+    fn exported_manifest_matches_published_field_contract() {
+        // Check serialization against the supplied draft, not a second list of
+        // Rust field names. This deliberately tests fields/constants, not a full
+        // JSON Schema implementation.
+        fn check(value: &Value, schema: &Value) {
+            if let Some(expected) = schema.get("const") {
+                assert_eq!(value, expected);
+            }
+            if let Some(allowed) = schema.get("enum") {
+                assert!(allowed.as_array().unwrap().contains(value));
+            }
+            if let Some(object) = value.as_object() {
+                if let Some(required) = schema["required"].as_array() {
+                    for name in required {
+                        assert!(
+                            object.contains_key(name.as_str().unwrap()),
+                            "Missing field: {name}"
+                        );
+                    }
+                }
+                if let Some(properties) = schema["properties"].as_object() {
+                    for (name, value) in object {
+                        if let Some(property) = properties.get(name) {
+                            check(value, property);
+                        } else {
+                            assert_ne!(
+                                schema.get("additionalProperties"),
+                                Some(&Value::Bool(false)),
+                                "Unknown field: {name}"
+                            );
+                        }
+                    }
+                }
+            }
+            if let (Some(values), Some(items)) = (value.as_array(), schema.get("items")) {
+                for value in values {
+                    check(value, items);
+                }
+            }
+        }
+        let schema: Value = serde_json::from_str(include_str!(
+            "../docs/formatos/originais/crexb-manifest-v1.schema.json"
+        ))
+        .unwrap();
+        let temp = tempfile::tempdir().unwrap();
+        let archive = valid_archive(temp.path());
+        let manifest: Value = serde_json::from_slice(&archive.files[MANIFEST].bytes).unwrap();
+        check(&manifest, &schema);
+    }
+
+    #[test]
     fn tampered_payload_or_unlisted_files_fail_integrity() {
         let temp = tempfile::tempdir().unwrap();
         let mut archive = valid_archive(temp.path());
@@ -1290,6 +1369,38 @@ mod tests {
         )
         .unwrap();
         assert!(checked_archive(archive).is_err());
+    }
+
+    #[test]
+    fn optional_metadata_preserves_the_published_types() {
+        for invalid in [
+            json!({"cache":"invalid"}),
+            json!({"cache":{"unknown":1}}),
+            json!({"generation":{"provider":"invalid"}}),
+            json!({"generation":{"recipeCompilerVersion":42}}),
+        ] {
+            let temp = tempfile::tempdir().unwrap();
+            let mut archive = valid_archive(temp.path());
+            mutate_manifest(&mut archive, |manifest| {
+                for (key, value) in invalid.as_object().unwrap() {
+                    if key == "generation" {
+                        for (key, value) in value.as_object().unwrap() {
+                            manifest["generation"][key] = value.clone();
+                        }
+                    } else {
+                        manifest[key] = value.clone();
+                    }
+                }
+            });
+            assert!(checked_archive(archive).is_err());
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let mut archive = valid_archive(temp.path());
+        mutate_manifest(&mut archive, |manifest| {
+            manifest["publisher"] = json!({"name":"Example"})
+        });
+        let manifest = serde_json::to_value(checked_archive(archive).unwrap().manifest).unwrap();
+        assert!(manifest["publisher"].get("id").is_none());
     }
 
     #[test]
