@@ -9,6 +9,9 @@ test_timeout_seconds = 60
 generation_timeout_seconds = 1800
 max_provider_requests = 3
 # Optional explicit cap; by default requests * provider.max_output_tokens.
+# Reader preparation adds one planning call, without consuming a code attempt.
+# Its default token budget adds up to 2048 planning tokens; an explicit cap
+# below remains an aggregate limit covering planning and code generation.
 # max_output_tokens_total = 18000
 max_prompt_bytes = 131072
 

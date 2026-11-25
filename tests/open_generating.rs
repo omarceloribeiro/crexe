@@ -25,7 +25,8 @@ struct ProviderState {
     pause_plan: AtomicBool,
     pause_generation: AtomicBool,
     fail_generation: AtomicBool,
-    repair_first: AtomicBool,
+    failing_generations: AtomicUsize,
+    include_dummy: AtomicBool,
     fixed_viewer: AtomicBool,
     stop: AtomicBool,
 }
@@ -179,7 +180,7 @@ fn serve(mut stream: TcpStream, state: &ProviderState) {
     let response = if planning {
         json!({"prompt":"Generate a simple, efficient local viewer following the supplied reader contract. Read the document only from the native argument at runtime. Never modify the selected document. Present UTF-8 text or a clearly identified hex preview."})
     } else {
-        let source = if state.repair_first.load(Ordering::SeqCst) && generation == 1 {
+        let mut source = if generation <= state.failing_generations.load(Ordering::SeqCst) {
             "deliberate fixture C# syntax failure".into()
         } else if state.fixed_viewer.load(Ordering::SeqCst) {
             READER.replace(
@@ -189,7 +190,16 @@ fn serve(mut stream: TcpStream, state: &ProviderState) {
         } else {
             READER.to_owned()
         };
-        json!({"files":[{"path":"Program.cs","content":source}]})
+        let mut files = Vec::new();
+        if state.include_dummy.load(Ordering::SeqCst) {
+            source = source.replace(
+                "return Describe(Encoding.UTF8.GetBytes(\"reader é\"), false).content == \"reader é\"",
+                "if (File.ReadAllText(\"fixtures/dummy.md\") != \"SYNTHETIC_DUMMY_ONLY\") return 1;\n                return Describe(Encoding.UTF8.GetBytes(\"reader é\"), false).content == \"reader é\"",
+            );
+            files.push(json!({"path":"fixtures/dummy.md","content":"SYNTHETIC_DUMMY_ONLY"}));
+        }
+        files.push(json!({"path":"Program.cs","content":source}));
+        json!({"files":files})
     };
     let body = json!({"done":true,"done_reason":"stop","message":{"content":response.to_string()}})
         .to_string();
@@ -404,7 +414,7 @@ fn cold_open_cache_and_runtime_arguments_preserve_documents() {
 
 #[test]
 #[ignore = "requires .NET 8 SDK; controlled provider, no model or GUI"]
-fn arbitrary_extensions_no_extension_empty_binary_and_truncation_are_supported() {
+fn arbitrary_valid_extensions_empty_binary_and_truncation_are_supported() {
     let temp = tempfile::tempdir().unwrap();
     let provider = Provider::start();
     let home = temp.path().join("engine");
@@ -445,27 +455,19 @@ fn arbitrary_extensions_no_extension_empty_binary_and_truncation_are_supported()
     assert_eq!(large["content"].as_str().unwrap().len(), 65536);
     assert_eq!(fs::metadata(&file).unwrap().len(), 65537);
     assert_eq!(provider.counts(), (1, 1));
-    let extensionless = temp.path().join("PRIVATE_EXTENSIONLESS_NAME");
-    fs::write(&extensionless, "PRIVATE_EXTENSIONLESS_CONTENT").unwrap();
-    assert_eq!(
-        preview(run(command(&home, temp.path()).arg(&extensionless)))["content"],
-        "PRIVATE_EXTENSIONLESS_CONTENT"
-    );
-    assert_eq!(provider.counts(), (2, 2));
-    provider.assert_private(&[
-        "PRIVATE_UNKNOWN_NAME",
-        "PRIVATE_UNKNOWN_CONTENT",
-        "PRIVATE_EXTENSIONLESS_NAME",
-        "PRIVATE_EXTENSIONLESS_CONTENT",
-    ]);
+    provider.assert_private(&["PRIVATE_UNKNOWN_NAME", "PRIVATE_UNKNOWN_CONTENT"]);
 }
 
 #[test]
 #[ignore = "requires .NET 8 SDK; controlled provider, no model or GUI"]
-fn one_repair_uses_the_same_budget_without_leaking_documents_or_exporting_them() {
+fn planning_preserves_all_code_attempts_and_dummy_tests_keep_documents_private() {
     let temp = tempfile::tempdir().unwrap();
     let provider = Provider::start();
-    provider.state.repair_first.store(true, Ordering::SeqCst);
+    provider
+        .state
+        .failing_generations
+        .store(2, Ordering::SeqCst);
+    provider.state.include_dummy.store(true, Ordering::SeqCst);
     let home = temp.path().join("engine");
     configure(&provider, &home, 3);
     let file = temp.path().join("PRIVATE_REPAIR_DOCUMENT.md");
@@ -479,12 +481,19 @@ fn one_repair_uses_the_same_budget_without_leaking_documents_or_exporting_them()
     assert!(!stdout.contains(data));
     assert_eq!(
         provider.counts(),
-        (1, 2),
-        "One plan + initial code + one repair must share max_provider_requests=3"
+        (1, 3),
+        "One plan must leave all three code attempts available"
     );
     let needles = ["PRIVATE_REPAIR_DOCUMENT", data];
     provider.assert_private(&needles);
     let mut archive = zip::ZipArchive::new(fs::File::open(&export).unwrap()).unwrap();
+    let mut dummy = String::new();
+    archive
+        .by_name("fixtures/dummy.md")
+        .unwrap()
+        .read_to_string(&mut dummy)
+        .unwrap();
+    assert_eq!(dummy, "SYNTHETIC_DUMMY_ONLY");
     for index in 0..archive.len() {
         let mut item = archive.by_index(index).unwrap();
         bytes_absent(item.name().as_bytes(), &needles);
@@ -498,7 +507,7 @@ fn one_repair_uses_the_same_budget_without_leaking_documents_or_exporting_them()
         preview(run(command(&home, temp.path()).arg(&file)))["content"],
         data
     );
-    assert_eq!(provider.counts(), (1, 2));
+    assert_eq!(provider.counts(), (1, 3));
     assert_eq!(fs::read_to_string(file).unwrap(), data);
 }
 
@@ -589,6 +598,15 @@ fn invalid_input_budget_and_missing_sdk_make_no_provider_request() {
         .status
         .success());
     configure(&provider, &home, 1);
+    let config = home.join("config.toml");
+    fs::write(
+        &config,
+        fs::read_to_string(&config).unwrap().replace(
+            "max_provider_requests=1",
+            "max_provider_requests=1\nmax_output_tokens_total=128",
+        ),
+    )
+    .unwrap();
     let insufficient = run(command(&home, temp.path()).arg(&file));
     assert!(!insufficient.status.success());
     assert_eq!(provider.counts(), (0, 0));
@@ -607,26 +625,65 @@ fn invalid_input_budget_and_missing_sdk_make_no_provider_request() {
 }
 
 #[test]
-#[ignore = "requires .NET 8 SDK; controlled provider, no model or GUI"]
-fn recipe_delegation_does_not_plan_a_reader() {
+fn unsupported_documents_and_recipes_make_no_provider_request() {
     let temp = tempfile::tempdir().unwrap();
     let provider = Provider::start();
     let home = temp.path().join("engine");
     configure(&provider, &home, 3);
-    let recipe = temp.path().join("existing.crexe");
-    fs::write(
-        &recipe,
-        "Generate a small console application with a self-test.",
-    )
-    .unwrap();
-    let stdout = success(run(command(&home, temp.path()).arg(&recipe)));
-    assert!(stdout.contains("RECIPE_LEGACY_NO_DOCUMENT"));
+    for name in [
+        "PRIVATE_NO_EXTENSION".to_owned(),
+        "PRIVATE_BAD_EXTENSION.bad extension".to_owned(),
+        format!("PRIVATE_LONG_EXTENSION.{}", "x".repeat(65)),
+        "PRIVATE_RECIPE.crexe".to_owned(),
+        "PRIVATE_UPPER_RECIPE.CREXE".to_owned(),
+    ] {
+        let file = temp.path().join(name);
+        let data = "PRIVATE_DOCUMENT_MUST_NOT_BE_A_PROMPT";
+        fs::write(&file, data).unwrap();
+        let output = run(command(&home, temp.path()).env("PATH", "").arg(&file));
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("Sem suporte"));
+        assert_eq!(fs::read_to_string(file).unwrap(), data);
+        assert_eq!(provider.counts(), (0, 0));
+    }
+    assert!(!home.join("readers").exists());
+    assert!(!home.join("cache").exists());
+}
+
+#[test]
+#[ignore = "requires .NET 8 SDK; controlled provider, no model or GUI"]
+fn a_single_code_attempt_still_allows_one_plan_and_one_generation() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("engine");
+    configure(&provider, &home, 1);
+    let file = temp.path().join("PRIVATE_SINGLE_ATTEMPT.md");
+    fs::write(&file, "PRIVATE_SINGLE_CONTENT").unwrap();
     assert_eq!(
-        provider.counts(),
-        (0, 1),
-        "{stdout}\nProvider requests: {:?}",
-        provider.state.requests.lock().unwrap()
+        preview(run(command(&home, temp.path()).arg(&file)))["content"],
+        "PRIVATE_SINGLE_CONTENT"
     );
+    assert_eq!(provider.counts(), (1, 1));
+    provider.assert_private(&["PRIVATE_SINGLE_ATTEMPT", "PRIVATE_SINGLE_CONTENT"]);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn non_utf8_extension_is_unsupported_without_provider_or_sdk() {
+    use std::os::unix::ffi::OsStringExt;
+    let temp = tempfile::tempdir().unwrap();
+    let provider = Provider::start();
+    let home = temp.path().join("engine");
+    configure(&provider, &home, 3);
+    let file = temp
+        .path()
+        .join(std::ffi::OsString::from_vec(b"PRIVATE_NAME.\xff".to_vec()));
+    fs::write(&file, "PRIVATE_NON_UTF8_CONTENT").unwrap();
+    let output = run(command(&home, temp.path()).env("PATH", "").arg(&file));
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Sem suporte"));
+    assert_eq!(provider.counts(), (0, 0));
+    assert!(!home.join("readers").exists());
 }
 
 #[test]

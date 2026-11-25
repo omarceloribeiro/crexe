@@ -50,9 +50,11 @@ Na CLI, a partir da pasta extraída do pacote:
 .\crexe.exe open-generating -- "notas da reunião.md"
 ```
 
-No macOS/Linux, use `./crexe open-generating -- "notas da reunião.md"`. Para a engine compilada do checkout, o executável fica em `target/release`. O caminho é resolvido a partir da pasta de quem chamou; `--` permite nomes iniciados por hífen. O comando aceita um arquivo local regular por vez, com qualquer extensão ou sem sufixo. Se receber `.crexe`, encaminha ao fluxo de receita existente.
+No macOS/Linux, use `./crexe open-generating -- "notas da reunião.md"`. Para a engine compilada do checkout, o executável fica em `target/release`. O caminho é resolvido a partir da pasta de quem chamou; `--` permite nomes iniciados por hífen. O comando aceita um arquivo local regular por vez com extensão válida.
 
-Na primeira preparação de um leitor, **uma única chamada à LLM formula a intenção a partir do tipo do arquivo**. Depois ocorre a geração normal de código, com build, autotestes e correções limitadas. O programa abre com o documento selecionado, sem pedir a mesma seleção novamente. Outro documento do mesmo tipo compatível reutiliza o leitor aprovado: cache válido significa zero chamadas extras ao modelo e nenhuma recompilação. Alterar somente o conteúdo de um documento não muda a identidade do leitor.
+Na primeira preparação de um leitor, **uma única chamada à LLM formula a intenção a partir da extensão do arquivo**. Depois ocorre a geração normal de código, com build, autotestes e correções limitadas. O planejamento tem contagem separada: o padrão permite um plano e até três tentativas de código, respeitando os limites de tokens e tempo. O programa abre com o documento selecionado, sem pedir a mesma seleção novamente. Outro documento do mesmo tipo compatível reutiliza o leitor aprovado: cache válido significa zero chamadas extras ao modelo e nenhuma recompilação. Alterar somente o conteúdo de um documento não muda a identidade do leitor.
+
+Extensões desconhecidas válidas são aceitas. Arquivos sem extensão ou com extensão inválida recebem aviso de falta de suporte, sem chamada ao modelo nem leitura de bytes para descobrir o tipo. Selecionar `.crexe` nessa ação também retorna um aviso: receitas devem ser abertas pelo fluxo normal de execução.
 
 O nome, caminho e corpo do documento não entram nas requisições ao modelo, no histórico de geração ou no ZIP dos fontes. O aplicativo recebe o caminho como argumento separado e lê os dados localmente em runtime. A configuração ativa salva fornece provider, modelo e limites; selecionar um documento na janela não salva nem descarta alterações pendentes nas configurações. Cancelar o seletor não chama a IA.
 

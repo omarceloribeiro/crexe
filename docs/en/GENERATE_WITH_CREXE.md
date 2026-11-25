@@ -32,7 +32,9 @@ crexe open-generating --max-repairs 0 -- "notes.md"
 
 The export destination must be a new file. The ZIP contains the reader project, not a copy of the selected document. `--no-run` can still query the model, compile, and test when no approved reader exists.
 
-The command accepts regular local files with any extension, including no extension. Relative paths resolve from the caller's directory. Names containing spaces, accents, or a leading hyphen are separate arguments; they do not become shell commands. A `.crexe` file follows the existing recipe execution workflow.
+The command accepts regular local files with a valid extension, including unknown extensions. The normalized extension must be at most 64 UTF-8 bytes and contain only letters, numbers, hyphens or underscores. Files with no extension, or an empty, invalid, overly long or non-UTF-8 extension, receive an unsupported-type message before any model call. The engine does not read document bytes to identify its type. Relative paths resolve from the caller's directory. Names containing spaces, accents, or a leading hyphen are separate arguments; they do not become shell commands.
+
+Selecting a `.crexe` in this action also returns a message without sending the recipe to the model. To execute a recipe, open it normally or use `crexe exec recipe.crexe`; **Generate with CREXE** does not silently delegate to that workflow.
 
 Open the engine without arguments or run `crexe configure`. Under **Gerar com CREXE**, click **Selecionar arquivo e gerar programa…** (Select a file and generate a program). The picker allows one file at a time and does not filter extensions. Cancelling ends the selection without generation or a model call. Opening uses the saved configuration; unsaved settings edits remain intact and are not applied to the reader.
 
@@ -61,27 +63,32 @@ Run the command for your intended host and profile. Preflight queries local tool
 
 ## Implemented plan and architecture
 
-1. **Validate the input and environment.** Resolve the local path, reject directories/devices, identify the type, and fix the profile. Check the budget and SDK before the first call.
+1. **Validate the input and environment.** Resolve the local path, reject directories/devices and unsupported cases, extract only the extension, and fix the profile. Check the budget and SDK before the first call.
 2. **Coordinate reader preparation.** Acquire a local lock for the type/configuration combination. Another compatible opening waits for that preparation.
-3. **Plan once.** Send only the type identifier, profile, and reader contract. The response must be JSON with a single `prompt` field; it is not a `files[]` response. There is one planning attempt in that preparation, without automatic retries or fallback.
+3. **Plan once.** Of the document's data, send only the normalized extension, along with the profile and technical reader contract. The response must be JSON with a single `prompt` field; it is not a `files[]` response. There is one planning attempt in that preparation, without automatic retries or fallback.
 4. **Persist the internal intent.** Validate the prompt and atomically save the planning record and internal recipe, with identity and checksum. The recipe's name and profile are controlled by the engine.
 5. **Generate and verify the program.** Use the existing `files[]` pipeline, engine project, build, and self-test. Add the reading checks described below. Build/test failures may request corrections within the remaining budget.
 6. **Publish and open.** Advance history only after approval. Release shared preparation and start the executable with the document path as one native argument. Each opening receives its own file.
 
-Planning, generation, and repairs use the **same session**, sharing request, output-token, and time budgets and the same resolved credential. First preparation requires at least two available requests and enough tokens for the plan and one full generation. Planning reserves up to 2,048 output tokens, also capped by the configured per-call limit.
+Planning, generation, and repairs use the **same session**, resolved credential and global time limit. The single planning call has its own request count: it **does not consume a code attempt** from `execution.max_provider_requests`. Planning reserves up to 2,048 output tokens, also capped by the configured per-call limit.
+
+Without an explicit cap, the derived generation budget remains attempts × tokens per call, plus the planning reservation when needed. An explicit `execution.max_output_tokens_total` remains an aggregate cap for **plan + code** and may reduce the effective number of attempts. First preparation needs enough budget for the plan and one full generation; it does not require configuring two code attempts. If the explicit cap is insufficient, no call is made.
 
 | Situation | Model calls |
 |---|---|
 | First reader, code approved without repair | 1 planning + 1 generation |
 | First reader, one repair needed | 1 planning + 1 generation + 1 repair, if budget allows |
+| First reader, default limit and two repairs needed | 1 planning + up to 3 code attempts, if token and time limits allow |
 | Another document of the same type, compatible approved reader | 0 |
 | Only document contents changed | 0, while the reader remains valid |
 | Planning failure | No automatic second planning attempt |
 | Failure after a valid plan was saved, followed by an explicit new opening | Reuse the plan and try generation with the new invocation's budget |
 
-The default three-request budget allows planning, generation, and one repair. `--max-repairs` can reduce corrections; it cannot expand the local budget. An HTTP or provider-response failure ends the operation without hidden retries. Remote providers may charge for every request, including those followed by a failure elsewhere in the workflow.
+The default three code attempts allow **one plan + one generation + up to two repairs**, for a maximum of four requests. `--max-repairs` can reduce corrections; it cannot expand the local budget. An HTTP or provider-response failure ends the operation without hidden retries. Remote providers may charge for every request, including those followed by a failure elsewhere in the workflow.
 
-The reader cache considers the normalized extension or absence of an extension, provider/model generation parameters, profile, engine OS/architecture, and contract version. Opaque extensions receive an identifier derived from their bytes rather than entering the prompt as free text. The document's name, directory, and contents are not part of that identity. Changing only the request/total-token caps does not invalidate an approved reader.
+The reader cache considers the normalized extension, provider/model generation parameters, profile, engine OS/architecture, and contract version. Unsupported extensions are rejected; no hash of them is sent to the model. The document's name, directory, and contents are not part of that identity. Changing only the request/total-token caps does not invalidate an approved reader.
+
+This revision of the v1 preview uses internal reader contract version 2. Readers created under the previous contract stay separate in the cache; the first opening under the new contract prepares a reader again. Reuse without calls applies to readers compatible with the current contract.
 
 Internal state lives in `readers/<identity>/` under the managed installation root; approved revisions use the engine cache/history. `CREXE_HOME` selects an isolated absolute root for tests. Opening documents does not require creating, editing, or distributing these internal recipes.
 
@@ -89,7 +96,7 @@ Two simultaneous openings for the same reader share one preparation and each ope
 
 ## Privacy and v1 reader limits
 
-The selected document's path, name, and body are not included in planning, generation, repairs, recipe history, or the source ZIP. Its path stays local and reaches the executable only at launch. Names and paths may appear in the local interface to identify the file. Prepublication checks use synthetic test files without reading the selected document.
+When preparing a reader, the engine uses **only the extension** from the selected document's data. It does not include the document's name, path, contents, size, timestamps or hash in planning, generation or repairs, or copy the document into recipe history or the source ZIP. Requests also carry technical instructions, the profile and, during repairs, generated code and diagnostics. Its path stays local and reaches the executable only at launch. Names and paths may appear in the local interface to identify the file. Prepublication checks use synthetic test files without reading the selected document.
 
 The contract requires a **read-only** reader: immediately open the selected file, show its actual contents or a readable error, and preserve the original. Minimal editing, Save As, and complete interpretation of proprietary formats are outside this delivery.
 
@@ -99,9 +106,13 @@ The contract requires a **read-only** reader: immediately open the selected file
 - Known formats may receive simple presentation, such as Markdown headings or EML subject/body. Opaque formats may provide only text or bytes without claiming full interpretation.
 - The contract prohibits executing document scripts, fetching external resources, and writing the original.
 
-Before approving a revision, the engine runs `--crexe-reader-check PATH` against two different text files, an empty file, binary bytes, and a file above the limit. The JSON response must contain `kind`, `content`, and `truncated`, with the expected bytes; the engine also checks that the test files were preserved. Generated code must use the same bounded reading function in the interface and this headless mode.
+Before approving a revision, the engine runs `--crexe-reader-check PATH` against two different text files, an empty file, binary bytes, a file above the limit and invalid UTF-8. The JSON response must contain `kind`, `content`, and `truncated`, with the expected bytes; the engine also checks that the test files were preserved. Generated code must use the same bounded reading function in the interface and this headless mode.
 
-These checks verify the observable contract; they are neither a sandbox nor proof of the complete interface or generated code's security. The executable runs on the host with the user's permissions. Preventing the engine workflow from sending the document does not provide filesystem/network isolation for a native program. See [security limitations](SECURITY.md).
+The LLM may include an **entirely synthetic dummy file** in its normal generated files to help its self-tests. This requires no extra planning call and does not authorize copying, summarizing or transforming the selected document. The dummy replaces neither the real file in the interface nor the engine's mandatory independent tests.
+
+These checks verify the observable contract; they are neither a sandbox nor proof of the complete interface or generated code's security. The executable runs on the host with the user's permissions. Compilation and self-test diagnostics return to the model and may contain local paths; a malicious program could still access files or the network. Separating the document in the engine's workflow does not isolate a native program. See [security limitations](SECURITY.md).
+
+This v1 demonstrates the reader-generation workflow. Agentic execution and isolation controls are future work; using an agent does not itself guarantee isolation. Identifying formats from a signature read locally from the first bytes is also future work. Four bytes may help for some formats but do not identify every format. This version neither performs that reading nor sends document bytes to the model for classification.
 
 ## Automated verification and local evidence
 
@@ -115,7 +126,7 @@ cargo test --locked --test cli
 cargo test --locked --test open_generating -- --ignored --nocapture
 ```
 
-The last command requires .NET 8 SDK and uses a controlled local server, without a real LLM, paid API, or window interaction. It covers cache, arbitrary/missing extensions, text/empty/binary/truncated inputs, repairs sharing the budget, privacy/export, concurrent success/failure, invalid prerequisites, `.crexe` delegation, and rejection of a reader with fixed placeholder content. Linux has one additional case for a path containing non-UTF-8 bytes; the macOS runner filesystem rejects that filename before engine execution. Transport unit tests cover all three providers and the planning contract.
+The last command requires .NET 8 SDK and uses a controlled local server, without a real LLM, paid API, or window interaction. It covers cache, valid unknown extensions, unsupported inputs rejected without model calls, text/empty/binary/truncated inputs, planning counted separately from code attempts, privacy/export, concurrent success/failure, invalid prerequisites, rejection of `.crexe` in this action, and rejection of a reader with fixed placeholder content. Linux has one additional case for a path containing non-UTF-8 bytes; the macOS runner filesystem rejects that filename before engine execution. Transport unit tests cover all three providers, the planning contract and budget caps.
 
 The [CI configuration](../../.github/workflows/ci.yml) includes the reader suite on its runners; the presence of that step does not replace checking a run's result for the candidate commit.
 
@@ -133,6 +144,7 @@ Use synthetic documents and a new directory. Record commit/package, host, profil
 | Engine picker | Open `configure`, select the document, and follow progress until the reader opens. The engine window remains available; after preparation, select another document. |
 | Pending settings | Edit a preference without saving and use the picker; opening uses saved settings and the pending edit remains in the form. |
 | Picker cancellation | Open and cancel the picker; no generation starts. |
+| Unsupported type | Select a file with no extension, an invalid extension or a `.crexe` recipe; check the message and absence of model calls. |
 | Failure before generation | In a test environment without the SDK or with insufficient budget, open a new type; check the error and absence of provider requests. |
 | Concurrency/failure | Open two documents of the same type during preparation; check that one preparation is shared. On failure, both receive diagnostics without an automatic new generation from the waiting caller. |
 

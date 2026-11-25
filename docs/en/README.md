@@ -52,9 +52,11 @@ From the extracted package directory, the CLI equivalent is:
 .\crexe.exe open-generating -- "meeting notes.md"
 ```
 
-On macOS/Linux, use `./crexe open-generating -- "meeting notes.md"`. For an engine built from the checkout, the executable is in `target/release`. Paths resolve from the caller's directory; `--` accepts names starting with a hyphen. The command takes one regular local file, with any extension or no suffix. A `.crexe` input is forwarded to the existing recipe workflow.
+On macOS/Linux, use `./crexe open-generating -- "meeting notes.md"`. For an engine built from the checkout, the executable is in `target/release`. Paths resolve from the caller's directory; `--` accepts names starting with a hyphen. The command takes one regular local file with a valid extension.
 
-When preparing a new reader, **one LLM call formulates its intent from the file type**. The normal code generation then follows, with build, self-tests and bounded repairs. The application opens the selected document without asking for it again. Another document of the same compatible type reuses the approved reader: a valid cache means zero additional model calls and no rebuild. Changing only a document's contents does not change the reader's identity.
+When preparing a new reader, **one LLM call formulates its intent from the file extension**. The normal code generation then follows, with build, self-tests and bounded repairs. Planning has its own request count: the default allows one plan and up to three code attempts, subject to token and time limits. The application opens the selected document without asking for it again. Another document of the same compatible type reuses the approved reader: a valid cache means zero additional model calls and no rebuild. Changing only a document's contents does not change the reader's identity.
+
+Valid unknown extensions are accepted. Files with no extension or an invalid extension receive an unsupported-type message, without a model call or reading bytes to identify the type. Selecting `.crexe` in this action also returns a message: recipes must be opened through the normal execution workflow.
 
 The document's name, path and body do not enter model requests, generation history or the source ZIP. The application receives its path as a separate argument and reads the data locally at runtime. The saved active configuration supplies provider, model and limits; selecting a document does not save or discard pending settings edits. Cancelling the picker makes no AI call.
 

@@ -16,7 +16,11 @@ Presets come from `config.example.toml`; they also appear when opening older con
 
 **Maximum attempts** (Tentativas máximas) on the main screen controls `execution.max_provider_requests`: 1 to 10, default 3, including initial generation. Only compilation/test failures allow automatic repairs; authentication, balance, connection, and invalid-response failures stop execution. `--max-repairs 0..9` is optional: when provided, it reduces the number of repairs within the configured limit. `--max-repairs 0` allows only the initial proposal.
 
+In **Generate with CREXE**, the single call that prepares the base prompt has its own count: the default allows 1 planning call + up to 3 code attempts (initial generation and up to 2 repairs). An approved cached reader needs no calls. The global time limit remains shared between planning and generation.
+
 Without `execution.max_output_tokens_total`, the output budget is derived from `max_provider_requests × providers.<profile>.max_output_tokens`. A cap saved in older configurations remains effective. Under **Advanced** (Avançado), **Limit total output tokens** (Limitar total de tokens de saída) lets you edit that cap or return to automatic calculation. For example, 10 attempts with 6000 tokens per call use a budget of 60000; an explicit cap of 18000 reduces the effective limit to 3. If the cap cannot accommodate one call, execution reports the problem before contacting the provider.
+
+For a reader's first preparation, automatic calculation adds the planning reservation, up to 2048 tokens capped by the per-call limit. An explicit cap still covers **planning + code**: with 6000 tokens per generation, 8048 are needed to plan and generate once. The plan does not reduce the configured attempt count, but an explicit token cap may reduce the effective count. See [Generate with CREXE](GENERATE_WITH_CREXE.md).
 
 The generation window shows the provider, model, current attempt, and effective total, with the phase in a separate field. These values are captured at startup, including CLI overrides. Changing attempts or the output cap does not invalidate an approved program or modify an execution already underway. Saving preserves other execution rules, comments, and local profiles.
 
@@ -60,7 +64,7 @@ HTTPS is required outside loopback. URLs with credentials, a query, or a fragmen
 | Model output | `max_output_tokens`, 128–65536; HTTP response up to 20 MiB |
 | Ollama | Context 512–131072, larger than output and also leaving room for the prompt |
 | Proposals | 1 to 10 total attempts (default 3); optional `--max-repairs 0..9` restricts repairs |
-| Local budget | Up to `execution.max_provider_requests` calls; output derived from attempts × tokens per call, or explicit `max_output_tokens_total`; full prompt up to `max_prompt_bytes` bytes (default 131072) |
+| Local budget | Up to `execution.max_provider_requests` code attempts; reader preparation may add one planning call; derived output budget with a planning reservation or explicit aggregate `max_output_tokens_total`; full prompt up to `max_prompt_bytes` bytes (default 131072) |
 | Generation deadline | `execution.generation_timeout_seconds` (default 1800 s) from the start of preparation; reduces subsequent call timeouts to the remaining time |
 | Sources | 1–128 files; 4 MiB per file; 16 MiB per response |
 | Build/test | Timeout per command; 2 MiB per log stream; a tail of up to 64 KiB per stream in diagnostics |

@@ -14,7 +14,7 @@ O núcleo compartilhado contém parsers, configuração, providers, plano de pro
 
 ## Gerar com CREXE na prévia
 
-`crexe open-generating -- "arquivo.ext"` aceita um arquivo local regular, com qualquer extensão ou sem sufixo. O leitor gerado recebe o caminho como argumento separado e abre o conteúdo selecionado. O fluxo `.crexe` permanece separado: esse sufixo é encaminhado à execução de receita conhecida.
+`crexe open-generating -- "arquivo.ext"` aceita um arquivo local regular com extensão válida, inclusive desconhecida. O leitor gerado recebe o caminho como argumento separado e abre o conteúdo selecionado. Arquivos sem extensão ou com extensão inválida recebem aviso sem suporte. O fluxo `.crexe` permanece separado: essa ação não executa receitas; orienta usar a abertura normal.
 
 | Plataforma | Entrada implementada | Verificação de desktop |
 | --- | --- | --- |
@@ -24,7 +24,7 @@ O núcleo compartilhado contém parsers, configuração, providers, plano de pro
 
 O verbo Windows atende seleção única, preserva o aplicativo padrão dos arquivos comuns e usa a engine instalada. A remoção verifica propriedade antes de excluir seus registros. A janela fornece seleção e estado da operação sem salvar ou descartar mudanças pendentes nas configurações; o processo usa as escolhas ativas já salvas.
 
-A primeira preparação do leitor faz uma chamada de planejamento à LLM a partir do tipo, seguida do pipeline normal de código/build/autoteste/reparos. O documento não entra nessas requisições ou no ZIP dos fontes; somente o programa local lê o arquivo em runtime. Cache compatível válido é reutilizado para outros documentos do mesmo tipo sem chamadas extras. O contrato inicial pede somente leitura e preservação do original, sem sandbox; para formatos opacos, texto ou prévia hexadecimal identificada são resultados aceitáveis.
+A primeira preparação do leitor faz uma chamada de planejamento à LLM a partir somente da extensão, seguida do pipeline normal de código/build/autoteste/reparos. O planejamento tem contagem separada das tentativas de código; o padrão permite um plano e até três tentativas de código, sujeitos aos limites de tokens e tempo. O documento não entra no pedido ou no ZIP dos fontes; somente o programa local lê o arquivo em runtime. Extensões desconhecidas válidas são aceitas. Ausência de extensão, extensão inválida e `.crexe` nessa ação recebem aviso sem chamada ao modelo; receitas usam a abertura normal. Cache compatível válido é reutilizado para outros documentos do mesmo tipo sem chamadas extras. O contrato inicial pede somente leitura e preservação do original, sem sandbox; para formatos opacos, texto ou prévia hexadecimal identificada são resultados aceitáveis.
 
 As fixtures `open_generating` da CI usam um provider controlado e um leitor .NET headless para verificar o percurso sem depender de display. SDK .NET 8 é requisito desse ensaio, não um novo requisito universal para todos os leitores nativos. Build/teste automatizado, geração com modelo real e observação de conteúdo na GUI devem ser registrados separadamente por host; a tabela acima descreve a implementação, não certifica ensaios gráficos concluídos.
 

@@ -65,10 +65,29 @@ struct ReaderPlan {
     prompt: String,
 }
 
+pub(crate) fn reader_planning_tokens(settings: &Settings) -> u32 {
+    Contract::ReaderPlan.output_tokens(settings.provider.max_output_tokens)
+}
+
+/// An explicit aggregate token limit always wins. Otherwise the one planning
+/// request has its own reservation, in addition to the normal code budget.
+pub(crate) fn reader_output_budget(settings: &Settings) -> u32 {
+    settings
+        .execution
+        .max_output_tokens_total
+        .unwrap_or_else(|| {
+            settings
+                .execution
+                .output_budget(settings.provider.max_output_tokens)
+                .saturating_add(reader_planning_tokens(settings))
+        })
+}
+
 pub(crate) struct Session {
     settings: Settings,
     started: Instant,
     requests: u8,
+    source_requests: u8,
     reserved_tokens: u32,
     credential: CredentialSnapshot,
     reader_plan_attempted: bool,
@@ -80,6 +99,7 @@ impl Session {
             settings: settings.clone(),
             started: Instant::now(),
             requests: 0,
+            source_requests: 0,
             reserved_tokens: 0,
             credential: Arc::new(OnceLock::new()),
             reader_plan_attempted: false,
@@ -94,25 +114,33 @@ impl Session {
         self.requests
     }
 
-    /// Remaining full source-generation requests after prior planning/generation.
+    fn output_budget(&self) -> u32 {
+        if self.reader_plan_attempted {
+            reader_output_budget(&self.settings)
+        } else {
+            self.settings
+                .execution
+                .output_budget(self.settings.provider.max_output_tokens)
+        }
+    }
+
+    /// Planning has a separate request allowance, but an explicit aggregate
+    /// token cap can still reduce the remaining full source-generation requests.
     pub fn remaining_requests(&self) -> u8 {
         let tokens = self.settings.provider.max_output_tokens;
-        let remaining_tokens = self
-            .settings
-            .execution
-            .output_budget(tokens)
-            .saturating_sub(self.reserved_tokens);
+        let remaining_tokens = self.output_budget().saturating_sub(self.reserved_tokens);
         let by_tokens = remaining_tokens.checked_div(tokens).unwrap_or(0);
         self.settings
             .execution
             .max_provider_requests
-            .saturating_sub(self.requests)
+            .saturating_sub(self.source_requests)
             .min(by_tokens.min(u8::MAX as u32) as u8)
     }
 
     /// One planning attempt per session, including failures. The caller supplies
     /// only a type identifier and the reader contract, never document data.
-    /// Planning shares the generation request/token/time budgets and credentials.
+    /// Planning has one separate request and a short derived token allowance.
+    /// Explicit aggregate token limits, elapsed time and credentials are shared.
     pub fn plan_reader(&mut self, system: &str, user: &str) -> Result<String> {
         if self.reader_plan_attempted {
             bail!("Reader planning was already attempted; no second provider request was made");
@@ -138,7 +166,10 @@ impl Session {
         contract: Contract,
     ) -> Result<T> {
         let policy = &self.settings.execution;
-        if self.requests >= policy.max_provider_requests {
+        if policy.max_provider_requests == 0
+            || (matches!(contract, Contract::Files)
+                && self.source_requests >= policy.max_provider_requests)
+        {
             bail!("Local provider request budget exhausted");
         }
         if system.len().saturating_add(user.len()) > policy.max_prompt_bytes {
@@ -147,7 +178,7 @@ impl Session {
         let reserved = self
             .reserved_tokens
             .saturating_add(contract.output_tokens(self.settings.provider.max_output_tokens));
-        if reserved > policy.output_budget(self.settings.provider.max_output_tokens) {
+        if reserved > self.output_budget() {
             bail!("Local output-token budget exhausted; no provider request was made");
         }
         let remaining = Duration::from_secs(policy.generation_timeout_seconds)
@@ -155,20 +186,23 @@ impl Session {
             .filter(|v| v.as_secs() > 0)
             .context("Local generation time budget exhausted")?;
         self.requests += 1;
+        if matches!(contract, Contract::Files) {
+            self.source_requests += 1;
+        }
         let detail = match contract {
             Contract::Files if self.reader_plan_attempted => format!(
                 "Provider: {} ({})\nModelo: {}\nGerando leitor — tentativa {}",
                 self.settings.profile,
                 self.settings.provider.kind.label(),
                 self.settings.provider.model,
-                self.requests.saturating_sub(1),
+                self.source_requests,
             ),
             Contract::Files => format!(
                 "Provider: {} ({})\nModelo: {}\nTentativa {} de {} — até {} correções",
                 self.settings.profile,
                 self.settings.provider.kind.label(),
                 self.settings.provider.model,
-                self.requests,
+                self.source_requests,
                 policy.attempts(self.settings.provider.max_output_tokens, None),
                 policy.attempts(self.settings.provider.max_output_tokens, None).saturating_sub(1)
             ),
@@ -420,48 +454,52 @@ mod tests {
         .to_string()
     }
 
+    fn reader_request(stream: &mut std::net::TcpStream, kind: Kind) -> Value {
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut bytes = Vec::new();
+        let mut buf = [0; 4096];
+        let start = loop {
+            let n = stream.read(&mut buf).unwrap();
+            assert!(n > 0);
+            bytes.extend_from_slice(&buf[..n]);
+            if let Some(i) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                break i + 4;
+            }
+        };
+        let header = String::from_utf8_lossy(&bytes[..start]).to_ascii_lowercase();
+        let endpoint = if kind == Kind::Ollama {
+            "/api/chat"
+        } else {
+            "/chat/completions"
+        };
+        assert!(header.starts_with(&format!("post {endpoint} http/1.1")));
+        assert_eq!(
+            header.contains("authorization: bearer synthetic-reader-only"),
+            kind != Kind::Ollama
+        );
+        let length: usize = header
+            .lines()
+            .find_map(|s| s.strip_prefix("content-length:"))
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        while bytes.len() < start + length {
+            let n = stream.read(&mut buf).unwrap();
+            assert!(n > 0);
+            bytes.extend_from_slice(&buf[..n]);
+        }
+        serde_json::from_slice(&bytes[start..start + length]).unwrap()
+    }
+
     fn reader_exchange(kind: Kind, status: u16, body: String) -> (Result<String>, Value) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!("http://{}", listener.local_addr().unwrap());
         let server = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            stream
-                .set_read_timeout(Some(Duration::from_secs(5)))
-                .unwrap();
-            let mut bytes = Vec::new();
-            let mut buf = [0; 4096];
-            let start = loop {
-                let n = stream.read(&mut buf).unwrap();
-                assert!(n > 0);
-                bytes.extend_from_slice(&buf[..n]);
-                if let Some(i) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
-                    break i + 4;
-                }
-            };
-            let header = String::from_utf8_lossy(&bytes[..start]).to_ascii_lowercase();
-            let endpoint = if kind == Kind::Ollama {
-                "/api/chat"
-            } else {
-                "/chat/completions"
-            };
-            assert!(header.starts_with(&format!("post {endpoint} http/1.1")));
-            assert_eq!(
-                header.contains("authorization: bearer synthetic-reader-only"),
-                kind != Kind::Ollama
-            );
-            let length: usize = header
-                .lines()
-                .find_map(|s| s.strip_prefix("content-length:"))
-                .unwrap()
-                .trim()
-                .parse()
-                .unwrap();
-            while bytes.len() < start + length {
-                let n = stream.read(&mut buf).unwrap();
-                assert!(n > 0);
-                bytes.extend_from_slice(&buf[..n]);
-            }
-            let payload: Value = serde_json::from_slice(&bytes[start..start + length]).unwrap();
+            let payload = reader_request(&mut stream, kind);
             let _ = write!(
                 stream,
                 "HTTP/1.1 {status} Result\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -512,6 +550,73 @@ mod tests {
             } else {
                 assert_eq!(payload["response_format"]["type"], "json_object");
                 assert_eq!(payload["max_tokens"], 2048);
+            }
+        }
+    }
+
+    #[test]
+    fn one_reader_plan_preserves_code_attempts_on_every_provider() {
+        for kind in [Kind::Ollama, Kind::Openai, Kind::Deepseek] {
+            for (max_requests, token_limited_attempts) in [(1, None), (3, None), (3, Some(1))] {
+                let code_attempts = token_limited_attempts.unwrap_or(max_requests);
+                let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+                let url = format!("http://{}", listener.local_addr().unwrap());
+                let server = std::thread::spawn(move || {
+                    let mut requests = Vec::new();
+                    for index in 0..=code_attempts {
+                        let (mut stream, _) = listener.accept().unwrap();
+                        requests.push(reader_request(&mut stream, kind));
+                        let content = if index == 0 {
+                            json!({"prompt":"Build a simple local reader"})
+                        } else {
+                            json!({"files":[{"path":"main.c","content":"int main(void) { return 0; }"}]})
+                        };
+                        let body = reader_body(kind, json!(content.to_string()), "stop");
+                        write!(
+                            stream,
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                            body.len()
+                        )
+                        .unwrap();
+                    }
+                    requests
+                });
+                let temp = tempfile::tempdir().unwrap();
+                let mut settings = reader_settings(temp.path(), kind, &url);
+                settings.execution.max_provider_requests = max_requests;
+                settings.execution.max_output_tokens_total = token_limited_attempts.map(|count| {
+                    reader_planning_tokens(&settings)
+                        + u32::from(count) * settings.provider.max_output_tokens
+                });
+                let mut session = Session::new(&settings);
+                let plan = session.plan_reader("Plan a reader", "eml").unwrap();
+                assert_eq!(session.requests(), 1);
+                assert_eq!(session.remaining_requests(), code_attempts);
+                for remaining in (0..code_attempts).rev() {
+                    assert_eq!(
+                        session
+                            .generate("Generate the reader", &plan)
+                            .unwrap()
+                            .files
+                            .len(),
+                        1
+                    );
+                    assert_eq!(session.remaining_requests(), remaining);
+                }
+                let error = session.generate("Generate the reader", &plan).unwrap_err();
+                assert!(format!("{error:#}").contains("budget exhausted"));
+                assert!(session.plan_reader("Plan again", "eml").is_err());
+                assert_eq!(session.requests(), code_attempts + 1);
+                assert_eq!(session.source_requests, code_attempts);
+                let requests = server.join().unwrap();
+                assert_eq!(requests.len(), usize::from(code_attempts) + 1);
+                for (index, request) in requests.iter().enumerate() {
+                    let instruction = request["messages"][0]["content"].as_str().unwrap();
+                    assert_eq!(
+                        instruction.contains("exactly one field: prompt"),
+                        index == 0
+                    );
+                }
             }
         }
     }
@@ -587,15 +692,15 @@ mod tests {
         let url = format!("http://{}", listener.local_addr().unwrap());
         let temp = tempfile::tempdir().unwrap();
         let mut settings = reader_settings(temp.path(), Kind::Ollama, &url);
-        settings.execution.max_provider_requests = 1;
+        settings.execution.max_provider_requests = 0;
         let mut session = Session::new(&settings);
-        session.requests = 1;
         assert!(session
             .plan_reader("reader", "type")
             .unwrap_err()
             .to_string()
             .contains("request budget"));
-        assert_eq!(session.requests, 1);
+        assert_eq!(session.requests, 0);
+        settings.execution.max_provider_requests = 1;
         let mut session = Session::new(&settings);
         let oversized = "x".repeat(settings.execution.max_prompt_bytes + 1);
         assert!(session
@@ -604,6 +709,11 @@ mod tests {
             .to_string()
             .contains("max_prompt_bytes"));
         assert_eq!(session.requests, 0);
+        settings.execution.max_output_tokens_total = Some(
+            settings
+                .execution
+                .output_budget(settings.provider.max_output_tokens),
+        );
         let mut session = Session::new(&settings);
         session.started =
             Instant::now() - Duration::from_secs(settings.execution.generation_timeout_seconds + 1);
@@ -629,26 +739,29 @@ mod tests {
     }
 
     #[test]
-    fn remaining_source_requests_account_for_planning_and_token_cap() {
+    fn planning_preserves_source_attempts_but_respects_aggregate_token_cap() {
         let temp = tempfile::tempdir().unwrap();
         let mut settings = reader_settings(temp.path(), Kind::Ollama, "http://127.0.0.1:1");
         settings.execution.max_provider_requests = 3;
         let mut session = Session::new(&settings);
         assert_eq!(session.remaining_requests(), 3);
         session.requests = 1;
+        session.reader_plan_attempted = true;
         session.reserved_tokens =
             Contract::ReaderPlan.output_tokens(settings.provider.max_output_tokens);
         assert_eq!(session.requests(), 1);
-        assert_eq!(session.remaining_requests(), 2);
+        assert_eq!(session.remaining_requests(), 3);
         settings.execution.max_output_tokens_total = Some(
             Contract::ReaderPlan.output_tokens(settings.provider.max_output_tokens)
                 + settings.provider.max_output_tokens,
         );
         let mut capped = Session::new(&settings);
         capped.requests = 1;
+        capped.reader_plan_attempted = true;
         capped.reserved_tokens =
             Contract::ReaderPlan.output_tokens(settings.provider.max_output_tokens);
         assert_eq!(capped.remaining_requests(), 1);
+        capped.source_requests = 1;
         capped.reserved_tokens += settings.provider.max_output_tokens;
         assert_eq!(capped.remaining_requests(), 0);
     }

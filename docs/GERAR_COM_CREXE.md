@@ -32,7 +32,9 @@ crexe open-generating --max-repairs 0 -- "notas.md"
 
 O destino da exportação deve ser um arquivo novo. O ZIP contém o projeto do leitor, não uma cópia do documento selecionado. `--no-run` ainda pode consultar o modelo, compilar e testar quando não existe leitor aprovado.
 
-O comando aceita arquivos locais regulares com qualquer extensão, inclusive sem extensão. Caminhos relativos partem da pasta de quem chamou. Nomes com espaços, acentos ou hífen são argumentos separados; não viram comandos de shell. Um arquivo `.crexe` segue o fluxo de execução de receita existente.
+O comando aceita arquivos locais regulares com extensão válida, inclusive extensões desconhecidas. A extensão normalizada deve ter até 64 bytes UTF-8 e conter somente letras, números, hífen ou sublinhado. Arquivos sem extensão, com extensão vazia, inválida, muito longa ou não UTF-8 recebem um aviso de falta de suporte antes de qualquer chamada ao modelo. A engine não lê bytes do documento para descobrir o tipo. Caminhos relativos partem da pasta de quem chamou. Nomes com espaços, acentos ou hífen são argumentos separados; não viram comandos de shell.
+
+Selecionar um `.crexe` nessa ação também retorna um aviso, sem enviar a receita ao modelo. Para executar uma receita, use sua abertura normal ou `crexe exec receita.crexe`; **Gerar com CREXE** não delega silenciosamente para esse fluxo.
 
 Abra a engine sem argumentos ou use `crexe configure`. Em **Gerar com CREXE**, clique em **Selecionar arquivo e gerar programa…**. O seletor permite um arquivo por vez e não filtra extensões. Cancelá-lo encerra a seleção sem geração nem chamada ao modelo. A abertura usa a configuração salva; mudanças ainda não salvas na tela continuam preservadas e não são aplicadas ao leitor.
 
@@ -61,27 +63,32 @@ Execute o comando correspondente ao host e perfil que pretende usar. O preflight
 
 ## Plano implementado e arquitetura
 
-1. **Validar a entrada e o ambiente.** Resolver o caminho local, rejeitar pasta/dispositivo, identificar o tipo e fixar o perfil. Verificar orçamento e SDK antes da primeira chamada.
+1. **Validar a entrada e o ambiente.** Resolver o caminho local, rejeitar pasta/dispositivo e casos sem suporte, extrair somente a extensão e fixar o perfil. Verificar orçamento e SDK antes da primeira chamada.
 2. **Coordenar a preparação por leitor.** Adquirir um lock local para a combinação de tipo e configuração. Outra abertura compatível aguarda essa preparação.
-3. **Planejar uma vez.** Enviar apenas o identificador de tipo, o perfil e o contrato do leitor. A resposta deve ser um JSON com um único campo `prompt`; não é uma resposta `files[]`. Há uma única tentativa de planejamento nessa preparação, sem repetição automática ou fallback.
+3. **Planejar uma vez.** Do documento, enviar somente a extensão normalizada, junto com o perfil e o contrato técnico do leitor. A resposta deve ser um JSON com um único campo `prompt`; não é uma resposta `files[]`. Há uma única tentativa de planejamento nessa preparação, sem repetição automática ou fallback.
 4. **Persistir a intenção interna.** Validar o prompt e salvar o registro de planejamento e a receita interna de forma atômica, com identidade e checksum. A receita tem nome e perfil controlados pela engine.
 5. **Gerar e verificar o programa.** Usar o pipeline existente de `files[]`, projeto da engine, build e autoteste. Acrescentar os checks de leitura descritos abaixo. Falhas de build/teste podem pedir correções dentro do orçamento restante.
 6. **Publicar e abrir.** Atualizar o histórico somente após aprovação. Liberar a preparação compartilhada e iniciar o executável com o caminho do documento como um argumento nativo. Cada abertura recebe seu próprio arquivo.
 
-Planejamento, geração e reparos usam a **mesma sessão**, com os mesmos limites de solicitações, tokens de saída e tempo e a mesma credencial resolvida. A primeira preparação exige ao menos duas solicitações disponíveis e tokens suficientes para o plano e uma geração completa. O plano reserva até 2.048 tokens de saída, limitado também pelo valor configurado por chamada.
+Planejamento, geração e reparos usam a **mesma sessão**, a mesma credencial resolvida e o mesmo limite global de tempo. A chamada única de planejamento tem contagem própria: **não desconta uma tentativa de código** de `execution.max_provider_requests`. O plano reserva até 2.048 tokens de saída, limitado também pelo valor configurado por chamada.
+
+Sem teto explícito, o orçamento derivado de geração continua sendo tentativas × tokens por chamada, acrescido da reserva do planejamento quando necessário. Um `execution.max_output_tokens_total` explícito continua sendo um teto agregado para **plano + código** e pode reduzir o número efetivo de tentativas. A primeira preparação exige saldo para o plano e uma geração completa; não exige configurar duas tentativas de código. Se o teto explícito for insuficiente, nenhuma chamada é feita.
 
 | Situação | Chamadas ao modelo |
 |---|---|
 | Primeiro leitor, código aprovado sem reparo | 1 planejamento + 1 geração |
 | Primeiro leitor, um reparo necessário | 1 planejamento + 1 geração + 1 reparo, se houver orçamento |
+| Primeiro leitor, limite padrão e dois reparos necessários | 1 planejamento + até 3 tentativas de código, se os limites de tokens e tempo permitirem |
 | Outro documento do mesmo tipo, leitor compatível aprovado | 0 |
 | Somente o conteúdo do documento mudou | 0, enquanto o leitor continua válido |
 | Falha de planejamento | Sem segunda tentativa automática de planejamento |
 | Falha após salvar um plano válido, seguida de nova abertura explícita | Reutiliza o plano e tenta gerar com o orçamento da nova invocação |
 
-O padrão de três solicitações permite plano, geração e um reparo. `--max-repairs` pode reduzir correções; não amplia o orçamento local. Uma falha HTTP ou de resposta do provider encerra a operação, sem tentativas ocultas. Providers remotos podem cobrar por cada solicitação, inclusive pelas que falham no restante do fluxo.
+O padrão de três tentativas de código permite **um plano + uma geração + até dois reparos**, totalizando no máximo quatro solicitações. `--max-repairs` pode reduzir correções; não amplia o orçamento local. Uma falha HTTP ou de resposta do provider encerra a operação, sem tentativas ocultas. Providers remotos podem cobrar por cada solicitação, inclusive pelas que falham no restante do fluxo.
 
-O cache do leitor considera a extensão normalizada ou a ausência de extensão, os parâmetros de geração do provider/modelo, o perfil, OS/arquitetura da engine e a versão do contrato. Extensões opacas recebem um identificador derivado de seus bytes; não entram como texto livre no prompt. Nome, diretório e conteúdo do documento não fazem parte dessa identidade. Alterar apenas os tetos de solicitações/tokens totais não invalida um leitor aprovado.
+O cache do leitor considera a extensão normalizada, os parâmetros de geração do provider/modelo, o perfil, OS/arquitetura da engine e a versão do contrato. Extensões sem suporte são rejeitadas; nenhum hash delas é enviado ao modelo. Nome, diretório e conteúdo do documento não fazem parte dessa identidade. Alterar apenas os tetos de solicitações/tokens totais não invalida um leitor aprovado.
+
+Esta revisão da prévia v1 usa a versão 2 do contrato interno do leitor. Leitores criados pelo contrato anterior permanecem separados no cache; a primeira abertura sob o novo contrato prepara um leitor novamente. Reutilização sem chamadas vale para leitores compatíveis com o contrato atual.
 
 O estado interno fica em `readers/<identidade>/`, na raiz gerenciada da instalação; as revisões aprovadas usam o cache/histórico da engine. `CREXE_HOME` permite uma raiz absoluta isolada para testes. Não é necessário criar, editar ou distribuir essas receitas internas para abrir documentos.
 
@@ -89,7 +96,7 @@ Duas aberturas simultâneas do mesmo leitor compartilham uma preparação e, ap�
 
 ## Privacidade e limites do leitor v1
 
-O caminho, nome e corpo do documento selecionado não são incluídos no planejamento, na geração, nos reparos, no histórico da receita ou no ZIP dos fontes. O caminho permanece local e só chega ao executável na abertura. Nome e caminho podem aparecer na interface local para identificar o arquivo. Os checks anteriores à publicação usam arquivos de teste sintéticos, sem ler o documento escolhido.
+Na preparação do leitor, a engine usa **somente a extensão** dos dados do documento selecionado. Não inclui nome, caminho, conteúdo, tamanho, datas ou hash do documento no planejamento, na geração ou nas correções, nem copia o documento para o histórico da receita ou o ZIP dos fontes. As requisições também levam instruções técnicas, o perfil e, nos reparos, código gerado e diagnósticos. O caminho permanece local e só chega ao executável na abertura. Nome e caminho podem aparecer na interface local para identificar o arquivo. Os checks anteriores à publicação usam arquivos de teste sintéticos, sem ler o documento escolhido.
 
 O contrato exige um leitor **somente leitura**: abrir o arquivo selecionado imediatamente, mostrar seu conteúdo real ou um erro legível e preservar o original. Edição mínima, salvar como e interpretação completa de formatos proprietários não fazem parte desta entrega.
 
@@ -99,9 +106,13 @@ O contrato exige um leitor **somente leitura**: abrir o arquivo selecionado imed
 - Formatos conhecidos podem receber apresentação simples, como títulos Markdown ou assunto/corpo EML. Formatos opacos podem oferecer somente texto ou bytes, sem afirmar que foram completamente interpretados.
 - O contrato proíbe executar scripts do documento, buscar recursos externos e escrever no original.
 
-Antes de aprovar uma revisão, a engine executa `--crexe-reader-check PATH` em dois textos distintos, arquivo vazio, bytes binários e arquivo acima do limite. A resposta JSON deve conter `kind`, `content` e `truncated`, com os bytes esperados; a engine também confere que os arquivos de teste foram preservados. A implementação gerada deve usar a mesma leitura limitada na interface e nesse modo sem janela.
+Antes de aprovar uma revisão, a engine executa `--crexe-reader-check PATH` em dois textos distintos, arquivo vazio, bytes binários, arquivo acima do limite e UTF-8 inválido. A resposta JSON deve conter `kind`, `content` e `truncated`, com os bytes esperados; a engine também confere que os arquivos de teste foram preservados. A implementação gerada deve usar a mesma leitura limitada na interface e nesse modo sem janela.
 
-Esses checks verificam o contrato observável; não são uma sandbox nem comprovam toda a interface ou a segurança do código gerado. O executável roda no host com as permissões do usuário. A proteção contra envio do documento pelo fluxo da engine não equivale a isolamento de rede/arquivos de um programa nativo. Consulte os [limites de segurança](../SECURITY.md).
+A LLM pode incluir um **arquivo dummy inteiramente sintético** nos arquivos da geração normal para ajudar seus autotestes. Isso não exige outra chamada de planejamento nem autoriza copiar, resumir ou transformar o documento escolhido. O dummy não substitui o arquivo real na interface nem os testes independentes obrigatórios da engine.
+
+Esses checks verificam o contrato observável; não são uma sandbox nem comprovam toda a interface ou a segurança do código gerado. O executável roda no host com as permissões do usuário. Diagnósticos de compilação e autoteste voltam ao modelo e podem conter caminhos locais; um programa malicioso ainda poderia acessar arquivos ou rede. A separação do documento no fluxo da engine não equivale a isolamento de um programa nativo. Consulte os [limites de segurança](../SECURITY.md).
+
+Esta v1 demonstra o fluxo de geração de leitores. Uma evolução com execução agêntica e controles de isolamento fica para versões futuras; usar um agente, por si só, não garante isolamento. Também fica para o futuro identificar formatos por uma assinatura lida localmente nos primeiros bytes. Quatro bytes podem ajudar em alguns formatos, mas não identificam todos. Esta versão não faz essa leitura nem envia bytes do documento ao modelo para classificá-lo.
 
 ## Verificação automatizada e evidência local
 
@@ -115,7 +126,7 @@ cargo test --locked --test cli
 cargo test --locked --test open_generating -- --ignored --nocapture
 ```
 
-O último comando requer .NET 8 SDK e usa um servidor local controlado, sem LLM real, API paga ou interação com janelas. Cobre cache, extensão arbitrária/ausente, texto/vazio/binário/truncamento, reparo com orçamento compartilhado, privacidade/exportação, concorrência com sucesso/falha, pré-requisitos inválidos, delegação de `.crexe` e rejeição de leitor com conteúdo fixo. Há um caso adicional em Linux para caminho com bytes não UTF-8; o sistema de arquivos do runner macOS rejeita esse nome antes da execução da engine. Os testes unitários do transporte cobrem os três providers e o contrato de planejamento.
+O último comando requer .NET 8 SDK e usa um servidor local controlado, sem LLM real, API paga ou interação com janelas. Cobre cache, extensão desconhecida válida, rejeição de casos sem suporte sem chamadas ao modelo, texto/vazio/binário/truncamento, planejamento separado das tentativas de código, privacidade/exportação, concorrência com sucesso/falha, pré-requisitos inválidos, recusa de `.crexe` nessa ação e rejeição de leitor com conteúdo fixo. Há um caso adicional em Linux para caminho com bytes não UTF-8; o sistema de arquivos do runner macOS rejeita esse nome antes da execução da engine. Os testes unitários do transporte cobrem os três providers, o contrato de planejamento e os tetos de orçamento.
 
 A [configuração da CI](../.github/workflows/ci.yml) inclui a suíte de leitores nos runners; a existência dessa etapa não substitui conferir o resultado de uma execução no commit candidato.
 
@@ -133,6 +144,7 @@ Use arquivos sintéticos e uma pasta nova. Registre commit/pacote, host, perfil,
 | Seletor da engine | Abrir `configure`, selecionar o documento e acompanhar até o leitor abrir. A janela da engine continua disponível; depois da preparação, selecionar outro documento. |
 | Configuração pendente | Editar uma preferência sem salvar e usar o seletor; a abertura usa a configuração salva e a edição pendente continua na tela. |
 | Cancelamento do seletor | Abrir e cancelar a seleção; nenhuma geração é iniciada. |
+| Tipo sem suporte | Selecionar arquivo sem extensão, com extensão inválida ou uma receita `.crexe`; conferir o aviso e ausência de chamadas ao modelo. |
 | Falha antes da geração | Em ambiente de teste sem o SDK ou com orçamento insuficiente, abrir um tipo novo; conferir erro e ausência de solicitações ao provider. |
 | Concorrência/falha | Abrir dois documentos do mesmo tipo durante a preparação; conferir um preparo compartilhado. Em falha, ambos recebem diagnóstico, sem uma nova geração automática de quem aguardava. |
 

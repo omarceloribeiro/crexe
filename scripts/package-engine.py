@@ -128,11 +128,15 @@ menu **Gerar com CREXE** do Windows após a instalação. A CLI equivalente é:
 ```
 
 Na primeira preparação do tipo, uma única chamada à LLM formula a intenção do
-leitor. Em seguida ocorre a geração normal do código, com build, autotestes e
-eventuais reparos. O segundo documento reutiliza o leitor compatível aprovado,
+leitor a partir somente da extensão. O planejamento não desconta uma tentativa
+de código: o padrão permite um plano e até três tentativas de código, sujeitos
+aos limites de tokens e tempo. Seguem build, autotestes e eventuais reparos.
+O segundo documento reutiliza o leitor compatível aprovado,
 sem outra chamada de planejamento ou geração quando o cache continua válido.
-Extensões novas e arquivos sem extensão também entram nesse fluxo. Formatos
-opacos podem resultar em leitura de texto ou inspeção hexadecimal identificada.
+Extensões desconhecidas válidas também entram nesse fluxo. Arquivos sem extensão,
+com extensão inválida ou .crexe recebem aviso sem chamada ao modelo; receitas
+usam sua abertura normal. Formatos opacos podem resultar em leitura de texto
+ou inspeção hexadecimal identificada.
 
 O documento selecionado abre como dado em runtime: seu nome, caminho e conteúdo
 não são enviados ao modelo nem incorporados ao projeto exportado. O contrato

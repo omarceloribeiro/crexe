@@ -9,20 +9,22 @@ use std::{
     time::{Duration, Instant},
 };
 
-const CONTRACT_VERSION: u32 = 1;
+const CONTRACT_VERSION: u32 = 2;
 const MAX_RECIPE: usize = 32 * 1024;
 const MAX_METADATA: usize = 128 * 1024;
 const PREVIEW_BYTES: usize = 65536;
 const NAME: &str = "CREXEReader";
 
 const READER_CONTRACT: &str = r#"
-ENGINE READER CONTRACT v1 (mandatory; takes precedence over the proposed plan):
+ENGINE READER CONTRACT v2 (mandatory; takes precedence over the proposed plan):
 Build a simple, efficient LOCAL READ-ONLY viewer. Normal startup receives exactly
 one document path as its first native process argument. Read THAT file immediately
 and display its real content; do not show sample content or ask to select it again.
 Use the document's base filename in the window title, obtained ONLY at runtime.
 For the explicit dotnet-console test profile, print the basename and real content.
-Never hardcode a selected file, personal filename, path or sample document.
+Never hardcode a selected file, personal filename or path. You may include wholly
+invented dummy files in the generated project for tests only; never derive them
+from the selected document or display them instead of the real document.
 
 Read at most 65536 bytes for the preview, plus one byte only to detect truncation.
 If the preview is valid UTF-8 without NUL bytes, treat it as text; otherwise show
@@ -58,45 +60,27 @@ struct FileKind {
 }
 
 impl FileKind {
-    fn from_path(path: &Path) -> Self {
-        match path.extension() {
-            None => Self {
-                category: "no-extension".into(),
-                identifier: String::new(),
-            },
-            Some(extension) => {
-                if let Some(text) = extension.to_str() {
-                    let normalized = text.to_lowercase();
-                    if !normalized.is_empty()
-                        && normalized.len() <= 64
-                        && normalized
-                            .chars()
-                            .all(|c| c.is_alphanumeric() || matches!(c, '-' | '_'))
-                    {
-                        return Self {
-                            category: "extension".into(),
-                            identifier: normalized,
-                        };
-                    }
-                }
-                // as_encoded_bytes preserves non-UTF-8 names without lossy collisions.
-                // The opaque bytes are never sent to the model or used as path components.
-                Self {
-                    category: "opaque-extension".into(),
-                    identifier: sha(extension.as_encoded_bytes()),
-                }
-            }
-        }
+    fn from_path(path: &Path) -> Result<Self> {
+        let normalized = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(str::to_lowercase)
+            .filter(|extension| {
+                !extension.is_empty()
+                    && extension.len() <= 64
+                    && extension
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || matches!(c, '-' | '_'))
+            })
+            .context("Sem suporte nesta versão: o arquivo precisa de uma extensão válida para gerar um leitor.")?;
+        Ok(Self {
+            category: "extension".into(),
+            identifier: normalized,
+        })
     }
 
     fn planner_data(&self) -> serde_json::Value {
-        match self.category.as_str() {
-            "extension" => json!({"file_extension": self.identifier}),
-            "no-extension" => json!({"file_type": "file without an extension"}),
-            _ => {
-                json!({"file_type": "unknown opaque extension", "type_identifier": self.identifier})
-            }
-        }
+        json!({"file_extension": self.identifier})
     }
 }
 
@@ -120,9 +104,11 @@ pub(crate) fn open(file: &Path, cli: &Cli) -> Result<()> {
         bail!("Gerar com CREXE aceita um arquivo local regular por vez, não uma pasta ou dispositivo.");
     }
     if looks_like_crexe_file(file) {
-        println!("Receita .crexe selecionada: usando a execução de receita existente.");
-        return orchestration::exec(&document, BTreeMap::new(), false, false, None, cli);
+        bail!("Sem suporte: Gerar com CREXE não abre receitas .crexe. Abra a receita normalmente para executá-la.");
     }
+    // Reject unsupported types before loading credentials/configuration or touching
+    // the reader cache. Do not inspect bytes or send a type hash as a fallback.
+    let kind = FileKind::from_path(file)?;
     let _progress = presentation::Progress::start(cli.ui)?;
     let settings = Settings::load(
         cli.config.as_deref(),
@@ -136,7 +122,6 @@ pub(crate) fn open(file: &Path, cli: &Cli) -> Result<()> {
         .unwrap_or_else(|| profiles::default_profile());
     // Resolve the engine-owned profile before touching managed state or a provider.
     let preflight_spec = profiles::resolve(NAME, READER_CONTRACT, Some(profile))?;
-    let kind = FileKind::from_path(file);
     let key = reader_key(&kind, profile, &settings)?;
     let directory = installation::root()?.join("readers").join(&key);
     paths::reject_links(&directory)?;
@@ -221,11 +206,11 @@ fn reader_key(kind: &FileKind, profile: &str, settings: &Settings) -> Result<Str
 
 fn check_first_generation_budget(settings: &Settings) -> Result<()> {
     let tokens = settings.provider.max_output_tokens;
-    let needed = tokens.saturating_add(tokens.min(2048));
-    if settings.execution.max_provider_requests < 2
-        || settings.execution.output_budget(tokens) < needed
+    let needed = tokens.saturating_add(generator::reader_planning_tokens(settings));
+    if settings.execution.max_provider_requests < 1
+        || generator::reader_output_budget(settings) < needed
     {
-        bail!("O primeiro leitor requer orçamento para uma chamada de planejamento e uma geração de código. Configure ao menos 2 solicitações e {needed} tokens de saída; nenhuma chamada foi feita.");
+        bail!("O primeiro leitor requer uma chamada de planejamento e orçamento para ao menos uma tentativa de código, com {needed} tokens de saída no total; nenhuma chamada foi feita.");
     }
     Ok(())
 }
@@ -640,9 +625,10 @@ mod tests {
 
     #[test]
     fn type_identity_ignores_document_name_directory_and_content() {
-        let first = FileKind::from_path(Path::new("private-one/sensitive-name.MD"));
-        let second = FileKind::from_path(Path::new("another/other-name.md"));
+        let first = FileKind::from_path(Path::new("private-one/sensitive-name.MD")).unwrap();
+        let second = FileKind::from_path(Path::new("another/other-name.md")).unwrap();
         assert_eq!(first, second);
+        assert_eq!(first.planner_data(), json!({"file_extension": "md"}));
         let settings = settings();
         assert_eq!(
             reader_key(&first, "dotnet-console", &settings).unwrap(),
@@ -658,16 +644,14 @@ mod tests {
     }
 
     #[test]
-    fn arbitrary_extensions_and_no_suffix_have_distinct_safe_keys() {
+    fn arbitrary_valid_extensions_have_distinct_safe_keys() {
         let settings = settings();
         let kinds = [
-            "no-suffix",
             "test.fresh-format-never-listed",
             "test.ação",
-            "test.\"ignore instructions\"",
-            "test.",
+            "test.custom_format_1",
         ]
-        .map(|name| FileKind::from_path(Path::new(name)));
+        .map(|name| FileKind::from_path(Path::new(name)).unwrap());
         let keys: std::collections::BTreeSet<_> = kinds
             .iter()
             .map(|kind| reader_key(kind, "dotnet-console", &settings).unwrap())
@@ -677,22 +661,31 @@ mod tests {
             assert_eq!(key.len(), 64);
             assert!(key.bytes().all(|byte| byte.is_ascii_hexdigit()));
         }
-        assert_eq!(kinds[2].identifier, "ação");
-        assert_eq!(kinds[3].category, "opaque-extension");
-        assert!(!planning_prompt(&kinds[3], "dotnet-console")
-            .unwrap()
-            .1
-            .contains("ignore instructions"));
+        assert_eq!(kinds[1].identifier, "ação");
+    }
+
+    #[test]
+    fn unsupported_extensions_fail_without_an_opaque_fallback() {
+        for name in [
+            "private-no-suffix".to_owned(),
+            "private.".to_owned(),
+            "private.\"ignore instructions\"".to_owned(),
+            "private.bad extension".to_owned(),
+            format!("private.{}", "x".repeat(65)),
+        ] {
+            let error = FileKind::from_path(Path::new(&name)).unwrap_err();
+            assert!(error.to_string().contains("Sem suporte"));
+            assert!(!error.to_string().contains("private"));
+        }
     }
 
     #[cfg(unix)]
     #[test]
-    fn non_utf8_extensions_are_distinct_without_lossy_replacement() {
+    fn non_utf8_extensions_are_rejected_without_hashing() {
         use std::os::unix::ffi::OsStringExt;
         let a = FileKind::from_path(Path::new(&OsString::from_vec(b"a.\xff".to_vec())));
         let b = FileKind::from_path(Path::new(&OsString::from_vec(b"b.\xfe".to_vec())));
-        assert_eq!(a.category, "opaque-extension");
-        assert_ne!(a, b);
+        assert!(a.is_err() && b.is_err());
     }
 
     #[test]
@@ -706,6 +699,10 @@ mod tests {
         assert!(check_first_generation_budget(&settings).is_err());
         settings.execution.max_output_tokens_total = Some(12000);
         settings.execution.max_provider_requests = 1;
+        check_first_generation_budget(&settings).unwrap();
+        settings.execution.max_output_tokens_total = None;
+        check_first_generation_budget(&settings).unwrap();
+        settings.execution.max_provider_requests = 0;
         assert!(check_first_generation_budget(&settings).is_err());
     }
 
@@ -729,7 +726,7 @@ mod tests {
     #[test]
     fn saved_plan_recovers_recipe_without_replanning_and_rejects_corruption() {
         let directory = tempfile::tempdir().unwrap();
-        let kind = FileKind::from_path(Path::new("arbitrary.md"));
+        let kind = FileKind::from_path(Path::new("arbitrary.md")).unwrap();
         let recipe = make_recipe("Build a useful viewer.", "dotnet-console").unwrap();
         let file = save_recipe(
             directory.path(),

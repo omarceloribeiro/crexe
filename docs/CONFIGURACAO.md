@@ -14,7 +14,11 @@ Os presets vêm de `config.example.toml`; aparecem também ao abrir configuraç�
 
 **Tentativas máximas** na tela principal controla `execution.max_provider_requests`: de 1 a 10, padrão 3, incluindo a geração inicial. Só falhas de compilação/teste permitem correções automáticas; autenticação, saldo, conexão e respostas inválidas encerram a execução. `--max-repairs 0..9` é opcional: quando informado, reduz o número de correções dentro do limite configurado. `--max-repairs 0` permite apenas a proposta inicial.
 
+Em **Gerar com CREXE**, a chamada única que prepara o prompt base tem contagem separada: o padrão permite 1 planejamento + até 3 tentativas de código (geração inicial e até 2 correções). Um leitor aprovado em cache não exige chamadas. O limite global de tempo continua compartilhado entre planejamento e geração.
+
 Sem `execution.max_output_tokens_total`, o orçamento de saída é derivado de `max_provider_requests × providers.<perfil>.max_output_tokens`. Um teto já gravado em configurações antigas continua valendo. Em **Avançado**, **Limitar total de tokens de saída** permite editar esse teto ou voltar ao cálculo automático. Por exemplo, 10 tentativas com 6000 tokens por chamada usam orçamento de 60000; um teto explícito de 18000 reduz o limite efetivo a 3. Se o teto não comportar uma chamada, a execução informa o problema antes de consultar o provider.
+
+Na primeira preparação de um leitor, o cálculo automático acrescenta a reserva do planejamento, de até 2048 tokens limitada pelos tokens por chamada. Um teto explícito continua cobrindo **planejamento + código**: com 6000 tokens por geração, são necessários 8048 para planejar e gerar uma vez. O plano não reduz o número configurado de tentativas, mas um teto explícito de tokens pode reduzir o número efetivo. Veja [Gerar com CREXE](GERAR_COM_CREXE.md).
 
 A janela de geração mostra provider, modelo, tentativa atual e total efetivo, com a fase em campo separado. Esses valores são capturados no início, incluindo substituições da CLI. Alterar tentativas ou teto de saída não invalida um programa aprovado, e não modifica uma execução já iniciada. O salvamento preserva as demais regras de execução, comentários e perfis locais.
 
@@ -58,7 +62,7 @@ HTTPS é obrigatório fora do loopback. URLs com credenciais, query ou fragment 
 | Saída do modelo | `max_output_tokens`, 128–65536; resposta HTTP até 20 MiB |
 | Ollama | Contexto 512–131072, maior que a saída e com espaço também para o prompt |
 | Propostas | De 1 a 10 tentativas totais (padrão 3); `--max-repairs 0..9` opcional restringe correções |
-| Orçamento local | Até `execution.max_provider_requests` chamadas; saída derivada de tentativas × tokens por chamada, ou `max_output_tokens_total` explícito; prompt completo até `max_prompt_bytes` bytes (padrão 131072) |
+| Orçamento local | Até `execution.max_provider_requests` tentativas de código; preparar um leitor pode acrescentar uma chamada de planejamento; saída derivada com reserva do plano ou `max_output_tokens_total` explícito agregado; prompt completo até `max_prompt_bytes` bytes (padrão 131072) |
 | Prazo de geração | `execution.generation_timeout_seconds` (padrão 1800 s) desde o início da preparação; reduz o timeout das próximas chamadas ao tempo restante |
 | Fontes | 1–128 arquivos; 4 MiB por arquivo; 16 MiB por resposta |
 | Build/teste | Timeout por comando; 2 MiB por stream de log; cauda de até 64 KiB por stream nos diagnósticos |

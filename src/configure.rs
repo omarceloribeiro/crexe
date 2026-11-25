@@ -169,7 +169,7 @@ impl eframe::App for Window {
                     ui.add(egui::DragValue::new(&mut self.editor.execution.max_provider_requests).range(1..=10));
                 });
                 ui.small("Para receitas .crexe, inclui a geração inicial e as correções de compilação/teste.");
-                ui.small("Um leitor novo usa uma chamada para planejar: com limite 3, restam a geração e até 1 correção. Leitores em cache não chamam o modelo.");
+                ui.small("Um leitor novo usa uma chamada adicional para planejar; o limite acima vale para gerar e corrigir o código. Leitores em cache não chamam o modelo.");
                 let attempts = self.editor.execution.attempts(self.editor.provider.max_output_tokens, None);
                 ui.small(format!("Receitas: até {attempts} tentativas; orçamento total de saída: {} tokens.", self.editor.execution.output_budget(self.editor.provider.max_output_tokens)));
                 ui.add_space(12.0);
@@ -197,7 +197,7 @@ impl eframe::App for Window {
                     }
                     if let Some(cap) = &mut self.editor.execution.max_output_tokens_total {
                         ui.add(egui::DragValue::new(cap).range(128..=655360));
-                        ui.small("Este teto pode reduzir o número efetivo de tentativas.");
+                        ui.small("Este teto inclui o planejamento do leitor e pode reduzir o número efetivo de tentativas.");
                     }
                     ui.label("Endereço do provider");
                     ui.add(egui::TextEdit::singleline(&mut self.editor.provider.base_url).desired_width(f32::INFINITY));
