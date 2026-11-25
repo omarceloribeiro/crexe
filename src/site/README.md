@@ -1,6 +1,6 @@
 # Site público — crexe.org
 
-Código da landing pública e da biblioteca do CREXE, separado da engine Rust. Site estático em português e inglês, responsivo e sem dependências de runtime, serviços de terceiros, analytics ou chamadas a modelos. O build usa Node.js 22+, Git e `markdown-it`, instalado pelo lockfile; o parser não é enviado ao navegador.
+Código da landing pública e da biblioteca do CREXE, separado da engine Rust. Páginas e downloads estáticos em português e inglês, responsivos e sem chamadas a modelos. O contador da engine usa uma Cloudflare Pages Function que consulta os agregados públicos do GitHub Releases; não usa cookies nem identificação de visitantes. O build usa Node.js 22+, Git e `markdown-it`, instalado pelo lockfile; o parser não é enviado ao navegador.
 
 ## Executar localmente
 
@@ -11,7 +11,7 @@ npm --prefix src/site ci
 npm --prefix src/site run dev
 ```
 
-Abra `http://127.0.0.1:4173`. O servidor faz o build ao iniciar e serve somente `src/site/dist`, no loopback. Encerre com `Ctrl+C`. Após editar arquivos, execute `npm --prefix src/site run build` em outro terminal e atualize o navegador.
+Abra `http://127.0.0.1:4173`. O servidor faz o build ao iniciar e serve somente `src/site/dist`, no loopback. Encerre com `Ctrl+C`. Após editar páginas, execute `npm --prefix src/site run build` em outro terminal e atualize o navegador. Após editar o Worker, reinicie o preview para carregar o novo módulo.
 
 ## Gerar e verificar
 
@@ -24,7 +24,7 @@ npm --prefix src/site run build
 
 A CI executa o mesmo `npm ci` e `check` em um job Ubuntu com Node.js 22. Esse job verifica o site independentemente da matriz Rust e dos testes de leitores gerados; não publica no Cloudflare Pages nem cria releases.
 
-Para hospedar em `crexe.org`, use **apenas o conteúdo de `src/site/dist`** como raiz de um servidor estático HTTPS. Não publique a raiz do repositório. Os assets usam URLs relativas; o canonical e o sitemap identificam `https://crexe.org/`. Configure os tipos `.crexe` como `application/octet-stream`, `.md`/`.sha256` como `text/plain; charset=utf-8` e `.xml` como `application/xml`. O preview local já define os tipos. Nenhum deploy, alteração de DNS ou release é executado por estes scripts.
+Para hospedar em `crexe.org` com o contador, publique **apenas o conteúdo de `src/site/dist`** no Cloudflare Pages com Functions. Não publique a raiz do repositório. Os assets usam URLs relativas; o canonical e o sitemap identificam `https://crexe.org/`. Configure os tipos `.crexe` como `application/octet-stream`, `.md`/`.sha256` como `text/plain; charset=utf-8` e `.xml` como `application/xml`. O preview local já define os tipos. Nenhum deploy, alteração de DNS ou release é executado por estes scripts.
 
 O build inclui `_headers` com as regras de download do Cloudflare Pages e `404.html` bilíngue para endereços inexistentes. A página 404 usa links à raiz do domínio, pois pode ser servida em qualquer profundidade. O servidor de preview aceita também URLs HTML sem extensão, como no Pages. Referências: [cabeçalhos](https://developers.cloudflare.com/pages/configuration/headers/) e [resolução de páginas e 404](https://developers.cloudflare.com/pages/configuration/serving-pages/).
 
@@ -44,7 +44,17 @@ Para visualizar a pasta entregue sem reconstruí-la:
 npm --prefix src/site run dev -- --directory C:/entrega/cloudflare-pages
 ```
 
-No Cloudflare Pages com integração Git, selecione a raiz do repositório, Node.js 22+ e o comando de build `npm --prefix src/site ci && npm --prefix src/site run check`; a saída é `src/site/dist`. Para upload direto, envie o conteúdo da pasta pública com `index.html` e `_headers` na raiz. Não envie a pasta de operação, invólucros da CI ou pacotes nativos ao Pages.
+No Cloudflare Pages com integração Git, selecione a raiz do repositório, Node.js 22+ e o comando de build `npm --prefix src/site ci && npm --prefix src/site run check`; a saída é `src/site/dist`. Para upload direto, envie o conteúdo da pasta pública com `index.html`, `_headers`, `_worker.js` e `_routes.json` na raiz. O contador exige execução de Pages Functions (advanced mode), sem banco ou secrets. Não envie a pasta de operação, invólucros da CI ou pacotes nativos ao Pages.
+
+## Contador de downloads
+
+A landing PT/EN mostra o total e os números por plataforma dos pacotes exatos configurados em `downloads.json`, somente da versão anunciada. Inclui downloads iniciados no site e diretamente no GitHub. Não soma checksums, fontes, documentos, versões anteriores ou pessoas únicas. O GitHub fornece `download_count`; CREXE não incrementa cliques nem acrescenta telemetria à engine.
+
+`GET /api/download-counts` usa o Worker entregue em `_worker.js` e cache de aproximadamente 15 minutos no Cloudflare. `_routes.json` restringe a Function a esse endpoint: páginas e downloads continuam estáticos. O navegador consulta apenas o próprio domínio. O Worker consulta o repositório fixo `omarceloribeiro/crexe` sem token e sem encaminhar cookies, IP ou cabeçalhos do visitante. O código do contador não registra visitantes; isso não altera a política de logs dos provedores de hospedagem/download.
+
+Sem release configurada, a contagem fica indisponível para publicação; falhas, limites da API e assets ausentes mostram indisponibilidade, nunca zero inventado. Links de download não dependem do contador. Zero só é mostrado quando retornado pelos assets públicos verificados. Hosts puramente estáticos ainda servem o site, mas não executam esse endpoint.
+
+O preview local executa o Worker empacotado para a rota de contagem. `check` cobre o backend com API/cache simulados, a interface nos dois idiomas e a rota HTTP sem depender do GitHub. A validação ao vivo fica para depois da publicação da primeira release. Operação e escopo: [português](../../docs/DOWNLOADS_E_PUBLICACAO.md) / [English](../../docs/en/DOWNLOADS_AND_PUBLICATION.md).
 
 Os pacotes da engine pertencem ao GitHub Releases. Enquanto a release não estiver acessível sem autenticação, mantenha os URLs de binários como `null`. Depois da publicação, baixe cada pacote e checksum anonimamente, valide o hash, ative os links reais no catálogo e gere outra entrega do site. O GitHub do projeto também precisa estar público para os links externos de código-fonte funcionarem para visitantes.
 

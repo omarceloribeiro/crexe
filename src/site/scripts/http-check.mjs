@@ -7,14 +7,15 @@ import { createStaticServer, inventory, types } from './hosting.mjs';
 import { distRoot } from './shared.mjs';
 
 export async function checkHttp(root = distRoot) {
-  const server = await createStaticServer(root);
+  // The HTTP suite must remain deterministic/offline, even after a release is configured.
+  const server = await createStaticServer(root, { counterFetch: async () => new Response('Unavailable in offline checks', { status: 503 }) });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const base = `http://127.0.0.1:${server.address().port}/`;
   const results = [];
   let linkCount = 0;
   const pages = [];
   try {
-    const files = (await inventory(root)).filter((file) => file !== '_headers');
+    const files = (await inventory(root)).filter((file) => !['_headers', '_worker.js', '_routes.json'].includes(file));
     for (let index = 0; index < files.length; index += 8) {
       await Promise.all(files.slice(index, index + 8).map(async (file) => {
         const url = new URL(file.split('/').map(encodeURIComponent).join('/'), base);
@@ -56,17 +57,24 @@ export async function checkHttp(root = distRoot) {
         for (const fragment of fragments) assert(ids.has(fragment), `Missing HTTP anchor ${url.pathname}#${fragment}`);
       }));
     }
-    for (const route of ['not-a-real-page', 'en/library/not-a-real-publication', 'downloads/missing.zip', '_headers']) {
+    for (const route of ['not-a-real-page', 'en/library/not-a-real-publication', 'downloads/missing.zip', '_headers', '_worker.js', '_routes.json']) {
       const response = await fetch(new URL(route, base));
       assert.equal(response.status, 404, `Missing path must be a real 404: ${route}`);
       assert.equal(response.headers.get('content-type'), 'text/html; charset=utf-8');
       assert((await response.text()).includes('Page not found.'), 'Expected bilingual 404.');
     }
+    const catalog = JSON.parse(await readFile(path.join(root, 'downloads.json'), 'utf8'));
+    const counter = await fetch(new URL('api/download-counts', base));
+    const counterData = await counter.json();
+    const hasPackages = Object.values(catalog.platforms).some((entry) => entry.url);
+    assert.equal(counter.status, hasPackages ? 503 : 200);
+    assert.equal(counterData.status, hasPackages ? 'unavailable' : 'unpublished');
+    assert.equal(counterData.total, null, 'Offline/no-release counter must never fabricate zero downloads.');
     const source = JSON.parse(await readFile(path.join(root, 'source.json'), 'utf8'));
     const result = { revision: source.revision, directory: path.resolve(root), checkedAt: new Date().toISOString(),
       htmlPages: pages.length, localLinks: linkCount, files: results.sort((a, b) => a.file.localeCompare(b.file)),
-      notFoundChecks: 4, scope: 'Local HTTP preview with the site’s Cloudflare header rules and HTML redirects. Does not verify a deployed CDN or external URLs.' };
-    console.log(`HTTP: ${pages.length} HTML pages, ${linkCount} local links, ${results.length} byte-identical files, MIME/download headers and 4 genuine 404s verified.`);
+      notFoundChecks: 6, counterStatus: counterData.status, scope: 'Local HTTP preview with Cloudflare header rules, HTML redirects and the packaged counter Worker (GitHub mocked offline). Does not verify a deployed CDN or external URLs.' };
+    console.log(`HTTP: ${pages.length} HTML pages, ${linkCount} local links, ${results.length} byte-identical files, MIME/download headers, counter route and 6 genuine 404s verified.`);
     return result;
   } finally {
     server.closeAllConnections();

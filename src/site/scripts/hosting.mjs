@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { readFile, realpath, stat, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { within } from './shared.mjs';
 
 export const types = {
@@ -61,10 +62,16 @@ export async function inventory(root) {
   return files.sort();
 }
 
-export async function createStaticServer(root) {
+export async function createStaticServer(root, { counterFetch = globalThis.fetch } = {}) {
   const canonicalRoot = await realpath(root);
   const rules = parseHeaders(await readFile(path.join(canonicalRoot, '_headers'), 'utf8'));
   const notFound = await readFile(path.join(canonicalRoot, '404.html'));
+  // Exercise the exact self-contained Pages Worker shipped with this build.
+  const { createDownloadCountsWorker } = await import(pathToFileURL(path.join(canonicalRoot, '_worker.js')).href);
+  const counter = createDownloadCountsWorker({ fetch: counterFetch });
+  const counterEnv = { ASSETS: { fetch: async () => new Response(
+    await readFile(path.join(canonicalRoot, 'downloads.json')), { headers: { 'Content-Type': 'application/json' } },
+  ) } };
   return createServer(async (request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'no-store');
@@ -74,7 +81,13 @@ export async function createStaticServer(root) {
     try {
       const url = new URL(request.url, 'http://127.0.0.1');
       const pathname = decodeURIComponent(url.pathname);
-      if (pathname.includes('\0') || pathname.includes('\\') || pathname === '/_headers') throw new Error('Invalid path');
+      if (url.pathname === '/api/download-counts') {
+        const result = await counter.fetch(new Request(url, { method: request.method }), counterEnv, { waitUntil: (promise) => promise.catch(() => {}) });
+        response.writeHead(result.status, Object.fromEntries(result.headers));
+        response.end(request.method === 'HEAD' ? undefined : Buffer.from(await result.arrayBuffer()));
+        return;
+      }
+      if (pathname.includes('\0') || pathname.includes('\\') || ['/_headers', '/_worker.js', '/_routes.json'].includes(pathname)) throw new Error('Invalid path');
       let filename = path.resolve(canonicalRoot, `.${pathname}`);
       if (!within(canonicalRoot, filename)) throw new Error('Invalid path');
       let info;

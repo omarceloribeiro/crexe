@@ -156,7 +156,7 @@ Tools and limits on calls, output tokens, and time are defined in local configur
 
 ## Documentation and license
 
-- [Public crexe.org site](../../src/site/README.md): static landing, examples, and downloads; local build and preview independent of the engine.
+- [Public crexe.org site](../../src/site/README.md): landing, examples, and downloads; local build and preview independent of the engine. [Publication and download counts](DOWNLOADS_AND_PUBLICATION.md).
 - [CREXE library](publicacoes/README.md): white papers, guides, articles, and manifesto; current implementation and future vision identified in each text.
 - [Implemented format contract](FORMATOS_V1.md)
 - [Generate with CREXE: usage, architecture, and validation](GENERATE_WITH_CREXE.md)

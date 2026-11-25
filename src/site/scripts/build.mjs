@@ -21,6 +21,7 @@ export async function build() {
   documentation.files.push(['docs/formatos/originais/crexb-manifest-v1.schema.json', 'schemas/crexb-manifest-v1.schema.json']);
   // Validate source inputs before replacing a previous build.
   await Promise.all(staticFiles.map((file) => readFile(path.join(siteRoot, file))));
+  await readFile(path.join(siteRoot, 'download-counts-worker.js'));
   await readFile(path.join(repoRoot, 'LICENSE-GENERATED'));
   const revision = git(['rev-parse', '--verify', 'HEAD']).trim();
   const shortRevision = revision.slice(0, 12);
@@ -45,6 +46,8 @@ export async function build() {
     await mkdir(path.dirname(path.join(distRoot, file)), { recursive: true });
     await copyFile(path.join(siteRoot, file), path.join(distRoot, file));
   }));
+  // Pages advanced mode; the routes file keeps ordinary pages/downloads static.
+  await copyFile(path.join(siteRoot, 'download-counts-worker.js'), path.join(distRoot, '_worker.js'));
   for (const page of ['index.html', 'en/index.html']) {
     const landing = await readFile(path.join(distRoot, page), 'utf8');
     await writeFile(path.join(distRoot, page), landing.replaceAll('downloads/crexe-source.zip', `downloads/${archiveName}`), 'utf8');

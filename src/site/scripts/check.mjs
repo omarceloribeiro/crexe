@@ -12,11 +12,14 @@ import {
 } from './shared.mjs';
 
 const { documentation, publications } = await build();
-for (const script of ['main.js', 'quickstart.js', 'library.js', ...(await readdir(path.join(siteRoot, 'scripts')))
+for (const script of ['main.js', 'quickstart.js', 'download-counts.js', 'download-counts-worker.js', 'library.js', ...(await readdir(path.join(siteRoot, 'scripts')))
   .filter((file) => file.endsWith('.mjs')).map((file) => `scripts/${file}`)]) {
   execFileSync(process.execPath, ['--check', path.join(siteRoot, script)], { stdio: 'pipe', windowsHide: true });
 }
-execFileSync(process.execPath, ['--test', path.join(siteRoot, 'scripts/publications.test.mjs'), path.join(siteRoot, 'scripts/quickstart.test.mjs')], { stdio: 'inherit', windowsHide: true });
+execFileSync(process.execPath, ['--test', ...['publications', 'quickstart', 'download-counts', 'download-counts-worker']
+  .map((name) => path.join(siteRoot, `scripts/${name}.test.mjs`))], { stdio: 'inherit', windowsHide: true });
+assert((await readFile(path.join(siteRoot, 'download-counts-worker.js'))).equals(await readFile(path.join(distRoot, '_worker.js'))), 'Ship the tested Worker unchanged.');
+assert.deepEqual(await readJson(path.join(distRoot, '_routes.json')), { version: 1, include: ['/api/download-counts'], exclude: [] }, 'Only the counter API needs a Function invocation.');
 const htmlPages = new Map();
 const pageIds = new Map();
 for (const page of ['index.html', 'en/index.html', ...publications.pages]) {

@@ -1,4 +1,5 @@
 import { availablePackages, httpsUrl, quickstartFor } from './quickstart.js';
+import { loadDownloadCounts } from './download-counts.js';
 
 document.documentElement.classList.add('js');
 
@@ -174,6 +175,8 @@ async function loadDownloads() {
       document.querySelector('#release-summary').textContent = messages.release;
       const notes = document.querySelector('#release-notes');
       notes.href = releaseUrl; notes.hidden = false;
+      // Counting never gates the download links or the quickstart controls.
+      void loadDownloadCounts(manifest);
     }
   } catch {
     // Keep useful, honest static content when offline or when the manifest is invalid.
