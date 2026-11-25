@@ -20,9 +20,31 @@ npm --prefix src/site run check
 npm --prefix src/site run build
 ```
 
-`check` inclui o build, testes do renderer Markdown, sintaxe JavaScript, links locais e âncoras de todas as páginas, sitemap, paridade com os documentos/exemplos originais, regras do catálogo de releases, inventário do ZIP e SHA-256. Não compila a engine nem chama providers. `dist/` e `node_modules/` são gerados e ignorados pelo Git.
+`check` inclui o build, testes do renderer Markdown, sintaxe JavaScript, links locais e âncoras de todas as páginas, sitemap, paridade com os documentos/exemplos originais, regras do catálogo de releases, inventário do ZIP e SHA-256. Também serve o resultado por HTTP no loopback: verifica redirecionamentos HTML, bytes dos downloads, tipos de conteúdo, cabeçalhos e respostas 404. Não compila a engine nem chama providers. `dist/` e `node_modules/` são gerados e ignorados pelo Git.
 
 Para hospedar em `crexe.org`, use **apenas o conteúdo de `src/site/dist`** como raiz de um servidor estático HTTPS. Não publique a raiz do repositório. Os assets usam URLs relativas; o canonical e o sitemap identificam `https://crexe.org/`. Configure os tipos `.crexe` como `application/octet-stream`, `.md`/`.sha256` como `text/plain; charset=utf-8` e `.xml` como `application/xml`. O preview local já define os tipos. Nenhum deploy, alteração de DNS ou release é executado por estes scripts.
+
+O build inclui `_headers` com as regras de download do Cloudflare Pages e `404.html` bilíngue para endereços inexistentes. A página 404 usa links à raiz do domínio, pois pode ser servida em qualquer profundidade. O servidor de preview aceita também URLs HTML sem extensão, como no Pages. Referências: [cabeçalhos](https://developers.cloudflare.com/pages/configuration/headers/) e [resolução de páginas e 404](https://developers.cloudflare.com/pages/configuration/serving-pages/).
+
+## Preparar a pasta de publicação
+
+Use uma revisão commitada e um checkout limpo. A saída deve ser nova ou vazia, fora do checkout; relatórios operacionais ficam separados do conteúdo público:
+
+```sh
+npm --prefix src/site run package -- C:/entrega/cloudflare-pages C:/entrega/operacao
+```
+
+O comando executa `check`, copia somente o site publicável e valida novamente a cópia por HTTP. Produz `SITE-INVENTORY.json` com revisão, tamanhos e hashes e `SITE-HTTP.json` com os resultados. Verifica o limite de 25 MiB por arquivo e de 20.000 arquivos do plano Free do Pages. Consulte os [limites atuais do serviço](https://developers.cloudflare.com/pages/platform/limits/) ao publicar.
+
+Para visualizar a pasta entregue sem reconstruí-la:
+
+```sh
+npm --prefix src/site run dev -- --directory C:/entrega/cloudflare-pages
+```
+
+No Cloudflare Pages com integração Git, selecione a raiz do repositório, Node.js 22+ e o comando de build `npm --prefix src/site ci && npm --prefix src/site run check`; a saída é `src/site/dist`. Para upload direto, envie o conteúdo da pasta pública com `index.html` e `_headers` na raiz. Não envie a pasta de operação, invólucros da CI ou pacotes nativos ao Pages.
+
+Os pacotes da engine pertencem ao GitHub Releases. Enquanto a release não estiver acessível sem autenticação, mantenha os URLs de binários como `null`. Depois da publicação, baixe cada pacote e checksum anonimamente, valide o hash, ative os links reais no catálogo e gere outra entrega do site. O GitHub do projeto também precisa estar público para os links externos de código-fonte funcionarem para visitantes.
 
 ## Conteúdo e downloads
 
@@ -36,7 +58,7 @@ Para hospedar em `crexe.org`, use **apenas o conteúdo de `src/site/dist`** como
 - `assets/`: marca e recursos locais, sem fontes remotas.
 - `scripts/`: build, verificação e servidor local.
 
-A seção de ecossistema distingue `crexe.org`, dedicado ao projeto aberto, do portal comercial planejado `crexe.bestows.solutions`. Os textos de licenciamento seguem a [revisão mantida no repositório](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): preservam GNU GPL v3, não anunciam novas concessões MIT/Apache/CC BY, registro de marca ou produtos futuros como já disponíveis.
+A seção do projeto aberto apresenta a implementação, a biblioteca e os caminhos de contribuição e segurança. Os textos de licenciamento seguem a [revisão mantida no repositório](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): preservam GNU GPL v3, não anunciam novas concessões MIT/Apache/CC BY, registro de marca ou produtos futuros como já disponíveis.
 
 Os exemplos `.crexe` e a documentação são copiados de suas fontes mantidas no repositório. Edite os originais e gere novamente o site. Não mantenha uma segunda cópia editorial desses documentos nesta pasta.
 

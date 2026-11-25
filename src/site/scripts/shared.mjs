@@ -7,7 +7,7 @@ export const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 export const repoRoot = path.resolve(siteRoot, '../..');
 export const distRoot = path.join(siteRoot, 'dist');
 
-export const staticFiles = ['index.html', 'en/index.html', 'styles.css', 'publications.css', 'main.js', 'library.js', 'downloads.json', 'robots.txt'];
+export const staticFiles = ['index.html', 'en/index.html', '404.html', '_headers', 'styles.css', 'publications.css', 'main.js', 'library.js', 'downloads.json', 'robots.txt'];
 export const examples = [
   ['examples/plaintext/calculadora.crexe', 'examples/calculadora.crexe'],
   ['examples/markdown/regra-de-tres.crexe', 'examples/regra-de-tres.crexe'],

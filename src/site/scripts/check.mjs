@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { build } from './build.mjs';
+import { checkHttp } from './http-check.mjs';
 import {
   distRoot, examples, git, readJson, repoRoot, siteRoot,
   validateDownloads, within,
@@ -151,3 +152,4 @@ assert.deepEqual(archivedFiles.sort(), committedFiles.sort(), 'The ZIP must cont
 assert(archivedFiles.includes('Cargo.toml') && archivedFiles.includes('src/main.rs') && archivedFiles.includes('LICENSE'));
 console.log(`Checked ${htmlPages.size} HTML pages, sitemap, JavaScript syntax, ${localLinks} local links (${documentation.links.length} in Markdown), ${documentation.files.length} documentation files and ${examples.length} example downloads.`);
 console.log(`Checked release manifest rejection cases and SHA-256/inventory of ${archivedFiles.length} committed source files.`);
+await checkHttp(distRoot);
