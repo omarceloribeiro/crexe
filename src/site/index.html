@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111713">
+  <title>CREXE — Sua ideia. Seu software.</title>
+  <meta name="description" content="Distribua a intenção em um arquivo de texto. O CREXE gera e compila o aplicativo na sua máquina, com o modelo que você escolhe. Conheça o projeto e baixe exemplos .crexe.">
+  <link rel="canonical" href="https://crexe.org/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="CREXE — Sua ideia. Seu software.">
+  <meta property="og:description" content="Download intent. Execute creativity. Um arquivo de texto que pode virar um programa seu.">
+  <meta property="og:url" content="https://crexe.org/">
+  <link rel="icon" type="image/svg+xml" href="assets/mark.svg">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#inicio" aria-label="CREXE, início"><img src="assets/mark.svg" alt="" width="32" height="32"><span>crexe<span class="brand-period">.</span></span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="navigation">Menu <span aria-hidden="true">☰</span></button>
+      <nav id="navigation" aria-label="Navegação principal">
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#exemplos">Exemplos</a>
+        <a href="#documentacao">Documentação</a>
+        <a class="nav-download" href="#downloads">Downloads <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></a>
+      </nav>
+    </div>
+  </header>
+  <main id="conteudo">
+    <section class="hero container" id="inicio" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="tiny-mark" aria-hidden="true">[ / ]</span> CREATIVE EXECUTABLE</p>
+        <h1 id="hero-title">A ideia é sua.<br>O software <em>também.</em></h1>
+        <p class="hero-description">Compartilhe um arquivo de texto.<br>Transforme a intenção em um programa que roda na sua máquina, com os fontes nas suas mãos.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#downloads"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg> Conheça os downloads</a><a class="button button-quiet" href="#como-funciona">Entenda o CREXE</a></div>
+        <p class="hero-meta"><span class="status-label">V1 EM DESENVOLVIMENTO</span> Código aberto · GNU GPL v3</p>
+      </div>
+      <div class="hero-visual" aria-label="Exemplo ilustrativo: uma receita de texto se transforma em uma calculadora">
+        <div class="visual-grid" aria-hidden="true"></div>
+        <div class="recipe-window">
+          <div class="window-bar"><span class="file-icon" aria-hidden="true">≡</span><span>calculadora.crexe</span><span class="file-type">TEXTO PURO</span></div>
+          <div class="recipe-body"><span class="line-number" aria-hidden="true">1</span><p>Gerar uma calculadora simples com as quatro operações, botão de limpar, tratamento de divisão por zero e <span>fundo verde.</span></p></div>
+          <div class="recipe-foot"><span>Uma intenção. Muitas possibilidades.</span><span aria-hidden="true">.crexe</span></div>
+        </div>
+        <div class="transform-line" aria-hidden="true"><span></span><b>[ / ]</b><span></span><small>GERAR · COMPILAR · EXECUTAR</small></div>
+        <div class="calculator-window">
+          <div class="calculator-bar"><span class="app-dot" aria-hidden="true"></span><span>Calculadora</span><span class="window-controls" aria-hidden="true">— □ ×</span></div>
+          <div class="calculator-content"><div class="calculator-equation" id="calculator-equation">12 × 4</div><output class="calculator-display" id="calculator-display" aria-live="polite">48</output>
+            <div class="calculator-keys" aria-label="Calculadora de demonstração">
+              <button type="button" data-key="clear" class="function">AC</button><button type="button" data-key="sign" aria-label="Inverter sinal">±</button><button type="button" data-key="percent" aria-label="Porcentagem">%</button><button type="button" data-key="/" class="operator" aria-label="Dividir">÷</button>
+              <button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button><button type="button" data-key="*" class="operator" aria-label="Multiplicar">×</button>
+              <button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button><button type="button" data-key="-" class="operator" aria-label="Subtrair">−</button>
+              <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button><button type="button" data-key="+" class="operator" aria-label="Somar">+</button>
+              <button type="button" data-key="0" class="zero">0</button><button type="button" data-key="." aria-label="Separador decimal">,</button><button type="button" data-key="=" class="equals" aria-label="Calcular resultado">=</button>
+            </div>
+          </div>
+        </div>
+        <p class="demo-caption">Experimente os botões. Demonstração no navegador, sem IA.</p>
+      </div>
+    </section>
+    <div class="principles-strip"><div class="container"><p>Download intent.<br><strong>Execute creativity.</strong></p><ul><li><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg> Intenção legível</li><li><svg class="icon" aria-hidden="true"><use href="#i-cpu"/></svg> Execução local</li><li><svg class="icon" aria-hidden="true"><use href="#i-code"/></svg> Fontes exportáveis</li></ul></div></div>
+
+    <section class="section container" id="como-funciona" aria-labelledby="how-title">
+      <div class="section-heading"><div><p class="eyebrow">DO TEXTO AO PROGRAMA</p><h2 id="how-title">Software começa<br>com uma intenção.</h2></div><p>O arquivo descreve o que você precisa.<br>O CREXE cuida da geração e da compilação com as ferramentas da sua máquina.</p></div>
+      <div class="process-grid">
+        <article><div class="process-symbol"><svg aria-hidden="true"><use href="#i-file"/></svg><span>ESCREVA</span></div><h3>Descreva em um .crexe</h3><p>Texto puro, Markdown ou YAML. Uma receita que você pode ler, editar e compartilhar como qualquer arquivo.</p><code>“Crie uma calculadora de regra de três.”</code></article>
+        <article><div class="process-symbol"><svg aria-hidden="true"><use href="#i-cpu"/></svg><span>TRANSFORME</span></div><h3>Escolha seu modelo</h3><p>Use Ollama local ou configure OpenAI ou DeepSeek. A engine gera os fontes, compila e executa os testes disponíveis no perfil.</p><div class="provider-list"><span>Ollama</span><span>OpenAI</span><span>DeepSeek</span></div></article>
+        <article><div class="process-symbol"><svg aria-hidden="true"><use href="#i-window"/></svg><span>EXECUTE</span></div><h3>Abra. Edite. Faça seu.</h3><p>O programa roda no seu computador. Sem mudanças, a próxima abertura reutiliza o cache. Uma nova intenção evolui a revisão aprovada.</p><span class="text-detail">Você continua com o projeto e os fontes.</span></article>
+      </div>
+    </section>
+
+    <section class="ownership-section"><div class="container ownership-grid"><div><p class="eyebrow">O QUE FICA COM VOCÊ</p><h2>Pequeno para compartilhar.<br><em>Aberto para transformar.</em></h2><p>Distribua a receita. Ou exporte os fontes da versão que você aprovou. Você escolhe o que entregar.</p><a class="text-link" href="docs/PROJETOS_V1.md">Conheça o projeto exportável <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></a></div><div class="ownership-list"><article><span class="mono-symbol" aria-hidden="true">.crexe</span><div><h3>A intenção viaja com o arquivo</h3><p>Quem recebe pode entender o pedido e adaptá-lo. A mesma receita pode gerar implementações diferentes.</p></div></article><article><span class="mono-symbol" aria-hidden="true">.zip</span><div><h3>Os fontes também são seus</h3><p>Exporte o projeto com scripts de build. Recompile sem CREXE, com os SDKs e dependências exigidos.</p></div></article><article><span class="mono-symbol" aria-hidden="true">local</span><div><h3>Seu modelo. Sua máquina.</h3><p>Com Ollama, a geração é local. Serviços remotos são uma escolha explícita, sem troca automática de provider.</p></div></article></div></div></section>
+
+    <section class="section container" id="exemplos" aria-labelledby="examples-title">
+      <div class="section-heading"><div><p class="eyebrow">COMECE COM UMA IDEIA</p><h2 id="examples-title">É só um arquivo de texto.<br>Abra para ver.</h2></div><p>Baixe uma receita, leia a intenção e personalize.<br>Para gerar o programa, você precisará da engine, de um modelo e do SDK do perfil.</p></div>
+      <div class="examples-grid">
+        <article class="example-card"><div class="card-top"><svg class="icon" aria-hidden="true"><use href="#i-calculator"/></svg><span>TEXTO PURO</span></div><h3>Uma calculadora, do seu jeito.</h3><p>Quatro operações, botão de limpar e um pedido bem específico: fundo verde.</p><pre>Gerar uma calculadora simples com as quatro operações…</pre><a href="examples/calculadora.crexe" download="calculadora.crexe">Baixar calculadora.crexe <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></a></article>
+        <article class="example-card"><div class="card-top"><span class="math-symbol" aria-hidden="true">a:b</span><span>MARKDOWN</span></div><h3>Regra de três. Sem complicar.</h3><p>Informe A, B e C. Receba X, com validação de números e divisão por zero.</p><pre>Crie uma calculadora desktop para resolver A/B = C/X.</pre><a href="examples/regra-de-tres.crexe" download="regra-de-tres.crexe">Baixar regra-de-tres.crexe <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></a></article>
+        <article class="example-card"><div class="card-top"><svg class="icon" aria-hidden="true"><use href="#i-code"/></svg><span>YAML · AVANÇADO</span></div><h3>Mais controle sobre a receita.</h3><p>O formato legado explicita targets e comandos para ferramentas nativas.</p><pre>targets:
+  windows: …
+  linux: …</pre><a href="examples/calculator_native.crexe" download="calculator_native.crexe">Baixar exemplo YAML <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></a></article>
+      </div>
+    </section>
+
+    <section class="downloads-section" id="downloads" aria-labelledby="downloads-title"><div class="container">
+      <div class="section-heading"><div><p class="eyebrow">TRAGA A IDEIA PARA SUA MÁQUINA</p><h2 id="downloads-title">Seu próximo programa<br>começa aqui.</h2></div><div><span class="release-label" id="release-label">V1 · EM DESENVOLVIMENTO</span><p id="release-summary">A release pública está em preparação. Os pacotes de desenvolvimento não são versões estáveis.</p></div></div>
+      <div class="download-grid">
+        <article class="download-card" data-platform="windows"><svg class="platform-icon" aria-hidden="true"><use href="#i-windows"/></svg><h3>Windows</h3><p class="platform-meta">x86_64 · .zip</p><p>Associação de arquivos .crexe, janela de progresso, configuração e editor nativos.</p><span class="download-state">Release em preparação</span><a class="button button-platform" data-package-link hidden>Baixar para Windows</a><a class="checksum-link" data-checksum-link hidden>Checksum SHA-256</a><a class="requirements-link" href="#inicio-rapido" data-choose-os="windows">Ver como começar</a></article>
+        <article class="download-card" data-platform="macos"><svg class="platform-icon" aria-hidden="true"><use href="#i-apple"/></svg><h3>macOS</h3><p class="platform-meta">Apple Silicon · .tar.gz</p><p>Execução pela CLI. Configuração e editor em sessão gráfica. Perfis experimentais.</p><span class="download-state">Release em preparação</span><a class="button button-platform" data-package-link hidden>Baixar para macOS</a><a class="checksum-link" data-checksum-link hidden>Checksum SHA-256</a><a class="requirements-link" href="#inicio-rapido" data-choose-os="macos">Ver como começar</a></article>
+        <article class="download-card" data-platform="linux"><svg class="platform-icon" aria-hidden="true"><use href="#i-terminal"/></svg><h3>Linux</h3><p class="platform-meta">x86_64 · .tar.gz</p><p>Execução pela CLI. Configuração e editor em sessão gráfica. Perfis experimentais.</p><span class="download-state">Release em preparação</span><a class="button button-platform" data-package-link hidden>Baixar para Linux</a><a class="checksum-link" data-checksum-link hidden>Checksum SHA-256</a><a class="requirements-link" href="#inicio-rapido" data-choose-os="linux">Ver como começar</a></article>
+      </div>
+      <div class="source-download"><div><svg class="icon" aria-hidden="true"><use href="#i-code"/></svg><p><strong>Quer explorar agora?</strong> Baixe os fontes da engine e compile localmente.<span id="source-revision">Requer Rust/Cargo e as ferramentas nativas de compilação.</span></p></div><div class="source-links"><a id="source-download" href="downloads/crexe-source.zip" download>Baixar código-fonte <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></a><a id="source-checksum" href="downloads/crexe-source.zip.sha256" download>SHA-256</a></div></div>
+      <details class="checksum-help"><summary>Como verificar um download?</summary><p>Baixe o pacote e seu arquivo <code>.sha256</code>. Compare o hash calculado com o conteúdo do arquivo. Os dois valores devem ser idênticos. Um checksum verifica a integridade; não é uma assinatura do autor.</p><div class="checksum-commands"><p><strong>Windows · PowerShell</strong><code>Get-FileHash .\nome-do-pacote.zip -Algorithm SHA256</code></p><p><strong>macOS</strong><code>shasum -a 256 nome-do-pacote.tar.gz</code></p><p><strong>Linux</strong><code>sha256sum nome-do-pacote.tar.gz</code></p></div><a id="release-notes" hidden>Notas da release</a></details>
+      <noscript><p class="notice">Os exemplos e o código-fonte podem ser baixados sem JavaScript. Para consultar o catálogo configurado de pacotes, abra <a href="downloads.json">os dados de downloads</a>.</p></noscript>
+    </div></section>
+
+    <section class="section container quickstart" id="inicio-rapido" aria-labelledby="quickstart-title"><div class="quickstart-intro"><p class="eyebrow">DO PRIMEIRO ARQUIVO À PRIMEIRA JANELA</p><h2 id="quickstart-title">Prepare. <br>Descreva. <br><em>Execute.</em></h2><p>A engine não inclui modelos de IA nem SDKs. Configure seu provider e prepare as ferramentas do perfil antes de gerar um app.</p><a class="text-link" href="docs/PERFIS_V1.md">Consultar perfis e requisitos <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></a></div><div class="quickstart-content">
+      <div class="os-tabs" role="group" aria-label="Sistema operacional do início rápido"><button type="button" data-os="windows" aria-pressed="true">Windows</button><button type="button" data-os="macos" aria-pressed="false">macOS</button><button type="button" data-os="linux" aria-pressed="false">Linux</button></div>
+      <p class="os-requirements" id="os-requirements">Windows: .NET 8 SDK para Windows Forms. Para compilar a engine a partir dos fontes, prepare Rust/Cargo e o linker Visual C++.</p>
+      <noscript><div class="no-script-guide"><h3>No macOS ou Linux</h3><p>Compile a engine com o mesmo comando Cargo abaixo. No macOS, prepare Apple Clang e o SDK Cocoa; no Linux, GCC, Make, pkg-config e os pacotes de desenvolvimento GTK3. Ambos precisam de Rust/Cargo para compilar a engine e de uma sessão gráfica para configurar.</p><pre>./target/release/crexe configure
+./target/release/crexe doctor --check
+./target/release/crexe examples/plaintext/calculadora.crexe</pre><p>Os passos abaixo mostram o percurso Windows.</p></div></noscript>
+      <ol class="quickstart-steps"><li><h3>Compile os fontes da engine</h3><p>Extraia o ZIP do código-fonte. Na pasta extraída, execute:</p><div class="code-block"><pre><code>cargo build --release --locked</code></pre><button type="button" class="copy-button" data-copy="build-command" aria-label="Copiar comando de compilação"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button><span id="build-command" hidden>cargo build --release --locked</span></div></li><li><h3>Configure e verifique o ambiente</h3><p>Escolha Ollama local ou um provider remoto. O diagnóstico não chama a IA.</p><div class="code-block"><pre><code id="configure-command">.\target\release\crexe.exe configure
+.\target\release\crexe.exe doctor --check</code></pre><button type="button" class="copy-button" data-copy="configure-command" aria-label="Copiar comandos de configuração"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div></li><li><h3>Abra sua primeira receita</h3><p>Use o exemplo já incluído no código-fonte. Este comando inicia a geração, compilação e execução.</p><div class="code-block"><pre><code id="run-command">.\target\release\crexe.exe examples/plaintext/calculadora.crexe</code></pre><button type="button" class="copy-button" data-copy="run-command" aria-label="Copiar comando de execução"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div></li></ol>
+      <p class="quickstart-note">A primeira geração pode levar alguns minutos. A qualidade depende do modelo. O SDK do perfil continua necessário para compilar os programas.</p><p class="copy-status" id="copy-status" role="status"></p>
+    </div></section>
+
+    <section class="docs-section container" id="documentacao" aria-labelledby="docs-title"><div class="section-heading"><div><p class="eyebrow">UM PROJETO ABERTO, POR INTEIRO</p><h2 id="docs-title">Leia além da landing.</h2></div><p>Documentos mantidos no repositório e incluídos nesta publicação, em Markdown.</p></div><div class="docs-grid"><a href="README.md"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span><strong>Guia do projeto</strong><small>Conceito, instalação e estado atual</small></span></a><a href="docs/CONFIGURACAO.md"><svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg><span><strong>Configuração</strong><small>Providers, modelos e credenciais</small></span></a><a href="docs/FORMATOS_V1.md"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span><strong>Formatos .crexe</strong><small>Texto puro, Markdown e YAML</small></span></a><a href="docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md"><svg class="icon" aria-hidden="true"><use href="#i-code"/></svg><span><strong>RFCs e visão do projeto</strong><small>Rascunho histórico, em reconciliação</small></span></a></div></section>
+
+    <section class="limits-section container" aria-labelledby="limits-title"><div><p class="eyebrow">TRANSPARÊNCIA DESDE O COMEÇO</p><h2 id="limits-title">Em desenvolvimento.<br>Com limites claros.</h2></div><div class="faq-list"><details><summary>O CREXE isola o programa da minha máquina?</summary><p>Não. Compilação e execução usam o host com as permissões do usuário. A pasta temporária organiza os arquivos, mas não isola processos, rede ou dados. Execute apenas receitas e código em que você confia. <a href="SECURITY.md">Leia os limites de segurança.</a></p></details><details><summary>Funciona sem internet?</summary><p>A geração com Ollama pode ser local. Depois de preparar o modelo, os SDKs e as dependências, esse percurso pode funcionar sem internet. Downloads e restauração de dependências podem exigir rede. Providers remotos exigem conexão e podem cobrar pelo uso.</p></details><details><summary>Preciso instalar Rust para usar o CREXE?</summary><p>Somente para compilar a engine a partir dos fontes. O pacote compilado da engine dispensa Rust e Python, mas os aplicativos gerados ainda precisam das ferramentas do seu perfil. Docker e WSL não são requisitos.</p></details><details><summary>Uma receita sempre gera o mesmo programa?</summary><p>Não. Modelos e gerações podem produzir implementações diferentes. Para compartilhar exatamente os fontes aprovados, exporte o projeto. Na mesma máquina, reabrir uma receita sem mudanças reutiliza a revisão validada em cache.</p></details><details><summary>Qual é a licença dos programas gerados?</summary><p>A engine CREXE usa GNU GPL v3. A licença de cada artefato gerado depende do projeto e de suas dependências; ela não é definida automaticamente pela licença da engine.</p></details></div></section>
+
+    <section class="closing container"><span class="closing-mark" aria-hidden="true">[ / ]</span><div><p>Menos distância entre imaginar e executar.</p><h2>O próximo arquivo pode ser seu.</h2></div><a class="button button-primary" href="#exemplos">Explore os exemplos <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg></a></section>
+  </main>
+  <footer class="site-footer container"><a class="brand" href="#inicio"><img src="assets/mark.svg" alt="" width="28" height="28"><span>crexe<span class="brand-period">.</span></span></a><p>Creative Executable.<br><span>Download intent. Execute creativity.</span></p><nav aria-label="Links do projeto"><a href="https://github.com/omarceloribeiro/crexe">GitHub</a><a href="SECURITY.md">Segurança</a><a href="LICENSE.txt">GNU GPL v3</a></nav><span class="footer-domain">crexe.org</span></footer>
+  <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true"><defs>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8zm0 0v6h5M8 13h8m-8 4h6"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 7-5 5 5 5m10-10 5 5-5 5M14 3l-4 18"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 1v4m6-4v4M9 19v4m6-4v4M1 9h4m-4 6h4M19 9h4m-4 6h4"/><path d="M9 9h6v6H9z"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 8h20M5 5.5h1m2 0h1"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1zm0 0v15"/></symbol>
+    <symbol id="i-calculator" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8v3H8zm0 7h2m4 0h2m-8 4h2m4 0h2"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="m6 8 4 4-4 4m7 0h5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V3H3v13h5"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 3v4m0 4v10M12 3v10m0 4v4M20 3v4m0 4v10M1 7h6v4H1zm8 6h6v4H9zm8-6h6v4h-6z"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 24 24"><path d="m2 5 8-1v7H2zm11-1 9-2v9h-9zM2 13h8v7l-8-1zm11 0h9v9l-9-2z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path d="M16 2c0 2-1 4-4 4 0-2 1-4 4-4ZM12 7c2 0 3-1 5 0l2 2c-4 2-3 7 1 8-1 3-3 5-5 4l-3-1-3 1C5 22 2 14 4 10c2-5 5-3 8-3Z" fill="currentColor" stroke="none"/></symbol>
+  </defs></svg>
+</body>
+</html>
