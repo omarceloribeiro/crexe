@@ -1,6 +1,6 @@
 # Licensing and organization of the CREXE ecosystem
 
-Review dated 24 November 2026 of the licensing plan dated 14 October 2026 and the current implementation. The retained decision is **GNU GPL v3 for the engine**. This record distinguishes what already exists from proposed formal arrangements; it does not constitute a new license, trademark policy, or legal opinion.
+Review dated 25 November 2026. The engine remains under **GNU GPL v3**. **Users choose the license of the application they generate, including a proprietary license.** CREXE-provided output materials and official recipes receive the **MIT-0** grant in [LICENSE-GENERATED](../../LICENSE-GENERATED). This document explains that separation and future proposals; it does not replace the license texts or constitute legal advice.
 
 ## Decision and current status
 
@@ -10,7 +10,7 @@ Separating the open project from commercial products is consistent with CREXE's 
 | --- | --- |
 | Engine/CLI | GNU GPL v3 text in [LICENSE](../../LICENSE), referenced through `license-file` in [Cargo.toml](../../Cargo.toml). |
 | Future GPL versions | The plan proposes `GPL-3.0-or-later`; the current README does not add that permission. The variant must be explicitly settled before changing metadata and notices. |
-| Templates and examples | No specific MIT/Apache grant implementing the proposed matrix exists yet. |
+| Output materials and official examples | Explicit MIT-0 grant in [LICENSE-GENERATED](../../LICENSE-GENERATED), with a defined scope. No license is automatically assigned to the application. |
 | Documentation and site code | This review does not apply CC BY, MIT, or Apache to existing files. |
 | Protocols, external SDKs, `.crexp`, and certification | Future directions, not functionality or policies delivered in this version. |
 | Trademark and ownership | The plan presents Bestows Solutions Ltda. as the proposed owner. This review does not establish an assignment of rights or trademark registration. |
@@ -30,26 +30,34 @@ There is no need to create all planned repositories before their components exis
 
 ## Engine, generated programs, and separate products
 
-Using a GPL tool does not automatically make its output GPL. Code incorporated from the tool itself, templates, dependencies, and assets may impose specific conditions. Exporting sources therefore does not amount to granting unrestricted rights over all content. Reference: [GNU FAQ on program output](https://www.gnu.org/licenses/gpl-faq.html#GPLOutput).
+Users who generate an application with CREXE may use, modify, sell and distribute their program under their chosen license, including a closed/proprietary license. CREXE does not require source publication, royalties or attribution to CREXE. Using a GPL tool does not automatically make its output GPL. Reference: [GNU GPL v3, section 2](https://www.gnu.org/licenses/gpl-3.0.html#section2).
+
+To give the engine's own templates that same freedom, its materials incorporated into output are offered under [MIT No Attribution (MIT-0)](https://spdx.org/licenses/MIT-0.html), within the scope of [LICENSE-GENERATED](../../LICENSE-GENERATED). This license permits sublicensing and selling without requiring attribution or retention of the notice. The grant also covers those materials in already generated applications; it does not change the engine's license.
+
+Third-party code, libraries, assets and recipes retain their own terms, as do the terms of the model/provider used. Users choose the application's license while respecting those terms. CREXE neither claims ownership of output nor determines its copyright status, and cannot grant rights held by others. The exporter does not automatically audit those licenses.
 
 Communication through a CLI, pipes, or IPC often indicates separate programs, but is not a legal guarantee: coupling and the data exchanged also matter. A proprietary integration must be assessed in its concrete circumstances. Reference: [GNU FAQ on aggregation](https://www.gnu.org/licenses/gpl-faq.html#MereAggregation).
 
 The GPL permits commercial activity. Its source-provision mechanism is tied to distribution conditions; it does not contain the AGPL's network-interaction obligation. This does not remove the need to assess distribution of a commercial product's components. References: [GNU GPL v3, sections 2 and 6](https://www.gnu.org/licenses/gpl-3.0.html), [GNU FAQ on modified versions](https://www.gnu.org/licenses/gpl-faq.html#UnreleasedMods).
 
-### Concrete outstanding item: exported templates
+### Output materials licensed under MIT-0
 
-The plan calls for permissive templates and a license inventory, but that separation still needs to be implemented:
+The grant covers CREXE-authored portions of the following materials, their copies and modifications. The Rust implementations that produce them remain GPLv3:
 
 | Content | Current origin |
 | --- | --- |
 | `.csproj` project inserted into the app | [src/profiles.rs](../../src/profiles.rs), .NET project creation/preparation functions. |
 | GTK profile Makefile | [src/profiles/native.rs](../../src/profiles/native.rs). |
 | Exported build/run/test/publish scripts and README | [src/package.rs](../../src/package.rs). |
-| Project and generation manifests | [src/project.rs](../../src/project.rs) and [src/history.rs](../../src/history.rs); no template license inventory or third-party notices yet. |
+| Project and generation manifest structures and text | [src/project.rs](../../src/project.rs) and [src/history.rs](../../src/history.rs). The generation manifest remains in the local revision; it is not included in the source ZIP. |
+| Instructions and contracts incorporated into output and generated recipes | [src/reader.rs](../../src/reader.rs), profiles, [src/orchestration.rs](../../src/orchestration.rs) and [src/generator.rs](../../src/generator.rs), only their emitted materials. |
+| Official recipes and packaged example documents | The `examples/` directory and example text in [scripts/package-engine.py](../../scripts/package-engine.py). |
 
-Before promising permissive use of templates, inventory those sections, confirm ownership, select the applicable grant, separate their files/notices, and include the required licenses in exports. The current package does not automatically create a validated license for the application. This does not justify concluding that all output is GPL; it prevents claiming that the plan's permissive release has already been applied.
+The project and its ZIP receive `CREXE-OUTPUT-LICENSE.txt`, a copy of `LICENSE-GENERATED`. The notice identifies the grant for CREXE materials and may be removed under MIT-0. The exporter preserves a user-provided `LICENSE`; it does not assign a license to the whole application. Exporting an older revision also includes the current notice without regenerating the application or changing its cached revision.
 
-Official recipes also need an explicit grant before they can be advertised as MIT. The [engine packager](../../scripts/package-engine.py) currently bundles examples and the engine license, without a separate MIT license for recipes.
+Engine packages include both `LICENSE` (the engine's GPLv3) and `LICENSE-GENERATED` (MIT-0 for the designated materials and official examples). This grant does not automatically cover all documentation, conformance tests or independent format implementations.
+
+Dependencies remain outside this grant. For example, OpenTK and its dependencies in the .NET OpenGL profile, GTK/libepoxy, Apple frameworks and compiler runtimes retain their own licenses and distribution conditions. Building or exporting does not turn these components into CREXE MIT-0 code.
 
 ## Format, identity, and trademark
 
@@ -65,4 +73,4 @@ Apache 2.0 for future SDKs/protocols and CC BY 4.0 for documentation are options
 
 A CLA is not a general requirement for maintaining a GPL project. Alternative commercial licensing requires control of sufficient rights over all involved parts; a CLA or assignment can be an instrument for that purpose. This record does not establish an active CLA. Reference: [Open Source Initiative — contribution agreements](https://opensource.org/faq).
 
-Before turning the plan into binding policies, settle the GPL variant, ownership, template/documentation grants, contribution rights, and trademark rules. Contractual and trademark formalization should receive legal review. Meanwhile, the public presentation describes the existing license and the capabilities actually implemented.
+The MIT-0 scope for output materials and examples is explicit in `LICENSE-GENERATED`; new contributions to those materials must respect that grant. Future decisions about the GPL variant, corporate ownership, documentation, contribution rights and trademark rules remain separate. Contractual and trademark formalization should receive legal review. The public presentation describes the existing licenses and capabilities actually implemented.

@@ -60,7 +60,7 @@ Os pacotes da engine pertencem ao GitHub Releases. Enquanto a release não estiv
 - `assets/`: marca e recursos locais, sem fontes remotas.
 - `scripts/`: build, verificação e servidor local.
 
-A seção do projeto aberto apresenta a implementação, a biblioteca e os caminhos de contribuição e segurança. Os textos de licenciamento seguem a [revisão mantida no repositório](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): preservam GNU GPL v3, não anunciam novas concessões MIT/Apache/CC BY, registro de marca ou produtos futuros como já disponíveis.
+A seção do projeto aberto apresenta a implementação, a biblioteca e os caminhos de contribuição e segurança. Os textos seguem a [revisão de licenciamento](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): a engine permanece GNU GPL v3 e a concessão MIT-0 dos materiais de saída está vigente no escopo de [LICENSE-GENERATED](../../LICENSE-GENERATED). Outras políticas, registro de marca e produtos futuros permanecem propostas, sem anúncio de disponibilidade.
 
 As duas landings apresentam **Gerar com CREXE**: selecionar um documento comum para gerar ou reutilizar um leitor que o abra. O texto distingue o menu Windows do seletor da janela em macOS/Linux, descreve o contrato inicial de leitura, a chamada única de planejamento por preparação do leitor e o uso do cache. O site não recebe documentos nem gera programas no navegador. A referência de implementação vem dos guias do projeto em português e inglês; ensaios de CI, modelo real e desktop não devem ser apresentados como equivalentes.
 

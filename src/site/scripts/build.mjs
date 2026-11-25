@@ -12,8 +12,14 @@ import {
 export async function build() {
   validateDownloads(await readJson(path.join(siteRoot, 'downloads.json')));
   const documentation = await collectDocumentation();
+  // Publish the output-material license at its original path, including when no
+  // maintained Markdown has linked to it yet. Source archives still use HEAD.
+  if (!documentation.files.some(([, destination]) => destination === 'LICENSE-GENERATED')) {
+    documentation.files.push(['LICENSE-GENERATED', 'LICENSE-GENERATED']);
+  }
   // Validate source inputs before replacing a previous build.
   await Promise.all(staticFiles.map((file) => readFile(path.join(siteRoot, file))));
+  await readFile(path.join(repoRoot, 'LICENSE-GENERATED'));
   const revision = git(['rev-parse', '--verify', 'HEAD']).trim();
   const shortRevision = revision.slice(0, 12);
   const archiveName = `crexe-source-${shortRevision}.zip`;

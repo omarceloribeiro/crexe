@@ -1,0 +1,89 @@
+CREXE output materials and official examples / Materiais de saída e exemplos oficiais
+SPDX-License-Identifier for the materials defined below: MIT-0
+
+ENGLISH — SCOPE
+
+The user chooses the license of the application they generate with CREXE,
+including a proprietary license. CREXE does not require publication of the
+application's source, royalties, or attribution to CREXE. The engine remains
+under GNU GPL v3 in LICENSE; merely generating, building or exporting an
+application does not make that application GPL.
+
+The CREXE-authored portions of the following materials are additionally
+licensed under MIT No Attribution (MIT-0), whose text appears below:
+
+* Project and build templates emitted by src/profiles.rs and
+  src/profiles/native.rs, including CrexeApp.csproj and CrexeBuild.mk.
+* Build, run, test and publish scripts, CREXE-README.md and this output notice
+  emitted by src/package.rs.
+* CREXE-authored text and structure emitted into CREXE-PROJECT.json,
+  CREXE-GENERATION.json and generated recipes, including template, instruction
+  and contract text from src/project.rs, src/history.rs, src/reader.rs,
+  src/profiles.rs, src/profiles/native.rs, src/orchestration.rs and src/generator.rs.
+* The official recipes under examples/ and the example document text included
+  in engine packages by scripts/package-engine.py.
+
+This grant covers those materials and their use in generated source code and
+compiled applications, including already generated applications. It does not
+relicense the Rust implementations, engine binaries, or the rest of this
+repository. Future contributions to these designated materials are made under
+MIT-0 as well as the repository license unless explicitly agreed otherwise.
+
+This is a license for CREXE-provided materials, not an automatic license for
+the entire application. It neither claims ownership of user/model output nor
+determines whether that output qualifies for copyright. Third-party code,
+libraries, assets and recipes keep their own terms; model/provider terms also
+remain applicable. CREXE cannot grant rights held by others. The user selects
+the application's license while respecting those applicable terms.
+
+The notice is supplied for clarity and may be removed from distributions of
+these MIT-0 materials. MIT-0 does not require attribution or retention of this
+notice. It does not waive separate third-party notice obligations or authorize
+claiming that an application is an official CREXE product.
+
+PORTUGUÊS — ESCOPO
+
+O usuário escolhe a licença do aplicativo que gerar com CREXE, inclusive uma
+licença proprietária. O CREXE não exige publicação dos fontes do aplicativo,
+royalties ou atribuição ao CREXE. A engine permanece sob GNU GPL v3 em LICENSE;
+gerar, compilar ou exportar um aplicativo não torna esse aplicativo GPL.
+
+As partes de autoria do CREXE dos materiais enumerados no escopo em inglês
+acima também são licenciadas sob MIT No Attribution (MIT-0): templates de
+projeto e build, scripts e README exportados, textos e estruturas dos manifestos
+e receitas geradas, instruções e contratos incorporados à saída, receitas
+oficiais em examples/ e documentos de exemplo incluídos nos pacotes da engine.
+Essa concessão abrange seu uso em fontes e aplicativos compilados, inclusive
+os já gerados. Ela não relicencia a implementação Rust, o binário da engine ou
+o restante do repositório. Contribuições futuras a esses materiais seguem
+MIT-0 além da licença do repositório, salvo acordo explícito em contrário.
+
+Esta é a licença dos materiais fornecidos pelo CREXE, não uma licença automática
+para todo o aplicativo. Ela não reivindica titularidade sobre a saída do usuário
+ou do modelo nem determina sua proteção autoral. Código, bibliotecas, assets e
+receitas de terceiros mantêm seus termos; termos do modelo/provider também
+continuam aplicáveis. O CREXE não pode conceder direitos de terceiros. O usuário
+escolhe a licença do aplicativo respeitando esses termos aplicáveis.
+
+Este aviso é fornecido para clareza e pode ser removido das distribuições dos
+materiais MIT-0. MIT-0 não exige atribuição ou retenção deste aviso. Isso não
+dispensa avisos exigidos por terceiros nem autoriza apresentar o aplicativo
+como produto oficial do CREXE.
+
+MIT No Attribution
+
+Copyright (c) 2026 CREXE contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

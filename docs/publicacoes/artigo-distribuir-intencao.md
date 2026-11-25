@@ -37,7 +37,7 @@ Uma receita e um projeto exportado atendem a objetivos distintos. A receita perm
 
 Por isso, distribuir intenção não elimina a distribuição de fontes. No CREXE, a exportação inclui arquivos do projeto, manifesto e scripts. A pessoa que recebe esse material pode trabalhar nele sem depender da engine para recompilá-lo, conforme o [contrato das operações do projeto](../PROJETOS_V1.md). O resultado continua sujeito às dependências e às condições do ambiente.
 
-Ter acesso aos arquivos também não equivale a obter direitos irrestritos sobre tudo que contêm. A engine permanece sob GNU GPL v3. A licença de cada aplicativo depende do projeto e do conteúdo incorporado, incluindo dependências, assets e templates. A separação permissiva dos templates prevista para o ecossistema ainda precisa ser formalizada e implementada. A [revisão de licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) registra essa distinção.
+O usuário escolhe a licença do aplicativo, inclusive proprietária, e pode vendê-lo sem obrigação de abrir os fontes ou creditar o CREXE. A engine permanece GNU GPL v3; seus materiais incorporados à saída e as receitas oficiais têm concessão MIT-0. Dependências, assets e receitas de terceiros, assim como os termos do modelo/provider, conservam suas condições. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) explica o escopo dessa liberdade e o aviso incluído na exportação.
 
 ## A liberdade precisa de critérios
 

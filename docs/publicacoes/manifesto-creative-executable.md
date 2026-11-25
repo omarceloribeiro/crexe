@@ -34,7 +34,7 @@ A engine atual executa programas com as permissões do usuário e não oferece i
 
 A engine permanece sob GNU GPL v3. Formatos, fontes e documentação devem permitir compreender o projeto e discutir sua evolução. A intenção de abertura também precisa de contratos claros, contribuições responsáveis e respeito ao conteúdo incorporado.
 
-Exportar um projeto não determina automaticamente sua licença. Dependências, assets e templates têm condições próprias, e a separação permissiva dos templates ainda é uma pendência. A [revisão de licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) distingue o que existe das propostas para o ecossistema.
+O usuário escolhe a licença do programa gerado, inclusive proprietária. O CREXE não exige abrir os fontes ou receber crédito; seus materiais incorporados à saída e as receitas oficiais são MIT-0. A engine continua GPLv3. Condições de dependências, assets, receitas de terceiros e do modelo/provider permanecem aplicáveis. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) detalha esse escopo.
 
 ## O futuro é um trabalho compartilhado
 

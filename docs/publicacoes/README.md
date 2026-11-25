@@ -30,7 +30,7 @@ A coleção também tem [edição completa em inglês](../en/publicacoes/README.
 
 ## Referências da implementação
 
-O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.md), a [configuração](../CONFIGURACAO.md), os [perfis](../PERFIS_V1.md), os [projetos exportados](../PROJETOS_V1.md) e os [limites de segurança](../../SECURITY.md) descrevem o comportamento entregue. A [revisão de licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) continua separando GNU GPL v3 das concessões futuras propostas.
+O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.md), a [configuração](../CONFIGURACAO.md), os [perfis](../PERFIS_V1.md), os [projetos exportados](../PROJETOS_V1.md) e os [limites de segurança](../../SECURITY.md) descrevem o comportamento entregue. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) distingue a GNU GPL v3 da engine, a MIT-0 vigente para os materiais de saída e exemplos oficiais e as demais políticas futuras propostas.
 
 ## Critérios editoriais
 
@@ -40,7 +40,7 @@ O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.
 - Não anunciar integrações com APIs nativas, suporte a novos sistemas, assinaturas ou certificações antes de existirem e serem verificados.
 - Não prometer redução universal de tamanho, custo ou tempo sem medições comparáveis.
 - Manter exemplos executáveis alinhados aos contratos atuais; marcar pseudocódigo e propostas como tais.
-- Preservar as licenças existentes. Esta coleção não acrescenta CC BY, MIT, Apache ou permissões de marca.
+- Preservar as licenças existentes. Os textos desta coleção não recebem uma nova licença CC BY, MIT ou Apache nem concedem permissões de marca; descrevem separadamente a concessão MIT-0 dos materiais de saída e exemplos em `LICENSE-GENERATED`.
 
 ## Edição e publicação no site
 

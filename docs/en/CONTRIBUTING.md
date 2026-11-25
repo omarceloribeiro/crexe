@@ -2,6 +2,8 @@
 
 The active implementation is the Cargo package at the repository root, derived from `baseline/pre-v1`. Experiments are in `docs/archive`; contextual files from the other machine remain private and ignored.
 
+The engine is GNU GPL v3. CREXE-provided materials incorporated into output and official recipes also have the MIT-0 grant scoped in [LICENSE-GENERATED](../../LICENSE-GENERATED). Contributions to those materials must preserve that freedom so users can choose their application's license. Do not incorporate third-party content with incompatible terms into those templates or examples; dependencies with their own licenses must remain separately identified.
+
 Use `rust-toolchain.toml`. Before proposing changes:
 
 ```sh

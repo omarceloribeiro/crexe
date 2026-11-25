@@ -6,7 +6,7 @@
     "category": "whitepaper",
     "status": "Fundamentos e implementação",
     "source": "docs/publicacoes/whitepaper-fundamentos.md",
-    "date": "2026-11-24",
+    "date": "2026-11-25",
     "notice": "White paper informativo. Descreve a implementação em desenvolvimento e distingue suas capacidades das extensões propostas.",
     "language": "pt-BR"
   },
@@ -50,7 +50,7 @@
     "category": "article",
     "status": "Artigo",
     "source": "docs/publicacoes/artigo-distribuir-intencao.md",
-    "date": "2026-11-24",
+    "date": "2026-11-25",
     "notice": "Texto editorial. A proposta complementa a distribuição de binários e fontes; não presume substituição universal desses modelos.",
     "language": "pt-BR"
   },
@@ -83,7 +83,7 @@
     "category": "manifesto",
     "status": "Manifesto",
     "source": "docs/publicacoes/manifesto-creative-executable.md",
-    "date": "2026-11-24",
+    "date": "2026-11-25",
     "notice": "Declaração de princípios. Não é uma especificação normativa, uma nova licença ou uma garantia de recursos já entregues.",
     "language": "pt-BR"
   },
@@ -146,12 +146,12 @@
   {
     "slug": "licenciamento",
     "title": "Licenciamento e ecossistema",
-    "description": "GNU GPL v3, conteúdo exportado e a separação entre projeto aberto e produtos comerciais planejados.",
+    "description": "Engine GNU GPL v3, materiais de saída MIT-0 e liberdade para escolher a licença do app, inclusive proprietária.",
     "category": "reference",
     "status": "Revisão de licenciamento",
     "source": "docs/LICENCIAMENTO_E_ECOSSISTEMA.md",
-    "date": "2026-11-24",
-    "notice": "Registro de revisão, não uma nova licença ou parecer jurídico. A GNU GPL v3 da engine permanece preservada.",
+    "date": "2026-11-25",
+    "notice": "A engine permanece GNU GPL v3. Os materiais CREXE incorporados à saída usam MIT-0, sem exigir abertura de fontes ou crédito ao CREXE. As condições de terceiros e do provider continuam aplicáveis; consulte o escopo de LICENSE-GENERATED.",
     "language": "pt-BR"
   },
   {

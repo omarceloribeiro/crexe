@@ -251,6 +251,7 @@ pub(crate) fn reserved(path: &str) -> bool {
         super::history::METADATA,
         "source.zip",
         "CREXE-README.md",
+        "CREXE-OUTPUT-LICENSE.txt",
         "build.bat",
         "run.bat",
         "test.bat",

@@ -50,6 +50,7 @@ def main():
         files = {
             binary.name: (binary.read_bytes(), 0o755),
             'LICENSE': ((ROOT / 'LICENSE').read_bytes(), 0o644),
+            'LICENSE-GENERATED': ((ROOT / 'LICENSE-GENERATED').read_bytes(), 0o644),
             'config.example.toml': ((ROOT / 'config.example.toml').read_bytes(), 0o644),
             'examples/calculadora.crexe': ((ROOT / 'examples/plaintext/calculadora.crexe').read_bytes(), 0o644),
             'examples/regra-de-tres.crexe': ((ROOT / 'examples/markdown/regra-de-tres.crexe').read_bytes(), 0o644),
@@ -140,7 +141,12 @@ Não execute receitas/código nos quais você não confia. Windows Sandbox é pr
 
 Confira a documentação, requisitos e limites: https://github.com/omarceloribeiro/crexe/tree/{revision}
 Código-fonte correspondente: {source_url}
-A licença da engine está em LICENSE. Ela não define automaticamente a licença de apps gerados.
+A licença GPL da engine está em LICENSE. LICENSE-GENERATED descreve a permissão MIT-0
+para os materiais de saída fornecidos pelo CREXE, incluindo as receitas oficiais.
+Você escolhe a licença do seu aplicativo, inclusive proprietária ou comercial; o CREXE
+não exige publicar seus fontes nem dar crédito ao CREXE. Dependências, receitas de
+terceiros, assets e termos do provider podem ter condições próprias. A permissão
+dos materiais CREXE não licencia automaticamente o aplicativo inteiro.
 '''
         files['LEIA-ME.md'] = (readme.encode('utf-8'), 0o644)
         manifest = {'schema': 1, 'status': 'development snapshot', 'version': version,

@@ -7,7 +7,7 @@
     "status": "Foundations and implementation",
     "language": "en",
     "source": "docs/en/publicacoes/whitepaper-fundamentos.md",
-    "date": "2026-11-24",
+    "date": "2026-11-25",
     "notice": "Informational white paper. Describes the implementation under development and distinguishes its capabilities from proposed extensions."
   },
   {
@@ -51,7 +51,7 @@
     "status": "Article",
     "language": "en",
     "source": "docs/en/publicacoes/artigo-distribuir-intencao.md",
-    "date": "2026-11-24",
+    "date": "2026-11-25",
     "notice": "Editorial article. The proposal complements binary and source distribution; it does not assume those models will be universally replaced."
   },
   {
@@ -84,7 +84,7 @@
     "status": "Manifesto",
     "language": "en",
     "source": "docs/en/publicacoes/manifesto-creative-executable.md",
-    "date": "2026-11-24",
+    "date": "2026-11-25",
     "notice": "Statement of principles. It is not a normative specification, a new license, or a guarantee of features already delivered."
   },
   {
@@ -146,13 +146,13 @@
   {
     "slug": "licenciamento",
     "title": "Licensing and ecosystem",
-    "description": "GNU GPL v3, exported content, and the distinction between the open project and planned commercial products.",
+    "description": "The GNU GPL v3 engine, MIT-0 output materials, and freedom to choose the app’s license, including a proprietary license.",
     "category": "reference",
     "status": "Licensing review",
     "language": "en",
     "source": "docs/en/LICENCIAMENTO_E_ECOSSISTEMA.md",
-    "date": "2026-11-24",
-    "notice": "Translation of a review record, not a new license or legal opinion. The engine's GNU GPL v3 remains unchanged."
+    "date": "2026-11-25",
+    "notice": "The engine remains GNU GPL v3. CREXE materials incorporated into output use MIT-0, without requiring source disclosure or CREXE attribution. Third-party and provider terms still apply; see the scope in LICENSE-GENERATED."
   },
   {
     "slug": "project-overview",

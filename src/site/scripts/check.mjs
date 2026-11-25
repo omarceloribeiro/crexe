@@ -88,6 +88,12 @@ for (const [source, destination] of [...documentation.files, ...examples]) {
   assert((await readFile(path.join(repoRoot, source))).equals(await readFile(path.join(distRoot, destination))),
     `${destination} must match its maintained repository source byte for byte.`);
 }
+for (const [page, licenseUrl] of [['index.html', 'LICENSE-GENERATED'], ['en/index.html', '../LICENSE-GENERATED']]) {
+  assert(htmlPages.get(page).includes(`href="${licenseUrl}" download`),
+    `The output-material license must be downloadable from ${page}.`);
+}
+assert((await readFile(path.join(repoRoot, 'LICENSE-GENERATED'))).equals(await readFile(path.join(distRoot, 'LICENSE-GENERATED'))),
+  'The output-material license download must preserve the maintained file byte for byte.');
 const originalRfc = 'docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md';
 assert.equal(createHash('sha256').update(await readFile(path.join(distRoot, originalRfc))).digest('hex'),
   'b889ddc77e9d156da5a656c3abefaf49c0b46a5a54c3759542f83e12421bb1f8', 'The supplied English RFC original must remain unchanged.');
