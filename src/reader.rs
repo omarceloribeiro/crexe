@@ -221,6 +221,7 @@ pub(crate) fn open(file: &Path, cli: &Cli, keep_as_default: bool) -> Result<()> 
     result?;
     if keep_as_default {
         presentation::finish();
+        #[cfg(windows)]
         drop(_progress);
         open_kept(&document, &kind.identifier, cli.ui, true)?;
     }
