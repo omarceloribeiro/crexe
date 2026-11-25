@@ -1,6 +1,6 @@
 # CREXP — Creative Executable Package
 
-**Status: minimal preview on `feature/v1`; the complete architecture remains on the roadmap.** CREXP is a ZIP of specifications: multiple Markdown documents describe the software you want to generate. The initial implementation turns these documents into textual intent and reuses the engine's generation, build, test, and repair workflow.
+**Status: minimal preview merged into `main` and available in public prerelease `v1.0.0-preview.1`; the complete architecture remains on the roadmap.** CREXP is a ZIP of specifications: multiple Markdown documents describe the software you want to generate. The initial implementation turns these documents into textual intent and reuses the engine's generation, build, test, and repair workflow.
 
 This is the maintained guide to the preview, and the English counterpart of the Portuguese guide. It is **not a full translation of the handoff**. The [complete original Portuguese handoff](../../formatos/originais/CREXP-HANDOFF-COMPLETO.md) is available unchanged. It contains future proposals, pseudocode, and earlier licensing discussions; the [current policy](../LICENCIAMENTO_E_ECOSSISTEMA.md) is MIT for the engine and MIT-0 for designated output materials.
 

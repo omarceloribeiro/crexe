@@ -2,7 +2,7 @@
 
 **Generated once. Opened whenever needed.** CREXB combines a recipe and an accepted application version in a controlled ZIP. On a compatible computer, the engine validates the bundle, prepares its cache, and opens the program without calling AI or recompiling.
 
-**Status: minimal preview on `feature/v1`.** This guide describes the delivered subset and is the English counterpart of the Portuguese guide, **not a full translation of the handoff**. The [complete original handoff](../../formatos/originais/CREXB-HANDOFF-COMPLETO.md) remains available in Portuguese, unchanged. The complete proposal includes future features and earlier licensing discussions. The [current policy](../LICENCIAMENTO_E_ECOSSISTEMA.md) uses MIT for the engine and MIT-0 for designated output materials.
+**Status: minimal preview merged into `main` and available in public prerelease `v1.0.0-preview.1`.** This guide describes the delivered subset and is the English counterpart of the Portuguese guide, **not a full translation of the handoff**. The [complete original handoff](../../formatos/originais/CREXB-HANDOFF-COMPLETO.md) remains available in Portuguese, unchanged. The complete proposal includes future features and earlier licensing discussions. The [current policy](../LICENCIAMENTO_E_ECOSSISTEMA.md) uses MIT for the engine and MIT-0 for designated output materials.
 
 ## Share the accepted version
 

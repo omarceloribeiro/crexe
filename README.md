@@ -4,7 +4,7 @@ Um arquivo `.crexe` descreve a intenção de um aplicativo. A engine gera um pro
 
 Com **Gerar com CREXE**, o ponto de partida também pode ser um documento comum: selecione o arquivo e a engine gera ou reutiliza um leitor, que recebe esse documento ao abrir.
 
-**Em desenvolvimento na branch `feature/v1`; ainda não é uma release pública.** O executor original está preservado na tag `baseline/pre-v1`. Veja o [plano](docs/PLANO_V1.md) e o [registro da implementação](docs/IMPLEMENTACAO_V1.md) para distinguir funcionalidades presentes de critérios pendentes.
+**Primeira pré-release pública: [v1.0.0-preview.1](https://github.com/omarceloribeiro/crexe/releases/tag/v1.0.0-preview.1).** É uma prévia de desenvolvimento, não uma versão estável. O executor original está preservado na tag `baseline/pre-v1`. Veja o [plano](docs/PLANO_V1.md) e o [registro da implementação](docs/IMPLEMENTACAO_V1.md) para distinguir funcionalidades presentes de critérios pendentes.
 
 ## CREXP e CREXB
 
@@ -13,6 +13,8 @@ A prévia inclui **CREXP — Creative Executable Package**, um ZIP de documentos
 Consulte os guias de [CREXP](docs/publicacoes/crexp.md), [CREXB](docs/publicacoes/crexb.md) e o [roadmap completo](docs/publicacoes/roadmap-formatos.md). Os [handoffs e JSON originais](docs/formatos/originais/README.md) estão preservados integralmente para download. Site e guias têm edição em português e inglês; os handoffs completos permanecem no original em português, identificados dessa forma.
 
 ## Começar
+
+Baixe o pacote e o checksum SHA-256 para Windows/x86_64, macOS/Apple Silicon ou Linux/x86_64 na [pré-release](https://github.com/omarceloribeiro/crexe/releases/tag/v1.0.0-preview.1). Os pacotes incluem a engine, exemplos e configuração inicial; modelos e SDKs dos aplicativos gerados devem ser preparados separadamente. Leia as notas da versão antes de usar.
 
 Com Rust/Cargo e as ferramentas nativas de compilação, na raiz:
 
@@ -152,7 +154,7 @@ Build e aplicativo usam o **host com as permissões do usuário**. A pasta tempo
 
 Há validação de caminhos, limites de resposta/arquivos/logs, controle de subprocessos, timeout e cancelamento, sem herança das credenciais configuradas. Isso não impede um programa nativo malicioso de acessar o host. `allowNetwork: false` é rejeitado porque a engine não oferece isolamento de rede.
 
-Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na configuração local; a receita não pode ampliá-los. Ainda faltam, entre outros critérios: validação com modelos reais e uso de aplicativos em toda a matriz nativa, triagem de compatibilidade, dependências além do catálogo da engine e preparação da release. Confira o registro de implementação antes de distribuir.
+Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na configuração local; a receita não pode ampliá-los. Ainda faltam, entre outros critérios: validação com modelos reais e uso de aplicativos em toda a matriz nativa, triagem de compatibilidade, dependências além do catálogo da engine e preparação de uma release estável. Confira o registro de implementação antes de distribuir.
 
 ## Documentação e licença
 

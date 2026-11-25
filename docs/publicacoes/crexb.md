@@ -2,7 +2,7 @@
 
 **Gerado uma vez. Aberto quantas vezes quiser.** CREXB reúne a receita e uma versão aceita do aplicativo em um ZIP controlado. Em um computador compatível, a engine valida o bundle, prepara o cache e abre o programa sem chamar IA nem recompilar.
 
-**Status: prévia mínima na branch `feature/v1`.** Este guia descreve o subconjunto entregue; o [handoff completo original](../formatos/originais/CREXB-HANDOFF-COMPLETO.md) permanece disponível em português, sem alterações. A proposta completa inclui funcionalidades futuras e discussões de licença anteriores. A [política vigente](../LICENCIAMENTO_E_ECOSSISTEMA.md) usa MIT para a engine e MIT-0 para os materiais de saída designados.
+**Status: prévia mínima integrada à `main` e disponível na pré-release pública `v1.0.0-preview.1`.** Este guia descreve o subconjunto entregue; o [handoff completo original](../formatos/originais/CREXB-HANDOFF-COMPLETO.md) permanece disponível em português, sem alterações. A proposta completa inclui funcionalidades futuras e discussões de licença anteriores. A [política vigente](../LICENCIAMENTO_E_ECOSSISTEMA.md) usa MIT para a engine e MIT-0 para os materiais de saída designados.
 
 ## Compartilhar a versão aceita
 

@@ -1,9 +1,18 @@
 {
-  "version": null,
-  "releaseUrl": null,
+  "version": "v1.0.0-preview.1",
+  "releaseUrl": "https://github.com/omarceloribeiro/crexe/releases/tag/v1.0.0-preview.1",
   "platforms": {
-    "windows": { "url": null, "checksumUrl": null },
-    "linux": { "url": null, "checksumUrl": null },
-    "macos": { "url": null, "checksumUrl": null }
+    "windows": {
+      "url": "https://github.com/omarceloribeiro/crexe/releases/download/v1.0.0-preview.1/crexe-1.0.0-dev.0078660-windows-x86_64.zip",
+      "checksumUrl": "https://github.com/omarceloribeiro/crexe/releases/download/v1.0.0-preview.1/crexe-1.0.0-dev.0078660-windows-x86_64.zip.sha256"
+    },
+    "linux": {
+      "url": "https://github.com/omarceloribeiro/crexe/releases/download/v1.0.0-preview.1/crexe-1.0.0-dev.0078660-linux-x86_64.tar.gz",
+      "checksumUrl": "https://github.com/omarceloribeiro/crexe/releases/download/v1.0.0-preview.1/crexe-1.0.0-dev.0078660-linux-x86_64.tar.gz.sha256"
+    },
+    "macos": {
+      "url": "https://github.com/omarceloribeiro/crexe/releases/download/v1.0.0-preview.1/crexe-1.0.0-dev.0078660-macos-aarch64.tar.gz",
+      "checksumUrl": "https://github.com/omarceloribeiro/crexe/releases/download/v1.0.0-preview.1/crexe-1.0.0-dev.0078660-macos-aarch64.tar.gz.sha256"
+    }
   }
 }

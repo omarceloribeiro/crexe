@@ -1,6 +1,6 @@
 # Roadmap — CREXP e CREXB
 
-**Edição de 25/11/2026.** As prévias mínimas fazem parte do desenvolvimento de `feature/v1`; não significam que toda a arquitetura dos handoffs esteja entregue ou que já exista uma release pública estável. Este roadmap não fixa datas para os próximos estágios.
+**Edição de 25/11/2026.** As prévias mínimas estão integradas à `main` e disponíveis na pré-release pública `v1.0.0-preview.1`; não significam que toda a arquitetura dos handoffs esteja entregue ou que já exista uma release estável. Este roadmap não fixa datas para os próximos estágios.
 
 CREXE permite descrever. CREXP permite organizar especificações. CREXB permite distribuir e abrir um resultado aceito. Os três papéis se complementam: a receita preserva intenção, o pacote organiza essa intenção e o bundle preserva também uma implementação.
 

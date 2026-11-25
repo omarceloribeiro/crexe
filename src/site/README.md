@@ -54,7 +54,7 @@ A landing PT/EN mostra o total e os números por plataforma dos pacotes exatos c
 
 Sem release configurada, a contagem fica indisponível para publicação; falhas, limites da API e assets ausentes mostram indisponibilidade, nunca zero inventado. Links de download não dependem do contador. Zero só é mostrado quando retornado pelos assets públicos verificados. Hosts puramente estáticos ainda servem o site, mas não executam esse endpoint.
 
-O preview local executa o Worker empacotado para a rota de contagem. `check` cobre o backend com API/cache simulados, a interface nos dois idiomas e a rota HTTP sem depender do GitHub. A validação ao vivo fica para depois da publicação da primeira release. Operação e escopo: [português](../../docs/DOWNLOADS_E_PUBLICACAO.md) / [English](../../docs/en/DOWNLOADS_AND_PUBLICATION.md).
+O preview local executa o Worker empacotado para a rota de contagem. `check` cobre o backend com API/cache simulados, a interface nos dois idiomas e a rota HTTP sem depender do GitHub. Após cada publicação, confira a contagem ao vivo com a release pública e o endpoint da hospedagem. Operação e escopo: [português](../../docs/DOWNLOADS_E_PUBLICACAO.md) / [English](../../docs/en/DOWNLOADS_AND_PUBLICATION.md).
 
 Os pacotes da engine pertencem ao GitHub Releases. Enquanto a release não estiver acessível sem autenticação, mantenha os URLs de binários como `null`. Depois da publicação, baixe cada pacote e checksum anonimamente, valide o hash, ative os links reais no catálogo e gere outra entrega do site. O GitHub do projeto também precisa estar público para os links externos de código-fonte funcionarem para visitantes.
 
@@ -96,7 +96,7 @@ O renderer não permite HTML bruto no Markdown nem URLs de scripts. Links relati
 
 O download de código-fonte é criado por `git archive` do **commit HEAD**, com o hash no nome e um arquivo SHA-256 correspondente. Não contém mudanças ainda não commitadas, arquivos ignorados, credenciais locais, caches nem o código do próprio site. Os arquivos históricos de `docs/archive` também ficam fora do ZIP. O `source.json` registra a revisão exata. Os links no HTML são preenchidos no build e funcionam sem JavaScript.
 
-O estado inicial reflete a documentação atual: release pública em preparação. Windows/x86_64, macOS/Apple Silicon e Linux/x86_64 têm espaços próprios; nenhum botão anuncia um executável indisponível. Exemplos e fontes já são downloads reais na publicação gerada.
+O catálogo anuncia a primeira pré-release pública, `v1.0.0-preview.1`, com snapshots de desenvolvimento para Windows/x86_64, macOS/Apple Silicon e Linux/x86_64. Não é uma versão estável. Os botões nativos só aparecem após o carregamento de um catálogo válido; exemplos e fontes também são downloads na publicação gerada. A publicação dos pacotes no GitHub não configura a hospedagem nem o DNS de `crexe.org`.
 
 Para ativar um pacote após publicar e verificar a release, preencha `version`, `releaseUrl` e os dois URLs da plataforma em `downloads.json`:
 
@@ -117,4 +117,4 @@ Para ativar um pacote após publicar e verificar a release, preencha `version`, 
 
 Esse JSON é um exemplo de configuração, **não uma release existente**. Use os nomes reais dos assets. O build rejeita pares incompletos, HTTP, credenciais em URLs e links GitHub sem a tag exata da versão. Não consulta a API do GitHub nem prova que os URLs remotos existem: a disponibilidade e os hashes devem ser conferidos antes de ativá-los. Plataformas com ambos os campos `null` continuam em preparação. Sem JavaScript, o catálogo permanece acessível pelo link no aviso de downloads.
 
-Ao entregar a primeira release, revise também o estágio do projeto e o início rápido no HTML. A engine não inclui SDKs ou modelos. Não anuncie isolamento de segurança, builds universais, estabilidade ou capacidades além do que foi validado e documentado.
+A cada nova release, revise também o estágio do projeto e o início rápido no HTML. A engine não inclui SDKs ou modelos. Não anuncie isolamento de segurança, builds universais, estabilidade ou capacidades além do que foi validado e documentado.

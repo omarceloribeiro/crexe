@@ -1,6 +1,6 @@
 # CREXP — Creative Executable Package
 
-**Status: prévia mínima na branch `feature/v1`; arquitetura completa no roadmap.** CREXP é um ZIP de especificações: vários documentos Markdown descrevem o software que você quer gerar. A primeira entrega transforma esses documentos em uma intenção textual e reutiliza o fluxo de geração, compilação, testes e correção da engine.
+**Status: prévia mínima integrada à `main` e disponível na pré-release pública `v1.0.0-preview.1`; arquitetura completa no roadmap.** CREXP é um ZIP de especificações: vários documentos Markdown descrevem o software que você quer gerar. A primeira entrega transforma esses documentos em uma intenção textual e reutiliza o fluxo de geração, compilação, testes e correção da engine.
 
 Este é o guia mantido da entrega. O [handoff completo original em português](../formatos/originais/CREXP-HANDOFF-COMPLETO.md) está disponível sem alterações. O handoff inclui propostas futuras, pseudocódigo e licenciamento anterior; a [política vigente](../LICENCIAMENTO_E_ECOSSISTEMA.md) é MIT para a engine e MIT-0 para os materiais de saída designados.
 

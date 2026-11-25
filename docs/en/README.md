@@ -6,7 +6,7 @@ A `.crexe` file describes an application's intent. The engine generates a projec
 
 With **Generate with CREXE** (Gerar com CREXE), an ordinary document can also be the starting point: select a file and the engine generates or reuses a reader, passing that document to the application when it opens.
 
-**Under development on the `feature/v1` branch; not yet a public release.** The original executor is preserved at the `baseline/pre-v1` tag. See the [plan](../PLANO_V1.md) and [implementation log](../IMPLEMENTACAO_V1.md) to distinguish present functionality from outstanding criteria.
+**First public prerelease: [v1.0.0-preview.1](https://github.com/omarceloribeiro/crexe/releases/tag/v1.0.0-preview.1).** This is a development preview, not a stable release. The original executor is preserved at the `baseline/pre-v1` tag. See the [plan](../PLANO_V1.md) and [implementation log](../IMPLEMENTACAO_V1.md) to distinguish present functionality from outstanding criteria.
 
 ## CREXP and CREXB
 
@@ -15,6 +15,8 @@ The preview includes **CREXP — Creative Executable Package**, a ZIP of Markdow
 See the [CREXP guide](publicacoes/crexp.md), [CREXB guide](publicacoes/crexb.md), and [complete roadmap](publicacoes/roadmap-formatos.md). The [original handoffs and JSON references](../formatos/originais/README.md) are preserved unabridged for download. The site and maintained guides have Portuguese and English editions; the complete handoffs remain in their original Portuguese, clearly labelled as such.
 
 ## Getting started
+
+Download the package and SHA-256 checksum for Windows/x86_64, macOS/Apple Silicon, or Linux/x86_64 from the [prerelease](https://github.com/omarceloribeiro/crexe/releases/tag/v1.0.0-preview.1). Packages include the engine, examples, and sample configuration; models and the SDKs required by generated applications must be prepared separately. Read the release notes before use.
 
 With Rust/Cargo and native build tools, from the repository root:
 
@@ -154,7 +156,7 @@ Builds and applications use the **host with the user's permissions**. The tempor
 
 There is path validation, response/file/log limits, subprocess control, timeout, and cancellation, without inheritance of configured credentials. This does not prevent a malicious native program from accessing the host. `allowNetwork: false` is rejected because the engine does not provide network isolation.
 
-Tools and limits on calls, output tokens, and time are defined in local configuration; a recipe cannot expand them. Outstanding criteria include validation with real models and application use across the full native matrix, compatibility triage, dependencies beyond the engine's catalog, and release preparation. Check the implementation log before distributing.
+Tools and limits on calls, output tokens, and time are defined in local configuration; a recipe cannot expand them. Outstanding criteria include validation with real models and application use across the full native matrix, compatibility triage, dependencies beyond the engine's catalog, and preparation of a stable release. Check the implementation log before distributing.
 
 ## Documentation and license
 
