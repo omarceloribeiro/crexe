@@ -101,7 +101,7 @@ pub(crate) fn associate() -> Result<()> {
     }
     #[cfg(windows)]
     println!(
-        "Associated .crexe with {}. Windows may require choosing CREXE as the default app.",
+        "Associated .crexe with {} and added Gerar com CREXE for individual files. Windows may require choosing CREXE as the default app for .crexe; other file defaults are unchanged.",
         exe.display()
     );
     #[cfg(windows)]
@@ -112,7 +112,7 @@ pub(crate) fn unassociate() -> Result<()> {
     #[cfg(windows)]
     {
         windows::unassociate(&executable()?)?;
-        println!("Removed CREXE-owned association (other default apps preserved)");
+        println!("Removed CREXE-owned association and Gerar com CREXE menu (other default apps preserved)");
         Ok(())
     }
     #[cfg(not(windows))]

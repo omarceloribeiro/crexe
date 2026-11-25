@@ -2,6 +2,8 @@
 
 Um arquivo `.crexe` descreve a intenção de um aplicativo. A engine gera um projeto, compila, testa quando o perfil oferece testes, guarda uma revisão no cache e abre o programa. Editar a intenção evolui a última revisão aprovada; reabrir sem alterações reutiliza a revisão validada.
 
+Com **Gerar com CREXE**, o ponto de partida também pode ser um documento comum: selecione o arquivo e a engine gera ou reutiliza um leitor, que recebe esse documento ao abrir.
+
 **Em desenvolvimento na branch `feature/v1`; ainda não é uma release pública.** O executor original está preservado na tag `baseline/pre-v1`. Veja o [plano](docs/PLANO_V1.md) e o [registro da implementação](docs/IMPLEMENTACAO_V1.md) para distinguir funcionalidades presentes de critérios pendentes.
 
 ## Começar
@@ -35,6 +37,26 @@ Com o Ollama e `gemma4:12b` disponíveis localmente, e o .NET SDK instalado:
 O perfil preferido no Windows usa C#/.NET 8 e Windows Forms. Há também perfis C++/Win32, Objective-C++/Cocoa, C/GTK3 e OpenGL específico para cada host. Em texto/Markdown sem perfil explícito, o modelo pode escolher entre os perfis com pré-requisitos disponíveis, justificando mudanças de tecnologia. A engine fornece projetos e comandos, restaura bibliotecas cadastradas, compila e executa o autoteste antes de publicar o cache. São 3 tentativas totais por padrão, configuráveis de 1 a 10. A qualidade do programa ainda depende do modelo; um build aprovado não comprova todos os comportamentos pedidos. [Perfis e requisitos](docs/PERFIS_V1.md).
 
 `doctor` informa arquitetura da engine/host, perfil, requisitos e caminhos. Com `--check`, consulta o SDK local antes da geração, sem chamar a IA. `inspect` mostra os requisitos do perfil junto da intenção resolvida; não executa SDKs.
+
+## Gerar com CREXE
+
+O [guia completo da feature](docs/GERAR_COM_CREXE.md) detalha chamadas, cache, privacidade, SDKs, testes de aceitação e roteiro de demonstração. Também está disponível [em inglês](docs/en/GENERATE_WITH_CREXE.md).
+
+Para abrir um documento sem escrever uma receita, use **Selecionar arquivo e gerar programa…** na janela da engine. No Windows, após `install` e `associate`, a ação **Gerar com CREXE** também aparece no menu de um arquivo; no Windows 11, pode ficar em **Mostrar mais opções**. No macOS e Linux, a entrada gráfica desta prévia é o seletor na janela, sem integração de menu Finder/GNOME/Dolphin anunciada.
+
+Na CLI, a partir da pasta extraída do pacote:
+
+```powershell
+.\crexe.exe open-generating -- "notas da reunião.md"
+```
+
+No macOS/Linux, use `./crexe open-generating -- "notas da reunião.md"`. Para a engine compilada do checkout, o executável fica em `target/release`. O caminho é resolvido a partir da pasta de quem chamou; `--` permite nomes iniciados por hífen. O comando aceita um arquivo local regular por vez, com qualquer extensão ou sem sufixo. Se receber `.crexe`, encaminha ao fluxo de receita existente.
+
+Na primeira preparação de um leitor, **uma única chamada à LLM formula a intenção a partir do tipo do arquivo**. Depois ocorre a geração normal de código, com build, autotestes e correções limitadas. O programa abre com o documento selecionado, sem pedir a mesma seleção novamente. Outro documento do mesmo tipo compatível reutiliza o leitor aprovado: cache válido significa zero chamadas extras ao modelo e nenhuma recompilação. Alterar somente o conteúdo de um documento não muda a identidade do leitor.
+
+O nome, caminho e corpo do documento não entram nas requisições ao modelo, no histórico de geração ou no ZIP dos fontes. O aplicativo recebe o caminho como argumento separado e lê os dados localmente em runtime. A configuração ativa salva fornece provider, modelo e limites; selecionar um documento na janela não salva nem descarta alterações pendentes nas configurações. Cancelar o seletor não chama a IA.
+
+O contrato desta prévia é **somente leitura**, preservando o original: conteúdo ou erro legível, indicação de arquivo vazio e limite de leitura. Para formatos desconhecidos, o leitor pode mostrar texto ou uma prévia hexadecimal identificada. Não há promessa de interpretar integralmente formatos proprietários. O contrato orienta o código gerado; ele não oferece sandbox nem garantia de segurança. Provider/modelo e SDK do perfil continuam necessários para gerar o primeiro leitor, e provedores remotos podem cobrar pelo planejamento, geração e reparos.
 
 ## Provider e credenciais
 
@@ -72,7 +94,7 @@ A associação aponta para `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` e habili
 
 Cliques repetidos durante a preparação avisam a execução existente, sem gerar ou compilar novamente. Se a intenção/opções mudaram, a espera orienta concluir ou cancelar primeiro. Depois que o aplicativo abre, outro clique pode abrir outra instância pelo cache.
 
-O Windows pode exigir escolher CREXE como aplicativo padrão. `unassociate` remove apenas os registros desta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; associação gráfica e janela de espera dessas plataformas ainda não estão implementadas. [Guia de plataformas](docs/platforms/README.md).
+O Windows pode exigir escolher CREXE como aplicativo padrão de `.crexe`. A ação genérica **Gerar com CREXE** não altera os aplicativos padrão dos demais documentos. `unassociate` remove a associação e o menu pertencentes a esta instalação e preserva escolhas de outros aplicativos. No Linux/macOS, a CLI tem caminhos de instalação próprios e módulos selecionados por `cfg`; a abertura gráfica de documentos comuns usa o seletor da janela. A associação de `.crexe` e os menus dos gerenciadores dessas plataformas ainda não estão implementados. [Guia de plataformas](docs/platforms/README.md).
 
 `CREXE_HOME` seleciona uma raiz absoluta para instalação, configuração e cache, útil em testes e instalações portáteis.
 
@@ -110,7 +132,7 @@ crexe export ./projeto-extraido --output ./fontes.zip
 
 Build/test/publish usam uma nova pasta temporária; build/publish entregam uma nova pasta de saída e preservam o projeto de origem. Export empacota os fontes atuais sem recompilá-los. Um ZIP de versões anteriores sem manifesto precisa ser regenerado para usar esses comandos; seus scripts continuam utilizáveis. [Contrato das operações](docs/PROJETOS_V1.md).
 
-O cache tem revisões imutáveis, hashes e um índice por caminho canônico do documento. Cada alteração envia o pedido anterior, os fontes aprovados e o pedido atual à IA. Ela recebe orientação para preservar comportamentos não afetados, podendo justificar uma recriação completa ou troca de perfil quando necessário. Os reparos usam a tentativa mais recente e seus diagnósticos. Binários, logs e diretórios de build não entram nesse contexto.
+Para receitas `.crexe`, o cache tem revisões imutáveis, hashes e um índice por caminho canônico da receita. Cada alteração envia o pedido anterior, os fontes aprovados e o pedido atual à IA. Ela recebe orientação para preservar comportamentos não afetados, podendo justificar uma recriação completa ou troca de perfil quando necessário. Os reparos usam a tentativa mais recente e seus diagnósticos. Binários, logs e diretórios de build não entram nesse contexto. Em **Gerar com CREXE**, a receita do leitor é interna e independente do documento aberto; o cache identifica o leitor compatível, não o conteúdo de cada arquivo.
 
 O índice só avança após build/testes aprovados. Falha ou cancelamento preserva o baseline. `--rebuild` força nova geração a partir dele; `--fresh` gera sem ele. Fontes aprovados corrompidos ou contexto acima do limite causam diagnóstico, sem descarte silencioso. Cache antigo só é adotado com identidade e inventário verificáveis. Copiar ou mover o `.crexe` começa um histórico independente; `--cache-dir` seleciona outra raiz local. Alterar somente o limite de tentativas não invalida a revisão aprovada.
 
@@ -127,6 +149,7 @@ Ferramentas e limites de chamadas, tokens de saída e tempo são definidos na co
 - [Site público de crexe.org](src/site/README.md): landing estática, exemplos e downloads; build e preview locais independentes da engine.
 - [Biblioteca CREXE](docs/publicacoes/README.md): white papers, guias, artigos e manifesto; implementação atual e visão de futuro identificadas em cada texto.
 - [Contrato implementado dos formatos](docs/FORMATOS_V1.md)
+- [Gerar com CREXE: uso, arquitetura e validação](docs/GERAR_COM_CREXE.md)
 - [Configuração](docs/CONFIGURACAO.md), [contribuição](CONTRIBUTING.md) e [limites de segurança](SECURITY.md)
 - [RFCs e visão histórica](docs/crexe_handoff_docs/README.md), em reconciliação com a implementação
 - [Baseline e arquivos históricos](docs/archive/README.md)

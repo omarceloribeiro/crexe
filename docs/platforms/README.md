@@ -12,6 +12,22 @@ Usar a compilação condicional nativa de Rust, `#[cfg(...)]`, e as dependência
 
 O núcleo compartilhado contém parsers, configuração, providers, plano de projeto, workspace, cache e orquestração. Código específico de janela, console, associação de arquivos, caminhos do sistema e controle de subprocessos fica nos módulos responsáveis por essas integrações. Os tipos públicos e eventos consumidos pelo núcleo não devem expor tipos exclusivos de uma API Windows.
 
+## Gerar com CREXE na prévia
+
+`crexe open-generating -- "arquivo.ext"` aceita um arquivo local regular, com qualquer extensão ou sem sufixo. O leitor gerado recebe o caminho como argumento separado e abre o conteúdo selecionado. O fluxo `.crexe` permanece separado: esse sufixo é encaminhado à execução de receita conhecida.
+
+| Plataforma | Entrada implementada | Verificação de desktop |
+| --- | --- | --- |
+| Windows | CLI, botão com seletor e verbo **Gerar com CREXE** por usuário em `HKCU\Software\Classes\*\shell\CREXE.Generate` | Conferir Explorer e **Mostrar mais opções**, conteúdo do documento na janela, reinstalação e remoção |
+| macOS | CLI e botão **Selecionar arquivo e gerar programa…**, acessível por `configure.command` | Conferir seletor e abertura do documento em sessão gráfica; não há menu Finder declarado |
+| Linux | CLI e o mesmo botão com seletor, acessível por `configure.sh` | Conferir seletor e abertura na sessão/desktop escolhido; não há menu GNOME/Dolphin declarado |
+
+O verbo Windows atende seleção única, preserva o aplicativo padrão dos arquivos comuns e usa a engine instalada. A remoção verifica propriedade antes de excluir seus registros. A janela fornece seleção e estado da operação sem salvar ou descartar mudanças pendentes nas configurações; o processo usa as escolhas ativas já salvas.
+
+A primeira preparação do leitor faz uma chamada de planejamento à LLM a partir do tipo, seguida do pipeline normal de código/build/autoteste/reparos. O documento não entra nessas requisições ou no ZIP dos fontes; somente o programa local lê o arquivo em runtime. Cache compatível válido é reutilizado para outros documentos do mesmo tipo sem chamadas extras. O contrato inicial pede somente leitura e preservação do original, sem sandbox; para formatos opacos, texto ou prévia hexadecimal identificada são resultados aceitáveis.
+
+As fixtures `open_generating` da CI usam um provider controlado e um leitor .NET headless para verificar o percurso sem depender de display. SDK .NET 8 é requisito desse ensaio, não um novo requisito universal para todos os leitores nativos. Build/teste automatizado, geração com modelo real e observação de conteúdo na GUI devem ser registrados separadamente por host; a tabela acima descreve a implementação, não certifica ensaios gráficos concluídos.
+
 ## Organização da apresentação
 
 Estrutura proposta após a reorganização do pacote:

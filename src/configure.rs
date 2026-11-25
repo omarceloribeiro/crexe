@@ -39,7 +39,7 @@ pub(crate) fn open(path: Option<&Path>, import: Option<&Path>) -> Result<()> {
         cc.egui_ctx.set_theme(egui::Theme::Light);
         Ok(Box::new(Window { editor, key: String::new(), remove_key: false, models: Vec::new(), import_path: String::new(),
             status: if imported { "TOML importado para revisão. Clique em Salvar para aplicar.".into() } else { String::new() },
-            pending: None }))
+            pending: None, reader: super::reader_desktop::Controller::default() }))
     })).map_err(|_| anyhow::anyhow!("Não foi possível abrir a tela de configuração. Verifique se há uma sessão gráfica disponível."))
 }
 
@@ -56,6 +56,7 @@ struct Window {
     import_path: String,
     status: String,
     pending: Option<mpsc::Receiver<Result<Reply>>>,
+    reader: super::reader_desktop::Controller,
 }
 
 impl Window {
@@ -86,6 +87,7 @@ impl Window {
 
 impl eframe::App for Window {
     fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        self.reader.poll();
         if let Some(rx) = &self.pending {
             match rx.try_recv() {
                 Ok(result) => {
@@ -119,7 +121,9 @@ impl eframe::App for Window {
                 Err(mpsc::TryRecvError::Empty) => {}
             }
         }
-        if self.pending.is_some() && ctx.input(|i| i.viewport().close_requested()) {
+        if (self.pending.is_some() || self.reader.preparing())
+            && ctx.input(|i| i.viewport().close_requested())
+        {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
     }
@@ -132,9 +136,12 @@ impl eframe::App for Window {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.add_space(12.0);
             ui.heading("Creative Executable");
+            self.reader.ui(ui, &self.editor.path, self.pending.is_some());
+            ui.add_space(12.0);
+            ui.separator();
             ui.label("Escolha quem vai gerar seus programas.");
             ui.add_space(12.0);
-            ui.add_enabled_ui(self.pending.is_none(), |ui| {
+            ui.add_enabled_ui(self.pending.is_none() && !self.reader.preparing(), |ui| {
                 let mut selected = self.editor.profile.clone();
                 egui::ComboBox::from_label("Perfil / provider").selected_text(&selected).show_ui(ui, |ui| {
                     for name in self.editor.profiles() { ui.selectable_value(&mut selected, name.clone(), name); }
@@ -161,9 +168,10 @@ impl eframe::App for Window {
                     ui.label("Tentativas máximas");
                     ui.add(egui::DragValue::new(&mut self.editor.execution.max_provider_requests).range(1..=10));
                 });
-                ui.small("Inclui a geração inicial. 3 tentativas permitem até 2 correções de compilação/teste.");
+                ui.small("Para receitas .crexe, inclui a geração inicial e as correções de compilação/teste.");
+                ui.small("Um leitor novo usa uma chamada para planejar: com limite 3, restam a geração e até 1 correção. Leitores em cache não chamam o modelo.");
                 let attempts = self.editor.execution.attempts(self.editor.provider.max_output_tokens, None);
-                ui.small(format!("Limite efetivo: {attempts} tentativas; orçamento de saída: {} tokens.", self.editor.execution.output_budget(self.editor.provider.max_output_tokens)));
+                ui.small(format!("Receitas: até {attempts} tentativas; orçamento total de saída: {} tokens.", self.editor.execution.output_budget(self.editor.provider.max_output_tokens)));
                 ui.add_space(12.0);
                 ui.label(if self.editor.provider.credential.is_some() { "Chave: referência salva no cofre (verificada ao testar ou usar)." }
                     else if self.editor.provider.api_key_env.is_some() { "Chave: não salva no cofre. Configuração por variável de ambiente disponível." }

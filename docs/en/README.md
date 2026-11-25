@@ -4,6 +4,8 @@ This is the English edition of the project guide. The native engine interface cu
 
 A `.crexe` file describes an application's intent. The engine generates a project, compiles it, tests when the profile provides tests, stores a revision in the cache, and opens the program. Editing the intent evolves the latest approved revision; reopening without changes reuses the validated revision.
 
+With **Generate with CREXE** (Gerar com CREXE), an ordinary document can also be the starting point: select a file and the engine generates or reuses a reader, passing that document to the application when it opens.
+
 **Under development on the `feature/v1` branch; not yet a public release.** The original executor is preserved at the `baseline/pre-v1` tag. See the [plan](../PLANO_V1.md) and [implementation log](../IMPLEMENTACAO_V1.md) to distinguish present functionality from outstanding criteria.
 
 ## Getting started
@@ -37,6 +39,26 @@ With Ollama and `gemma4:12b` available locally, and the .NET SDK installed:
 The preferred Windows profile uses C#/.NET 8 and Windows Forms. There are also C++/Win32, Objective-C++/Cocoa, C/GTK3, and host-specific OpenGL profiles. For text/Markdown without an explicit profile, the model can choose among profiles with available prerequisites, giving a reason for technology changes. The engine supplies projects and commands, restores registered libraries, compiles, and runs the self-test before publishing the cache. There are 3 total attempts by default, configurable from 1 to 10. Program quality still depends on the model; an approved build does not prove every requested behavior. [Profiles and requirements](PERFIS_V1.md).
 
 `doctor` reports engine/host architecture, profile, requirements, and paths. With `--check`, it queries the local SDK before generation, without calling AI. `inspect` shows the profile requirements alongside the resolved intent; it does not execute SDKs.
+
+## Generate with CREXE
+
+The [complete feature guide](GENERATE_WITH_CREXE.md) covers calls, cache, privacy, SDKs, acceptance checks, and a demonstration walkthrough. It is also available [in Portuguese](../GERAR_COM_CREXE.md).
+
+To open a document without writing a recipe, use **Select a file and generate a program…** (Selecionar arquivo e gerar programa…) in the engine window. On Windows, after `install` and `associate`, **Gerar com CREXE** is also available in a file's context menu; on Windows 11 it may appear under **Show more options**. On macOS and Linux, this preview's graphical entry point is the file picker in the engine window; it does not claim Finder, GNOME or Dolphin menu integration.
+
+From the extracted package directory, the CLI equivalent is:
+
+```powershell
+.\crexe.exe open-generating -- "meeting notes.md"
+```
+
+On macOS/Linux, use `./crexe open-generating -- "meeting notes.md"`. For an engine built from the checkout, the executable is in `target/release`. Paths resolve from the caller's directory; `--` accepts names starting with a hyphen. The command takes one regular local file, with any extension or no suffix. A `.crexe` input is forwarded to the existing recipe workflow.
+
+When preparing a new reader, **one LLM call formulates its intent from the file type**. The normal code generation then follows, with build, self-tests and bounded repairs. The application opens the selected document without asking for it again. Another document of the same compatible type reuses the approved reader: a valid cache means zero additional model calls and no rebuild. Changing only a document's contents does not change the reader's identity.
+
+The document's name, path and body do not enter model requests, generation history or the source ZIP. The application receives its path as a separate argument and reads the data locally at runtime. The saved active configuration supplies provider, model and limits; selecting a document does not save or discard pending settings edits. Cancelling the picker makes no AI call.
+
+This preview's contract is **read-only**, preserving the original: actual content or a readable error, an explicit empty-file state and bounded reading. Unknown formats may produce a text view or a labelled hexadecimal preview. Full interpretation of proprietary formats is not promised. This contract guides generated code; it provides neither a sandbox nor a security guarantee. A provider/model and the profile's SDK remain necessary for the first reader, and remote providers may charge for planning, generation and repairs.
 
 ## Provider and credentials
 
@@ -74,7 +96,7 @@ The association points to `%LOCALAPPDATA%\CREXE\releases\v1\crexe.exe` and enabl
 
 Repeated clicks during preparation notify the existing execution without generating or compiling again. If the intent/options changed, the progress window directs the user to finish or cancel first. After the application opens, another click can open another instance from cache.
 
-Windows may require choosing CREXE as the default application. `unassociate` removes only this installation's registrations and preserves other applications' choices. On Linux/macOS, the CLI has its own installation paths and modules selected by `cfg`; graphical association and progress windows for those platforms are not implemented yet. [Platform guide](../platforms/README.md).
+Windows may require choosing CREXE as the default application for `.crexe`. The generic **Gerar com CREXE** action does not change other documents' default applications. `unassociate` removes the association and menu owned by this installation and preserves other applications' choices. On Linux/macOS, the CLI has its own installation paths and modules selected by `cfg`; ordinary documents can be selected through the engine window. The `.crexe` association and file-manager menus on those platforms are not implemented yet. [Platform guide](../platforms/README.md).
 
 `CREXE_HOME` selects an absolute root for installation, configuration, and cache, useful for tests and portable installations.
 
@@ -112,7 +134,7 @@ crexe export ./projeto-extraido --output ./fontes.zip
 
 Build/test/publish use a new temporary directory; build/publish deliver a new output directory and preserve the source project. Export packages current sources without recompiling them. A ZIP from older versions without a manifest must be regenerated to use these commands; its scripts remain usable. [Operations contract](PROJETOS_V1.md).
 
-The cache has immutable revisions, hashes, and an index keyed by the document's canonical path. Each change sends the previous request, approved sources, and current request to AI. It receives instructions to preserve unaffected behavior, and may justify a complete recreation or profile change when necessary. Repairs use the latest attempt and its diagnostics. Binaries, logs, and build directories are not included in that context.
+For `.crexe` recipes, the cache has immutable revisions, hashes, and an index keyed by the recipe's canonical path. Each change sends the previous request, approved sources, and current request to AI. It receives instructions to preserve unaffected behavior, and may justify a complete recreation or profile change when necessary. Repairs use the latest attempt and its diagnostics. Binaries, logs, and build directories are not included in that context. For **Generate with CREXE**, the reader recipe is internal and independent of the opened document; the cache identifies the compatible reader, not each file's contents.
 
 The index advances only after successful builds/tests. Failure or cancellation preserves the baseline. `--rebuild` forces a new generation from it; `--fresh` generates without it. Corrupted approved sources or context exceeding the limit produce diagnostics, without silent discarding. Old cache entries are adopted only with verifiable identity and inventory. Copying or moving a `.crexe` file starts an independent history; `--cache-dir` selects another local root. Changing only the attempt limit does not invalidate the approved revision.
 
@@ -129,6 +151,7 @@ Tools and limits on calls, output tokens, and time are defined in local configur
 - [Public crexe.org site](../../src/site/README.md): static landing, examples, and downloads; local build and preview independent of the engine.
 - [CREXE library](publicacoes/README.md): white papers, guides, articles, and manifesto; current implementation and future vision identified in each text.
 - [Implemented format contract](FORMATOS_V1.md)
+- [Generate with CREXE: usage, architecture, and validation](GENERATE_WITH_CREXE.md)
 - [Configuration](CONFIGURACAO.md), [contribution](CONTRIBUTING.md), and [security limits](SECURITY.md)
 - [RFCs and historical vision](../crexe_handoff_docs/README.md), being reconciled with the implementation
 - [Baseline and historical files](../archive/README.md)

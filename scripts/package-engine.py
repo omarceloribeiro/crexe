@@ -53,6 +53,8 @@ def main():
             'config.example.toml': ((ROOT / 'config.example.toml').read_bytes(), 0o644),
             'examples/calculadora.crexe': ((ROOT / 'examples/plaintext/calculadora.crexe').read_bytes(), 0o644),
             'examples/regra-de-tres.crexe': ((ROOT / 'examples/markdown/regra-de-tres.crexe').read_bytes(), 0o644),
+            'examples/primeira-leitura.md': ('# Primeiro documento local\n\n- Este item veio do arquivo selecionado.\n\nAbra outra-leitura.md para reutilizar o leitor.\n'.encode('utf-8'), 0o644),
+            'examples/outra-leitura.md': ('# Outro documento, mesmo leitor\n\n- Agora esta janela deve mostrar o segundo arquivo.\n\nEdite este texto externamente e reabra para conferir a leitura do disco.\n'.encode('utf-8'), 0o644),
             'SOURCE.txt': ((source_url + '\n').encode(), 0o644),
         }
         if system == 'windows':
@@ -60,7 +62,9 @@ def main():
             files['install.cmd'] = (install.encode(), 0o644)
             configure = '@echo off\r\nsetlocal\r\nset "CREXE_CONFIG_ENGINE=%LOCALAPPDATA%\\CREXE\\releases\\v1\\crexe.exe"\r\nif defined CREXE_HOME set "CREXE_CONFIG_ENGINE=%CREXE_HOME%\\releases\\v1\\crexe.exe"\r\nif not exist "%CREXE_CONFIG_ENGINE%" set "CREXE_CONFIG_ENGINE=%~dp0crexe.exe"\r\n"%CREXE_CONFIG_ENGINE%" configure %*\r\nexit /b %errorlevel%\r\n'
             files['configure.cmd'] = (configure.encode(), 0o644)
-            install_help = 'Execute install.cmd. Instala em %LOCALAPPDATA%\\CREXE\\releases\\v1, associa .crexe e abre Configurações. Reinstalar preserva suas preferências. configure.cmd reabre a tela. O Windows pode pedir para escolher o aplicativo padrão.'
+            unassociate = '@echo off\r\nsetlocal\r\nset "CREXE_REMOVE_ENGINE=%LOCALAPPDATA%\\CREXE\\releases\\v1\\crexe.exe"\r\nif defined CREXE_HOME set "CREXE_REMOVE_ENGINE=%CREXE_HOME%\\releases\\v1\\crexe.exe"\r\nif not exist "%CREXE_REMOVE_ENGINE%" set "CREXE_REMOVE_ENGINE=%~dp0crexe.exe"\r\n"%CREXE_REMOVE_ENGINE%" unassociate\r\nexit /b %errorlevel%\r\n'
+            files['unassociate.cmd'] = (unassociate.encode(), 0o644)
+            install_help = 'Execute install.cmd. Instala em %LOCALAPPDATA%\\CREXE\\releases\\v1, associa .crexe, registra Gerar com CREXE para um arquivo por vez e abre Configurações. No Windows 11, procure também Mostrar mais opções. O menu genérico preserva os aplicativos padrão dos documentos. Reinstalar preserva suas preferências. configure.cmd reabre a tela; unassociate.cmd remove a associação e o menu pertencentes a esta instalação. O Windows pode pedir para escolher o aplicativo padrão de .crexe.'
         else:
             launcher = 'configure.command' if system == 'macos' else 'configure.sh'
             default_root = '$HOME/Library/Application Support/CREXE' if system == 'macos' else '${XDG_DATA_HOME:-$HOME/.local/share}/crexe'
@@ -70,7 +74,7 @@ def main():
             files['install.sh'] = (install.encode(), 0o755)
             if system == 'macos':
                 files['install.command'] = (install.encode(), 0o755)
-            install_help = f'Execute ./install.sh em uma sessão gráfica. Instala e abre Configurações; {launcher} reabre a tela. Sem desktop, use ./crexe install (não abre UI). A associação gráfica e a janela de espera ainda não estão implementadas neste OS; use a CLI para abrir .crexe.'
+            install_help = f'Execute ./install.sh em uma sessão gráfica. Instala e abre Configurações; {launcher} reabre a tela. Sem desktop, use ./crexe install (não abre UI). Para Gerar com CREXE, use o botão Selecionar arquivo e gerar programa… na janela. Esta prévia não registra menu do Finder ou do gerenciador Linux; a associação gráfica de .crexe continua indisponível neste OS.'
         invocation = '.\\crexe.exe' if system == 'windows' else './crexe'
         readme = f'''# CREXE — snapshot de desenvolvimento
 
@@ -99,6 +103,31 @@ Os três primeiros comandos não chamam a IA. O último gera, compila e executa 
 A instalação não adiciona a engine ao PATH. Os comandos acima usam o binário extraído;
 para chamar a cópia instalada, use o caminho completo mostrado por doctor.
 Editar a intenção gera outra revisão; reabrir sem alterações usa o cache validado.
+
+## Gerar um programa para abrir um arquivo
+
+Escolha **Selecionar arquivo e gerar programa…** na janela da engine, ou use o
+menu **Gerar com CREXE** do Windows após a instalação. A CLI equivalente é:
+
+```
+{invocation} open-generating -- examples/primeira-leitura.md
+{invocation} open-generating -- examples/outra-leitura.md
+```
+
+Na primeira preparação do tipo, uma única chamada à LLM formula a intenção do
+leitor. Em seguida ocorre a geração normal do código, com build, autotestes e
+eventuais reparos. O segundo documento reutiliza o leitor compatível aprovado,
+sem outra chamada de planejamento ou geração quando o cache continua válido.
+Extensões novas e arquivos sem extensão também entram nesse fluxo. Formatos
+opacos podem resultar em leitura de texto ou inspeção hexadecimal identificada.
+
+O documento selecionado abre como dado em runtime: seu nome, caminho e conteúdo
+não são enviados ao modelo nem incorporados ao projeto exportado. O contrato
+orienta a preservar o original; ele não transforma o processo gerado em sandbox.
+O programa deve apresentar conteúdo ou erro legível e sinalizar leitura limitada.
+As duas receitas .crexe anteriores continuam usando o fluxo normal de receitas.
+Gerar o primeiro leitor exige provider/modelo e SDK configurados, e um provider
+remoto pode cobrar pelo planejamento, geração e reparos.
 
 Use Configurações para escolher provider/modelo e salvar a API key no cofre do sistema.
 config.example.toml é apenas um exemplo: editá-lo não altera a configuração ativa.
@@ -156,6 +185,8 @@ A licença da engine está em LICENSE. Ela não define automaticamente a licenç
         extracted = unpacked / name / binary.name
         command([str(extracted), '--version'], env=env)
         command([str(extracted), 'doctor'], env=env, capture_output=True)
+        command([str(extracted), 'inspect', str(unpacked / name / 'examples/calculadora.crexe')], env=env, capture_output=True)
+        command([str(extracted), 'open-generating', '--help'], env=env, capture_output=True)
         with checksum_path.open('x', encoding='ascii') as checksum:
             checksum.write(digest(archive_path.read_bytes()) + '  ' + archive_path.name + '\n')
         print(f'Package verified with empty PATH: {archive_path}')

@@ -9,6 +9,61 @@ pub(crate) fn exec(
     cache_dir: Option<&Path>,
     cli: &Cli,
 ) -> Result<()> {
+    exec_inner(file, overrides, rebuild, fresh, cache_dir, cli, None)
+}
+
+pub(crate) fn exec_reader(
+    recipe: &Path,
+    document: &Path,
+    cli: &Cli,
+    settings: &config::Settings,
+    generation: &mut generator::Session,
+    prepared: &mut dyn FnMut() -> Result<()>,
+) -> Result<()> {
+    exec_inner(
+        recipe,
+        BTreeMap::new(),
+        false,
+        false,
+        None,
+        cli,
+        Some(ReaderInvocation {
+            document,
+            settings,
+            generation,
+            prepared,
+        }),
+    )
+}
+
+struct ReaderInvocation<'a> {
+    document: &'a Path,
+    settings: &'a config::Settings,
+    generation: &'a mut generator::Session,
+    prepared: &'a mut dyn FnMut() -> Result<()>,
+}
+
+fn exec_inner(
+    file: &Path,
+    overrides: BTreeMap<String, String>,
+    rebuild: bool,
+    fresh: bool,
+    cache_dir: Option<&Path>,
+    cli: &Cli,
+    reader: Option<ReaderInvocation<'_>>,
+) -> Result<()> {
+    let reader_mode = reader.is_some();
+    let (runtime_args, supplied_settings, mut supplied_generation, mut reader_prepared) =
+        if let Some(reader) = reader {
+            (
+                vec![reader.document.as_os_str().to_owned()],
+                Some(reader.settings.clone()),
+                Some(reader.generation),
+                Some(reader.prepared),
+            )
+        } else {
+            (Vec::new(), None, None, None)
+        };
     let path = file
         .canonicalize()
         .with_context(|| format!("CREXE not found: {}", file.display()))?;
@@ -48,12 +103,16 @@ pub(crate) fn exec(
             spec
         }
     };
-    let mut settings = config::Settings::load(
-        cli.config.as_deref(),
-        cli.provider.as_deref(),
-        cli.model.as_deref(),
-        cli.env_file.as_deref(),
-    )?;
+    let mut settings = if let Some(settings) = supplied_settings {
+        settings
+    } else {
+        config::Settings::load(
+            cli.config.as_deref(),
+            cli.provider.as_deref(),
+            cli.model.as_deref(),
+            cli.env_file.as_deref(),
+        )?
+    };
     if let Some(seconds) =
         get_path(&spec, &["policies", "timeoutSeconds", "generate"]).and_then(Value::as_u64)
     {
@@ -88,13 +147,29 @@ pub(crate) fn exec(
     let mut signature = identity.clone();
     signature.extend(serde_json::to_vec(&json!({"inputs": inputs, "rebuild": rebuild, "fresh": fresh,
         "no_run": cli.no_run, "export": cli.export, "repairs": cli.max_repairs, "execution": settings.execution, "cache_dir": cache_dir}))?);
-    let Some(mut preparation) = preparation::Session::acquire(&path, &signature)? else {
-        return Ok(());
+    // Reader requests already hold a per-type lease. They must each reach launch,
+    // rather than being coalesced like repeated opens of one .crexe recipe.
+    let mut preparation = if reader_mode {
+        None
+    } else {
+        let Some(session) = preparation::Session::acquire(&path, &signature)? else {
+            return Ok(());
+        };
+        Some(session)
     };
-    let _progress = presentation::Progress::start(cli.ui)?;
+    let _progress = if reader_mode {
+        None
+    } else {
+        Some(presentation::Progress::start(cli.ui)?)
+    };
     let max_attempts = settings
         .execution
-        .attempts(settings.provider.max_output_tokens, cli.max_repairs);
+        .attempts(settings.provider.max_output_tokens, cli.max_repairs)
+        .min(
+            supplied_generation
+                .as_ref()
+                .map_or(u8::MAX, |session| session.remaining_requests()),
+        );
     presentation::details(&format!(
         "Provider: {} ({})\nModelo: {}\nTentativa 1 de {max_attempts} — até {} correções",
         settings.profile,
@@ -107,7 +182,12 @@ pub(crate) fn exec(
     }
     let mut ready = || {
         presentation::finish();
-        preparation.release();
+        if let Some(session) = preparation.as_mut() {
+            session.release();
+        }
+        if !cli.no_run && matches!(&cli.command, Commands::OpenGenerating { .. }) {
+            println!("CREXE_READER_READY");
+        }
     };
     let old_cache = get_cache_state(&path, &legacy_identity, &spec, &inputs, cache_dir)?;
     let root = old_cache.root.parent().context("Invalid cache root")?;
@@ -138,6 +218,9 @@ pub(crate) fn exec(
         if let Some(base) = &baseline {
             if base.metadata.request == request && base.cached() {
                 println!("Cache hit: skipping generate/build");
+                if reader_mode {
+                    presentation::phase("Abrindo com leitor existente…");
+                }
                 presentation::details(&format!(
                     "Provider: {}\nModelo: {}\nRevisão aprovada — nenhuma tentativa necessária",
                     settings.profile, settings.provider.model
@@ -151,12 +234,16 @@ pub(crate) fn exec(
                         &settings,
                     )?;
                 }
+                if let Some(prepared) = reader_prepared.as_deref_mut() {
+                    prepared()?;
+                }
                 return launch(
                     &base.metadata.spec,
                     &base.revision,
                     &ctx,
                     &settings,
                     cli,
+                    &runtime_args,
                     &mut ready,
                 );
             }
@@ -229,7 +316,10 @@ pub(crate) fn exec(
         } else {
             "Gerando seu programa…"
         });
-        let mut generation = generator::Session::new(&settings);
+        let mut local_generation = generator::Session::new(&settings);
+        let generation = supplied_generation
+            .as_deref_mut()
+            .unwrap_or(&mut local_generation);
         let mut generated = generation.generate(&system, &request_prompt)?;
         let mut change_kind = None;
         let mut change_reason = None;
@@ -324,7 +414,21 @@ pub(crate) fn exec(
                 &attempt_path,
                 &settings,
                 !cli.no_run,
-            );
+            )
+            .and_then(|()| {
+                if reader_mode {
+                    presentation::phase("Verificando a leitura de arquivos de teste…");
+                    reader::validate_application(
+                        &attempt_spec,
+                        &target,
+                        &ctx,
+                        &attempt_path,
+                        &settings,
+                    )
+                } else {
+                    Ok(())
+                }
+            });
             match built {
                 Ok(()) => {
                     presentation::phase("Preparando os arquivos…");
@@ -400,7 +504,18 @@ pub(crate) fn exec(
     };
     println!("Validated revision: {}", revision.display());
     drop(_cache_lock);
-    launch(&spec, &revision, &ctx, &settings, cli, &mut ready)
+    if let Some(prepared) = reader_prepared {
+        prepared()?;
+    }
+    launch(
+        &spec,
+        &revision,
+        &ctx,
+        &settings,
+        cli,
+        &runtime_args,
+        &mut ready,
+    )
 }
 
 fn adopt_legacy(
@@ -566,12 +681,14 @@ fn check_graphics(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn launch(
     spec: &Value,
     revision: &Path,
     ctx: &BTreeMap<String, String>,
     settings: &config::Settings,
     cli: &Cli,
+    runtime_args: &[std::ffi::OsString],
     ready: &mut dyn FnMut(),
 ) -> Result<()> {
     package::export(revision, cli.export.as_deref())?;
@@ -580,7 +697,7 @@ fn launch(
         return Ok(());
     }
     let project = project::Project::load(revision)?;
-    run_command(
+    run_command_args(
         spec,
         &project.commands["run"][0],
         revision,
@@ -588,6 +705,7 @@ fn launch(
         std::env::consts::OS,
         ctx,
         settings,
+        runtime_args,
         Some(ready),
     )
 }

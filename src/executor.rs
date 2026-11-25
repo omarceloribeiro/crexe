@@ -1,6 +1,8 @@
 use anyhow::{bail, Context, Result};
 use std::{
-    env, fs,
+    env,
+    ffi::OsString,
+    fs,
     io::{Read, Seek, SeekFrom},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -59,22 +61,43 @@ pub(crate) fn run(
     capture: bool,
     secret_names: &[String],
 ) -> Result<()> {
-    execute(args, cwd, timeout, capture, true, secret_names, None).map(|_| ())
+    execute(args, &[], cwd, timeout, capture, true, secret_names, None).map(|_| ())
 }
 
-pub(crate) fn launch(
+pub(crate) fn launch_with_args(
     args: &[String],
+    runtime_args: &[OsString],
     cwd: &Path,
     timeout: Option<Duration>,
     secret_names: &[String],
     ready: &mut dyn FnMut(),
 ) -> Result<()> {
-    execute(args, cwd, timeout, false, true, secret_names, Some(ready)).map(|_| ())
+    execute(
+        args,
+        runtime_args,
+        cwd,
+        timeout,
+        false,
+        true,
+        secret_names,
+        Some(ready),
+    )
+    .map(|_| ())
 }
 
 pub(crate) fn output(args: &[String], cwd: &Path, secret_names: &[String]) -> Result<String> {
+    output_with_args(args, &[], cwd, secret_names)
+}
+
+pub(crate) fn output_with_args(
+    args: &[String],
+    runtime_args: &[OsString],
+    cwd: &Path,
+    secret_names: &[String],
+) -> Result<String> {
     execute(
         args,
+        runtime_args,
         cwd,
         Some(Duration::from_secs(15)),
         true,
@@ -84,8 +107,10 @@ pub(crate) fn output(args: &[String], cwd: &Path, secret_names: &[String]) -> Re
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute(
     args: &[String],
+    runtime_args: &[OsString],
     cwd: &Path,
     timeout: Option<Duration>,
     capture: bool,
@@ -110,7 +135,8 @@ fn execute(
     }
     let executable = resolve_tool(&args[0])?;
     let mut command = Command::new(&executable);
-    command.args(&args[1..]).current_dir(cwd);
+    // Selected documents are opaque OS arguments, never templates or shell text.
+    command.args(&args[1..]).args(runtime_args).current_dir(cwd);
     if super::presentation::desktop() {
         // FreeConsole invalidates inherited Windows standard handles. Supply real
         // null handles before spawning the app; build capture replaces these below.
@@ -185,13 +211,25 @@ fn execute(
             {
                 bail!("Command output exceeded 2 MiB: {}", args[0]);
             }
-            let captured = if capture {
+            let captured = if capture && !print_output && status.success() {
+                // Structured output (including a 64 KiB reader preview plus JSON
+                // escaping) must remain complete. Diagnostics still use a tail.
+                stdout.seek(SeekFrom::Start(0))?;
+                let mut bytes = Vec::new();
+                (&mut stdout)
+                    .take(2 * 1024 * 1024 + 1)
+                    .read_to_end(&mut bytes)?;
+                if bytes.len() > 2 * 1024 * 1024 {
+                    bail!("Command output exceeded 2 MiB: {}", args[0]);
+                }
+                String::from_utf8_lossy(&bytes).into_owned()
+            } else if capture {
                 tail(&mut stdout)?
             } else {
                 String::new()
             };
             let diagnostics = if capture {
-                format!("{captured}{}", tail(&mut stderr)?)
+                format!("{}{}", tail(&mut stdout)?, tail(&mut stderr)?)
             } else {
                 String::new()
             };

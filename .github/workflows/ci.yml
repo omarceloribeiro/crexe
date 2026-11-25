@@ -1,4 +1,4 @@
-name: Rust checks
+name: CREXE checks
 on:
   push:
     branches: [main, feature/v1]
@@ -6,6 +6,20 @@ on:
 permissions:
   contents: read
 jobs:
+  check-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/site/package-lock.json
+      - name: Install site build dependencies
+        run: npm --prefix src/site ci
+      - name: Verify bilingual publications, links and downloads
+        run: npm --prefix src/site run check
   check:
     timeout-minutes: 45
     strategy:
@@ -47,11 +61,12 @@ jobs:
           sudo apt-get install -y gcc make pkg-config libgtk-3-dev
       - name: Native project fixture (no real model or GUI interaction)
         run: cargo +1.98.1 test --locked --test native_profiles -- --ignored --nocapture
-      - name: .NET SDK for Windows OpenGL profile
-        if: runner.os == 'Windows'
+      - name: .NET SDK for reader fixtures and Windows OpenGL profile
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - name: Generated readers, cache and document privacy (local provider, no display)
+        run: cargo +1.98.1 test --locked --test open_generating -- --ignored --nocapture
       - name: Linux OpenGL headers (CI runner only)
         if: runner.os == 'Linux'
         run: sudo apt-get install -y libepoxy-dev

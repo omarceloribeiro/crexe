@@ -8,17 +8,34 @@ Para preparar um pacote local, com o checkout limpo e todos os arquivos de orige
 python scripts/package-engine.py
 ```
 
-Python 3.11+, Git, Cargo e linker são ferramentas do **desenvolvedor**. O script recompila em modo release com lockfile, produz `target/packages`, verifica o conteúdo extraído por hash e executa `--version`/`doctor` com PATH vazio. Isso verifica a inicialização sem compiladores no PATH, não substitui uma máquina limpa. Pacotes existentes não são sobrescritos; `--output-dir` escolhe outra pasta.
+Python 3.11+, Git, Cargo e linker são ferramentas do **desenvolvedor**. O script recompila em modo release com lockfile, produz `target/packages`, verifica o conteúdo extraído por hash e executa `--version`, `doctor`, `inspect` de uma receita incluída e `open-generating --help` com PATH vazio. Isso verifica a inicialização e os comandos sem compiladores no PATH, não substitui uma máquina limpa nem gera um leitor. Pacotes existentes não são sobrescritos; `--output-dir` escolhe outra pasta.
 
 O pacote contém a engine, script de instalação sem build, exemplos, configuração sem segredo, licença e link fixado ao commit correspondente. Windows usa ZIP; Linux/macOS usam tar.gz com permissões de execução. `PACKAGE.json` registra origem/plataforma/hashes; o arquivo `.sha256` verifica os bytes do arquivo compactado. Hash não é assinatura do autor.
 
 O build Windows MSVC usa `crt-static`, conforme a [referência de Rust](https://doc.rust-lang.org/reference/linkage.html#static-and-dynamic-c-runtimes). O executável foi inspecionado sem imports de `VCRUNTIME140.dll`/MSVCP; bibliotecas nativas do Windows permanecem. O verificador da CI impede regressão dessa dependência. Builds por script entram na raiz para aplicar `.cargo/config.toml` e o toolchain fixado mesmo quando chamados de outro diretório.
 
-O pacote da engine não inclui Ollama/modelos ou SDKs dos aplicativos. Instalar a engine dispensa Rust e Python; gerar um app continua exigindo o provider e o SDK de seu [perfil](PERFIS_V1.md). O script Windows instala em `releases/v1` e associa a extensão; Linux/macOS têm instalação por CLI, sem associação gráfica implementada.
+O pacote da engine não inclui Ollama/modelos ou SDKs dos aplicativos. Instalar a engine dispensa Rust e Python; gerar um app continua exigindo o provider e o SDK de seu [perfil](PERFIS_V1.md). O script Windows instala em `releases/v1`, associa `.crexe` e registra **Gerar com CREXE** para arquivos comuns, sem alterar o aplicativo padrão desses documentos. O pacote também inclui `unassociate.cmd`, que remove os registros pertencentes à instalação. Linux/macOS têm instalação por CLI e entrada gráfica pelo seletor na janela da engine, sem associação `.crexe` ou menu de gerenciador implementado.
 
 Os instaladores interativos abrem a configuração nativa ao concluir. O pacote inclui `configure.cmd` no Windows, `configure.command` no macOS ou `configure.sh` no Linux. Eles usam a cópia instalada ou, se ausente, a cópia extraída. `crexe install` continua não interativo, inclusive sem display. A GUI usa egui/eframe com OpenGL; macOS/Linux precisam de sessão gráfica e bibliotecas de desktop disponíveis. Salvar chaves usa o cofre nativo (Secret Service no Linux). Verificar requisitos reais em máquinas limpas permanece parte da aceitação; build em CI não comprova todas as sessões gráficas.
 
 O checkpoint `845e1bc` produziu e verificou os três pacotes na [CI 36096064360](https://github.com/omarceloribeiro/crexe/actions/runs/36096064360): Windows/x86_64, Linux/x86_64 e macOS/aarch64. Os arquivos baixados tiveram checksum e todos os hashes internos conferidos neste host. O binário Windows produzido no GitHub foi instalado em uma raiz de teste e executou `--version`, `doctor` e `inspect` com PATH vazio, a partir de outra pasta. [Registro dos pacotes](validation/2026-09-25-engine-packages.json).
+
+Esse checkpoint é anterior a **Gerar com CREXE**. Seus hashes e ensaios não validam os novos pacotes; a prévia com a feature deve ser gerada da revisão correspondente e receber novos checksums e evidências.
+
+## Gerar com CREXE no pacote
+
+O pacote inclui `examples/primeira-leitura.md` e `examples/outra-leitura.md`, com títulos diferentes. Na pasta extraída, execute:
+
+```powershell
+.\crexe.exe open-generating -- examples/primeira-leitura.md
+.\crexe.exe open-generating -- examples/outra-leitura.md
+```
+
+No macOS/Linux, substitua `.\crexe.exe` por `./crexe`. Na primeira preparação do tipo, há uma chamada à LLM para formular a intenção do leitor, seguida da geração normal de código e das correções permitidas. O segundo arquivo deve usar o leitor compatível aprovado, sem outra chamada ou compilação. O programa recebe o caminho em runtime e abre o documento escolhido; nome, caminho e conteúdo não integram o prompt ou os fontes exportados. Extensões arbitrárias e ausência de extensão são aceitas. O contrato inicial é somente leitura, com texto ou inspeção hexadecimal para formatos opacos, sem promessa de isolamento de segurança.
+
+Na janela da engine, **Selecionar arquivo e gerar programa…** oferece o mesmo fluxo. A configuração ativa salva é usada; a seleção não salva alterações pendentes nos campos. No Windows, **Gerar com CREXE** aparece no menu de um arquivo após a associação; no Windows 11, pode ficar em **Mostrar mais opções**. O menu só atende seleção única. Finder/GNOME/Dolphin usam o seletor da janela como alternativa nesta prévia.
+
+A CI inclui fixtures de leitor com provider local controlado e .NET 8 nos três hosts, sem modelo real ou display, além da suíte Rust e dos perfis nativos existentes. Um job separado verifica o site PT/EN, Markdown, links e downloads. Esses checks não comprovam presença no menu real, o seletor em cada sessão gráfica nem a qualidade de geração de um modelo real. Registre esses ensaios por plataforma antes de anunciá-los como verificados.
 
 A instalação não altera o PATH. No PowerShell, use `.\crexe.exe` dentro da pasta extraída ou o caminho completo da instalação. Para concluir os ensaios fora do Codex, siga o [roteiro Windows](VALIDACAO_INSTALACAO_WINDOWS.md).
 

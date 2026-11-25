@@ -31,6 +31,8 @@ mod preparation;
 mod presentation;
 mod profiles;
 mod project;
+mod reader;
+mod reader_desktop;
 
 const RUNTIME_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -69,6 +71,8 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Generate or reuse a reader and open a local document without sending its contents
+    OpenGenerating { file: PathBuf },
     /// Edit a .crexe document in the built-in text editor; saving never generates
     Edit { file: PathBuf },
     /// Open native provider/model/API-key settings; import only stages changes for review
@@ -173,6 +177,14 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse_from(args);
 
     match &cli.command {
+        Commands::OpenGenerating { file } => {
+            if let Err(error) = reader::open(file, &cli) {
+                if cli.ui && !executor::cancelled() {
+                    presentation::show_error(&truncate(&format!("{error:#}"), 2000));
+                }
+                return Err(error);
+            }
+        }
         Commands::Edit { file } => edit::open(file)?,
         Commands::Configure { import } => {
             configure::open(cli.config.as_deref(), import.as_deref())?
@@ -817,6 +829,31 @@ fn run_command(
     settings: &config::Settings,
     ready: Option<&mut dyn FnMut()>,
 ) -> Result<()> {
+    run_command_args(
+        spec,
+        cmd_raw,
+        cwd,
+        phase,
+        os_name,
+        ctx,
+        settings,
+        &[],
+        ready,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_command_args(
+    spec: &Value,
+    cmd_raw: &[String],
+    cwd: &Path,
+    phase: &str,
+    os_name: &str,
+    ctx: &BTreeMap<String, String>,
+    settings: &config::Settings,
+    runtime_args: &[std::ffi::OsString],
+    ready: Option<&mut dyn FnMut()>,
+) -> Result<()> {
     let mut cmd: Vec<String> = cmd_raw
         .iter()
         .map(|s| render_template(s, spec, ctx))
@@ -839,15 +876,34 @@ fn run_command(
     check_allowlist(spec, &cmd, os_name, phase, cwd)?;
 
     let printable = cmd.join(" ");
-    println!("$ (cwd={}) {}", cwd.display(), printable);
+    println!(
+        "$ (cwd={}) {}{}",
+        cwd.display(),
+        printable,
+        if runtime_args.is_empty() {
+            ""
+        } else {
+            " <local document argument>"
+        }
+    );
 
     let timeout = settings.execution.timeout(
         phase,
         get_path(spec, &["policies", "timeoutSeconds", phase]).and_then(Value::as_u64),
     );
     if let Some(ready) = ready {
-        executor::launch(&cmd, cwd, timeout, &settings.secret_names, ready)
+        executor::launch_with_args(
+            &cmd,
+            runtime_args,
+            cwd,
+            timeout,
+            &settings.secret_names,
+            ready,
+        )
     } else {
+        if !runtime_args.is_empty() {
+            bail!("Runtime document arguments are restricted to the final reader launch");
+        }
         executor::run(&cmd, cwd, timeout, phase != "run", &settings.secret_names)
     }
 }
