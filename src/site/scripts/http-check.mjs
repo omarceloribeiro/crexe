@@ -31,6 +31,8 @@ export async function checkHttp(root = distRoot) {
     }
     const targets = new Map();
     for (const page of pages) {
+      const canonical = page.html.match(/<link\b[^>]*rel="canonical"[^>]*href="([^"]+)"/)?.[1];
+      if (canonical) assert.equal(new URL(canonical).pathname, new URL(page.url).pathname, `Canonical must match the final served URL: ${page.file}`);
       for (const match of page.html.matchAll(/\b(?:href|src)\s*=\s*["']([^"']*)["']/g)) {
         const url = new URL(match[1].replaceAll('&amp;', '&'), page.url);
         if (url.origin !== new URL(base).origin) continue;

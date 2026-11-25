@@ -63,5 +63,5 @@ export function publicationPath(language, slug = 'index') {
 }
 
 export function canonicalPath(page) {
-  return page.endsWith('index.html') ? page.slice(0, -10) : page;
+  return page.endsWith('index.html') ? page.slice(0, -10) : page.replace(/\.html$/, '');
 }

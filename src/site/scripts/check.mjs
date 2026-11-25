@@ -5,17 +5,18 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { build } from './build.mjs';
 import { checkHttp } from './http-check.mjs';
+import { canonicalPath } from './locales.mjs';
 import {
   distRoot, examples, git, readJson, repoRoot, siteRoot,
   validateDownloads, within,
 } from './shared.mjs';
 
 const { documentation, publications } = await build();
-for (const script of ['main.js', 'library.js', ...(await readdir(path.join(siteRoot, 'scripts')))
+for (const script of ['main.js', 'quickstart.js', 'library.js', ...(await readdir(path.join(siteRoot, 'scripts')))
   .filter((file) => file.endsWith('.mjs')).map((file) => `scripts/${file}`)]) {
   execFileSync(process.execPath, ['--check', path.join(siteRoot, script)], { stdio: 'pipe', windowsHide: true });
 }
-execFileSync(process.execPath, ['--test', path.join(siteRoot, 'scripts/publications.test.mjs')], { stdio: 'inherit', windowsHide: true });
+execFileSync(process.execPath, ['--test', path.join(siteRoot, 'scripts/publications.test.mjs'), path.join(siteRoot, 'scripts/quickstart.test.mjs')], { stdio: 'inherit', windowsHide: true });
 const htmlPages = new Map();
 const pageIds = new Map();
 for (const page of ['index.html', 'en/index.html', ...publications.pages]) {
@@ -46,7 +47,7 @@ for (const [page, html] of htmlPages) {
   }
   for (const target of [page, counterpart]) {
     const targetLanguage = target.startsWith('en/') ? 'en' : 'pt-BR';
-    const canonical = target.endsWith('index.html') ? target.slice(0, -10) : target;
+    const canonical = canonicalPath(target);
     assert(html.includes(`rel="alternate" hreflang="${targetLanguage}" href="https://crexe.org/${canonical}"`), `Missing reciprocal alternate in ${page}.`);
   }
 }
@@ -78,7 +79,7 @@ const sitemapPages = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) =
   const url = new URL(match[1]);
   assert.equal(url.origin, 'https://crexe.org', 'Unexpected sitemap origin.');
   const pathname = url.pathname.slice(1);
-  return pathname.endsWith('/') || !pathname ? `${pathname}index.html` : pathname;
+  return pathname.endsWith('/') || !pathname ? `${pathname}index.html` : `${pathname}.html`;
 });
 assert.deepEqual(sitemapPages.sort(), [...htmlPages.keys()].sort(), 'Sitemap must include every public HTML page.');
 

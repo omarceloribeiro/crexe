@@ -1,3 +1,5 @@
+import { availablePackages, httpsUrl, quickstartFor } from './quickstart.js';
+
 document.documentElement.classList.add('js');
 
 const english = document.documentElement.lang.startsWith('en');
@@ -38,24 +40,23 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-const requirements = english ? {
-  windows: 'Windows: .NET 8 SDK for Windows Forms. To build the engine from source, install Rust/Cargo and the Visual C++ linker.',
-  macos: 'macOS: Apple Clang and the Cocoa SDK for the experimental native profile. To build the engine, install Rust/Cargo. Configuration and the editor require a graphical session.',
-  linux: 'Linux: GCC, Make, pkg-config and GTK3 development libraries for the experimental native profile. To build the engine, install Rust/Cargo and the desktop libraries required by the build.',
-} : {
-  windows: 'Windows: .NET 8 SDK para Windows Forms. Para compilar a engine a partir dos fontes, prepare Rust/Cargo e o linker Visual C++.',
-  macos: 'macOS: Apple Clang e SDK Cocoa para o perfil nativo experimental. Para compilar a engine, prepare Rust/Cargo. Configuração e editor precisam de uma sessão gráfica.',
-  linux: 'Linux: GCC, Make, pkg-config e bibliotecas de desenvolvimento GTK3 para o perfil nativo experimental. Para compilar a engine, prepare Rust/Cargo e as bibliotecas de desktop exigidas pelo build.'
-};
+let selectedOS = 'windows';
+let packagesAvailable = new Set();
 function chooseOs(os) {
-  if (!Object.hasOwn(requirements, os)) return;
+  if (!['windows', 'macos', 'linux'].includes(os)) return;
+  selectedOS = os;
+  const instructions = quickstartFor(os, packagesAvailable.has(os), english);
   document.querySelectorAll('[data-os]').forEach((button) => {
     button.setAttribute('aria-pressed', String(button.dataset.os === os));
   });
-  document.querySelector('#os-requirements').textContent = requirements[os];
-  const executable = os === 'windows' ? '.\\target\\release\\crexe.exe' : './target/release/crexe';
-  document.querySelector('#configure-command').textContent = `${executable} configure\n${executable} doctor --check`;
-  document.querySelector('#run-command').textContent = `${executable} examples/plaintext/calculadora.crexe`;
+  document.querySelector('#os-requirements').textContent = instructions.requirements;
+  document.querySelector('#first-step-title').textContent = instructions.firstTitle;
+  document.querySelector('#first-step-description').textContent = instructions.firstDescription;
+  document.querySelector('#build-command').textContent = instructions.firstCommand;
+  document.querySelector('[data-copy="build-command"]').setAttribute('aria-label', instructions.firstCopyLabel);
+  document.querySelector('#configure-command').textContent = instructions.configureCommand;
+  document.querySelector('#run-description').textContent = instructions.runDescription;
+  document.querySelector('#run-command').textContent = instructions.runCommand;
 }
 document.querySelectorAll('[data-os], [data-choose-os]').forEach((button) => {
   button.addEventListener('click', () => chooseOs(button.dataset.os || button.dataset.chooseOs));
@@ -147,13 +148,6 @@ document.querySelector('.calculator-keys').addEventListener('keydown', (event) =
   }
 });
 
-function httpsUrl(value) {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
-  } catch { return null; }
-}
 async function loadDownloads() {
   try {
     const response = await fetch(sharedUrl('downloads.json'));
@@ -161,12 +155,13 @@ async function loadDownloads() {
     const manifest = await response.json();
     const releaseUrl = httpsUrl(manifest.releaseUrl);
     if (typeof manifest.version !== 'string' || !manifest.version.trim() || !releaseUrl) return;
+    packagesAvailable = availablePackages(manifest);
     let available = 0;
     for (const card of document.querySelectorAll('[data-platform]')) {
       const entry = manifest.platforms?.[card.dataset.platform];
       const url = httpsUrl(entry?.url);
       const checksum = httpsUrl(entry?.checksumUrl);
-      if (!url || !checksum) continue;
+      if (!packagesAvailable.has(card.dataset.platform)) continue;
       const link = card.querySelector('[data-package-link]');
       const checksumLink = card.querySelector('[data-checksum-link]');
       link.href = url; link.hidden = false;
@@ -182,6 +177,9 @@ async function loadDownloads() {
     }
   } catch {
     // Keep useful, honest static content when offline or when the manifest is invalid.
+  } finally {
+    // The selected tab may have changed while the catalog was downloading.
+    chooseOs(selectedOS);
   }
 }
 async function loadSource() {

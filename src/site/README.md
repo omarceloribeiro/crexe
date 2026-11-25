@@ -22,6 +22,8 @@ npm --prefix src/site run build
 
 `check` inclui o build, testes do renderer Markdown, sintaxe JavaScript, links locais e âncoras de todas as páginas, sitemap, paridade com os documentos/exemplos originais, regras do catálogo de releases, inventário do ZIP e SHA-256. Também serve o resultado por HTTP no loopback: verifica redirecionamentos HTML, bytes dos downloads, tipos de conteúdo, cabeçalhos e respostas 404. Não compila a engine nem chama providers. `dist/` e `node_modules/` são gerados e ignorados pelo Git.
 
+A CI executa o mesmo `npm ci` e `check` em um job Ubuntu com Node.js 22. Esse job verifica o site independentemente da matriz Rust e dos testes de leitores gerados; não publica no Cloudflare Pages nem cria releases.
+
 Para hospedar em `crexe.org`, use **apenas o conteúdo de `src/site/dist`** como raiz de um servidor estático HTTPS. Não publique a raiz do repositório. Os assets usam URLs relativas; o canonical e o sitemap identificam `https://crexe.org/`. Configure os tipos `.crexe` como `application/octet-stream`, `.md`/`.sha256` como `text/plain; charset=utf-8` e `.xml` como `application/xml`. O preview local já define os tipos. Nenhum deploy, alteração de DNS ou release é executado por estes scripts.
 
 O build inclui `_headers` com as regras de download do Cloudflare Pages e `404.html` bilíngue para endereços inexistentes. A página 404 usa links à raiz do domínio, pois pode ser servida em qualquer profundidade. O servidor de preview aceita também URLs HTML sem extensão, como no Pages. Referências: [cabeçalhos](https://developers.cloudflare.com/pages/configuration/headers/) e [resolução de páginas e 404](https://developers.cloudflare.com/pages/configuration/serving-pages/).
@@ -59,6 +61,8 @@ Os pacotes da engine pertencem ao GitHub Releases. Enquanto a release não estiv
 - `scripts/`: build, verificação e servidor local.
 
 A seção do projeto aberto apresenta a implementação, a biblioteca e os caminhos de contribuição e segurança. Os textos de licenciamento seguem a [revisão mantida no repositório](../../docs/LICENCIAMENTO_E_ECOSSISTEMA.md): preservam GNU GPL v3, não anunciam novas concessões MIT/Apache/CC BY, registro de marca ou produtos futuros como já disponíveis.
+
+As duas landings apresentam **Gerar com CREXE**: selecionar um documento comum para gerar ou reutilizar um leitor que o abra. O texto distingue o menu Windows do seletor da janela em macOS/Linux, descreve o contrato inicial de leitura, a chamada única de planejamento por preparação do leitor e o uso do cache. O site não recebe documentos nem gera programas no navegador. A referência de implementação vem dos guias do projeto em português e inglês; ensaios de CI, modelo real e desktop não devem ser apresentados como equivalentes.
 
 Os exemplos `.crexe` e a documentação são copiados de suas fontes mantidas no repositório. Edite os originais e gere novamente o site. Não mantenha uma segunda cópia editorial desses documentos nesta pasta.
 
