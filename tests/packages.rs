@@ -156,10 +156,12 @@ class Program {
     static int Main(string[] args) {
         if (Array.IndexOf(args, "--crexe-self-test") >= 0) return 6 * 7 == 42 ? 0 : 1;
         var data = Environment.GetEnvironmentVariable("CREXE_DATA_DIR") ?? throw new Exception("No data dir");
-        if (Path.GetFullPath(Environment.CurrentDirectory) != Path.GetFullPath(data)) return 3;
         var file = Path.Combine(data, "open-count.txt");
         var count = File.Exists(file) ? int.Parse(File.ReadAllText(file)) : 0;
         File.WriteAllText(file, (++count).ToString());
+        // Check the effective working directory through the same file, because
+        // macOS exposes /var and /private/var aliases for its temporary folders.
+        if (!File.Exists("open-count.txt") || File.ReadAllText("open-count.txt") != count.ToString()) return 3;
         Console.WriteLine("BUNDLE42:" + count);
         return 0;
     }
