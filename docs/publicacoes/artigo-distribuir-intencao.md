@@ -21,7 +21,7 @@ Esse texto apresenta uma intenção compreensível antes de qualquer compilaçã
 
 Isso não significa que o texto determine todos os detalhes do programa. Ainda será necessário escolher uma implementação, resolver ambiguidades e verificar o resultado. Uma descrição curta deixa muitas decisões em aberto: organização das telas, tratamento de entradas, acessibilidade e estrutura interna. Escrever uma receita melhor faz parte do trabalho de criação.
 
-Na implementação atual, a engine aceita texto puro, Markdown e um formato YAML legado. Ela usa a configuração local de geração e os perfis disponíveis para preparar o projeto. Compilação e testes disponíveis no perfil antecedem a aprovação de uma revisão. Os requisitos concretos estão no [guia do projeto](../../README.md) e na [documentação de perfis](../PERFIS_V1.md).
+Na implementação atual, a engine aceita texto puro, Markdown e um formato YAML legado. Ela usa a configuração local de geração e os perfis disponíveis para preparar o projeto. Compilação e testes disponíveis no perfil antecedem a aprovação de uma revisão. Os requisitos concretos estão no [guia do projeto](../../README-pt-BR.md) e na [documentação de perfis](../PERFIS_V1.md).
 
 ## Editar o pedido também é projetar
 

@@ -94,6 +94,18 @@ test('every publication must have a matching translated edition', () => {
   assert.throws(() => validateEditions(new Map([['pt-BR', catalog], ['en', [current, { ...reference, slug: 'wrong' }]]])), /Missing or mismatched/);
 });
 
+test('README language links open the counterpart reader edition without changing ordinary references', () => {
+  const sources = ['README.md', 'README-pt-BR.md'];
+  const english = { ...current, slug: 'project-overview', language: 'en', source: sources[0], sourceAliases: sources };
+  const portuguese = { ...current, slug: 'project-overview', language: 'pt-BR', source: sources[1], sourceAliases: sources };
+  const en = renderPublication('[Português (Brasil)](README-pt-BR.md)', english, [english]);
+  assert.match(en.html, /href="\.\.\/\.\.\/biblioteca\/project-overview\.html"/);
+  const pt = renderPublication('[English](README.md)', portuguese, [portuguese]);
+  assert.match(pt.html, /href="\.\.\/en\/library\/project-overview\.html"/);
+  const ordinary = renderPublication('[project guide](../../README-pt-BR.md)', current, [current, portuguese]);
+  assert.match(ordinary.html, /href="project-overview\.html"/);
+});
+
 test('an explicit original document link must not become a link to its own translation', () => {
   const originalSource = 'docs/crexe_handoff_docs/01_RFC_CREXE_SPEC_DRAFT.md';
   const translated = { ...current, originalSource, sourceAliases: [current.source, originalSource] };

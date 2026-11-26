@@ -174,9 +174,9 @@
     "category": "reference",
     "status": "Referência do projeto",
     "language": "pt-BR",
-    "source": "README.md",
-    "date": "2026-11-25",
-    "notice": "README mantido no repositório. O CREXE v1 está em desenvolvimento; snapshots não são releases estáveis."
+    "source": "README-pt-BR.md",
+    "date": "2026-11-26",
+    "notice": "Edição em português do README mantido no repositório. O CREXE v1 está em desenvolvimento; snapshots não são releases estáveis."
   },
   {
     "slug": "security",

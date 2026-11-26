@@ -21,7 +21,7 @@ This text presents an understandable intent before any compilation. Its recipien
 
 That does not mean the text determines every detail of the program. An implementation still has to be chosen, ambiguities resolved, and the result verified. A short description leaves many decisions open: screen organization, input handling, accessibility, and internal structure. Writing a better recipe is part of the creative work.
 
-In the current implementation, the engine accepts plain text, Markdown, and a legacy YAML format. It uses local generation configuration and the available profiles to prepare the project. Compilation and the tests available in the profile precede approval of a revision. Concrete requirements are in the [project guide](../README.md) and [profile documentation](../PERFIS_V1.md).
+In the current implementation, the engine accepts plain text, Markdown, and a legacy YAML format. It uses local generation configuration and the available profiles to prepare the project. Compilation and the tests available in the profile precede approval of a revision. Concrete requirements are in the [project guide](../../../README.md) and [profile documentation](../PERFIS_V1.md).
 
 ## Editing the request is also design
 

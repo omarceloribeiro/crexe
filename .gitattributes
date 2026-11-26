@@ -7,6 +7,7 @@
 /*.toml text eol=lf
 /Cargo.lock text eol=lf
 /README.md text eol=lf
+/README-pt-BR.md text eol=lf
 /CONTRIBUTING.md text eol=lf
 /SECURITY.md text eol=lf
 /CHANGELOG.md text eol=lf

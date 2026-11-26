@@ -32,7 +32,7 @@ The RFC is a historical proposal, not an approved standard or a complete descrip
 
 ## Implementation references
 
-- [Project overview](../README.md)
+- [Project overview](../../../README.md)
 - [Formats](../FORMATOS_V1.md), [configuration](../CONFIGURACAO.md), and [profiles](../PERFIS_V1.md)
 - [Projects and export](../PROJETOS_V1.md)
 - [Security](../SECURITY.md) and [contributing](../CONTRIBUTING.md)

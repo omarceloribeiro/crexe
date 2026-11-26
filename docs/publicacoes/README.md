@@ -36,7 +36,7 @@ O RFC e os handoffs preservam suas propostas e avisos originais. A política atu
 
 ## Referências da implementação
 
-O [README principal](../../README.md), o [contrato dos formatos](../FORMATOS_V1.md), a [configuração](../CONFIGURACAO.md), os [perfis](../PERFIS_V1.md), os [projetos exportados](../PROJETOS_V1.md) e os [limites de segurança](../../SECURITY.md) descrevem o comportamento entregue. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) distingue a MIT da engine, a MIT-0 para os materiais de saída e exemplos oficiais e os direitos de terceiros.
+O [guia principal em português](../../README-pt-BR.md), o [contrato dos formatos](../FORMATOS_V1.md), a [configuração](../CONFIGURACAO.md), os [perfis](../PERFIS_V1.md), os [projetos exportados](../PROJETOS_V1.md) e os [limites de segurança](../../SECURITY.md) descrevem o comportamento entregue. O [licenciamento](../LICENCIAMENTO_E_ECOSSISTEMA.md) distingue a MIT da engine, a MIT-0 para os materiais de saída e exemplos oficiais e os direitos de terceiros.
 
 ## Critérios editoriais
 

@@ -81,7 +81,16 @@ function rewriteLocalUrl(value, entry, catalog, localLinks, kind) {
   const target = repositoryPath(relative ? path.posix.join(path.posix.dirname(entry.source), relative) : entry.source);
   const originalDownload = target === entry.originalSource && target !== entry.source;
   const publication = !originalDownload && catalog.find((item) => repositoryPath(item.source) === target || item.sourceAliases?.includes(target));
-  const url = `${publication ? `${publication.slug}.html` : `${getLocale(entry.language).assetPrefix}${urlPath(target)}`}${suffix}`;
+  // README language links must work both as relative GitHub links and as links
+  // between reader editions. Ordinary cross-language references stay localized.
+  const readmeLanguages = new Map([['README.md', 'en'], ['README-pt-BR.md', 'pt-BR']]);
+  const targetLanguage = readmeLanguages.get(target);
+  const readmeTranslation = publication && readmeLanguages.has(entry.source)
+    && targetLanguage && targetLanguage !== entry.language;
+  const destination = readmeTranslation
+    ? path.posix.relative(path.posix.dirname(publicationPath(entry.language, entry.slug)), publicationPath(targetLanguage, publication.slug))
+    : publication ? `${publication.slug}.html` : `${getLocale(entry.language).assetPrefix}${urlPath(target)}`;
+  const url = `${destination}${suffix}`;
   localLinks.push({ source: entry.source, target, url, kind });
   return url;
 }

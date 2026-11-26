@@ -1,6 +1,6 @@
 # Gerar com CREXE
 
-[English](en/GENERATE_WITH_CREXE.md) · [Guia principal](../README.md)
+[English](en/GENERATE_WITH_CREXE.md) · [Guia principal](../README-pt-BR.md)
 
 **Estado: implementação v1 em desenvolvimento.** Um documento comum pode iniciar a geração de um leitor local. A engine prepara o programa a partir do tipo do arquivo e entrega o documento ao programa somente quando ele abre. Este guia descreve o comportamento implementado, os limites da prévia e os ensaios necessários antes da publicação.
 

@@ -1,6 +1,6 @@
 # Generate with CREXE
 
-[Português](../GERAR_COM_CREXE.md) · [Main guide](README.md)
+[Português](../GERAR_COM_CREXE.md) · [Main guide](../../README.md)
 
 **Status: v1 implementation under development.** An ordinary document can start the generation of a local reader. The engine prepares the program from the file type and passes the document to that program only when it opens. This guide describes the implemented behavior, preview limitations, and checks required before publication. Native interface labels currently appear in Portuguese.
 

@@ -174,9 +174,9 @@
     "category": "reference",
     "status": "Project reference",
     "language": "en",
-    "source": "docs/en/README.md",
-    "date": "2026-11-25",
-    "notice": "English translation of the project README. CREXE v1 is under development; snapshots are not stable releases. Native application labels are explained in English here without changing the engine's interface."
+    "source": "README.md",
+    "date": "2026-11-26",
+    "notice": "The repository's main README, maintained in English. CREXE v1 is under development; snapshots are not stable releases. Native application labels are explained in English here without changing the engine's interface."
   },
   {
     "slug": "security",
