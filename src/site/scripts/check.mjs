@@ -22,8 +22,14 @@ assert((await readFile(path.join(siteRoot, 'download-counts-worker.js'))).equals
 assert.deepEqual(await readJson(path.join(distRoot, '_routes.json')), { version: 1, include: ['/api/download-counts'], exclude: [] }, 'Only the counter API needs a Function invocation.');
 const htmlPages = new Map();
 const pageIds = new Map();
+const styleVersions = new Map(await Promise.all(['styles.css', 'publications.css'].map(async (file) =>
+  [file, createHash('sha256').update(await readFile(path.join(siteRoot, file))).digest('hex').slice(0, 12)])));
 for (const page of ['index.html', 'en/index.html', ...publications.pages]) {
   const html = await readFile(path.join(distRoot, page), 'utf8');
+  for (const [file, version] of styleVersions) {
+    assert(html.includes(`${file}?v=${version}"`), `Stylesheet URL must identify current contents: ${file} in ${page}.`);
+    assert(!html.includes(`${file}"`), `Unversioned stylesheet can retain stale styles in ${page}.`);
+  }
   const ids = [...html.matchAll(/\bid\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]);
   assert.equal(ids.length, new Set(ids).size, `Duplicate HTML IDs in ${page}.`);
   assert.equal([...html.matchAll(/<h1\b/g)].length, 1, `Expected one page title in ${page}.`);

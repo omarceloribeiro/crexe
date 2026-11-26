@@ -59,6 +59,16 @@ export async function build() {
     await copyFile(path.join(repoRoot, source), output);
   }));
   const publications = await buildPublications();
+  // Cached stylesheet URLs must change when their contents change, including
+  // for returning visitors whose browser still considers the old CSS fresh.
+  const styleVersions = new Map(await Promise.all(['styles', 'publications'].map(async (name) =>
+    [name, createHash('sha256').update(await readFile(path.join(distRoot, `${name}.css`))).digest('hex').slice(0, 12)])));
+  for (const page of ['index.html', 'en/index.html', '404.html', ...publications.pages]) {
+    const filename = path.join(distRoot, page);
+    const html = await readFile(filename, 'utf8');
+    await writeFile(filename, html.replace(/href="((?:\.\.\/)*(styles|publications)\.css)"/g,
+      (_, href, name) => `href="${href}?v=${styleVersions.get(name)}"`), 'utf8');
+  }
   const publicationUrls = ['index.html', 'en/index.html', ...publications.pages].map((page) => {
     const entry = publications.catalog.find((item) => item.url === page);
     const url = canonicalPath(page);
