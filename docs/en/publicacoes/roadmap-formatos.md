@@ -1,6 +1,6 @@
 # Roadmap — CREXP and CREXB
 
-**Edition: 25 November 2026.** Minimal previews are merged into `main` and available in public prerelease `v1.0.0-preview.1`; they do not mean that the entire handoff architecture has shipped or that a stable release already exists. This roadmap does not assign dates to later stages.
+**Edition: 26 November 2026.** Minimal previews are merged into `main` and available in public prerelease `v1.0.0-preview.1`; they do not mean that the entire handoff architecture has shipped or that a stable release already exists. This roadmap does not assign dates to later stages.
 
 CREXE lets you describe. CREXP lets you organize specifications. CREXB lets you distribute and open an accepted result. These roles complement one another: the recipe preserves intent, the package organizes that intent, and the bundle also preserves an implementation.
 
@@ -45,6 +45,17 @@ The maintained [CREXP](crexp.md) and [CREXB](crexb.md) guides describe commands,
 | Concurrency and scale | Locks, transactions, retention policies, and running-bundle management | Simultaneous launches and intermediate failures do not corrupt cache or state |
 
 ## What remains research
+
+The [Generative temporal compatibility](whitepaper-compatibilidade-temporal-generativa.md) whitepaper adds a future vision, without implementation or experimental validation of drivers and temporal bridges in CREXE. Its [complete English original](../../publicacoes/originais/CREXE_Generative_Temporal_Compatibility_White_Paper.md) is available for download. `.crdll` and `.crdrv` are proposed names, not extensions recognized as new formats by the current engine.
+
+| Research direction | Question to investigate | Evidence required before announcing support |
+| --- | --- | --- |
+| `.crdll` — generative libraries | Preserve behavior, APIs, and ABIs when generating components for other environments | Versioned contracts and independent behavioral and integration tests for each target |
+| `.crdrv` — hardware compatibility | Generate user-space or, where justified, privileged components from documented protocols | Simulation, protocol tests, privilege boundaries, recovery, and controlled validation on hardware |
+| Bidirectional temporal compatibility | Old hardware with future operating systems; modern hardware with historical systems | A reproducible demonstration of each combination, including physical requirements and limitations |
+| Bridges across eras | Generate the software parts of a distributed solution, such as a legacy component and a modern proxy | Available physical adapter, documented interfaces, and end-to-end tests; code cannot create missing hardware |
+
+Lisa/modern printer, Windows 3.1/IPP, Bluetooth controller/retrocomputer, and DOS/NVMe are research scenarios. The author's report of software generation for Lisa does not validate those scenarios. No delivery date is promised; these proposals complement the roles of CREXE, CREXP, and CREXB without replacing them.
 
 Deep operating system integration, historical platforms, virtual mounting, partial/streaming execution, and bitwise reproduction across different toolchains remain research hypotheses. A Gallery, commercial services, and cloud publishing may be planned without being available products in this version. This site does not include a commercial landing page.
 

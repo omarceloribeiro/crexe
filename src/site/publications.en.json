@@ -22,6 +22,19 @@
     "notice": "Research proposal. The operating-system integration scenarios are not features available in CREXE."
   },
   {
+    "slug": "compatibilidade-temporal-generativa",
+    "title": "CREXE: generative temporal compatibility",
+    "description": "A vision of libraries, drivers, and bridges across eras: old hardware on future systems and modern hardware on historical systems.",
+    "category": "whitepaper",
+    "status": "Future vision · Draft 0.1",
+    "source": "docs/en/publicacoes/whitepaper-compatibilidade-temporal-generativa.md",
+    "originalSource": "docs/publicacoes/originais/CREXE_Generative_Temporal_Compatibility_White_Paper.md",
+    "originalLanguage": "en",
+    "date": "2026-11-26",
+    "notice": "Research proposal, not an available feature. .crdll, .crdrv, and temporal compatibility bridges are not implemented or validated in CREXE. Editorial edition; the complete original English Markdown is available for download.",
+    "language": "en"
+  },
+  {
     "slug": "seguranca-e-confianca",
     "title": "Security and trust in regenerable software",
     "description": "Where the trust boundaries lie, what the engine controls today, and what an isolated architecture would need to demonstrate.",
@@ -230,7 +243,7 @@
     "sourceAliases": [
       "docs/publicacoes/roadmap-formatos.md"
     ],
-    "date": "2026-11-25",
+    "date": "2026-11-26",
     "language": "en"
   }
 ]

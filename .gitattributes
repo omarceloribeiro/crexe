@@ -38,5 +38,7 @@ LICENSE text
 /scripts/third_party_licenses/** -text !eol
 # Supplied CREXP/CREXB handoffs and JSON references are downloadable originals.
 /docs/formatos/originais/** -text !eol whitespace=-blank-at-eol
+# Supplied white papers retain their original bytes and Markdown hard breaks.
+/docs/publicacoes/originais/** -text !eol whitespace=-blank-at-eol
 # CREXP is a binary ZIP, even though the contained documents are text.
 /examples/**/*.crexp -text !eol

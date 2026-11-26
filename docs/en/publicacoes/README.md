@@ -1,11 +1,12 @@
 # CREXE library
 
-English editions of the CREXE website's white papers, guides, articles, and manifesto, prepared on November 24, 2026. These are full translations of the maintained Portuguese publications, preserving the distinction between current implementation, technical analysis, and future proposals.
+English editions of the CREXE website's white papers, guides, articles, and manifesto, first prepared on November 24, 2026. They include full translations of the maintained Portuguese publications and editorial editions of supplied English originals, preserving the distinction between current implementation, technical analysis, and future proposals.
 
 ## White papers
 
 - [Foundations of intent-based distribution](whitepaper-fundamentos.md)
 - [Regenerative computing: a research agenda](whitepaper-computacao-regeneravel.md)
+- [Generative temporal compatibility](whitepaper-compatibilidade-temporal-generativa.md): a future vision for `.crdll` libraries, `.crdrv` drivers, and bridges between hardware and systems from different eras. Complete editorial edition dated November 26, 2026; these proposals are not implemented or validated. The [original English whitepaper](../../publicacoes/originais/CREXE_Generative_Temporal_Compatibility_White_Paper.md) is preserved byte for byte and available for download alongside the English and Portuguese reading editions.
 
 ## RFC
 

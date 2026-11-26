@@ -1,6 +1,6 @@
 # Roadmap — CREXP e CREXB
 
-**Edição de 25/11/2026.** As prévias mínimas estão integradas à `main` e disponíveis na pré-release pública `v1.0.0-preview.1`; não significam que toda a arquitetura dos handoffs esteja entregue ou que já exista uma release estável. Este roadmap não fixa datas para os próximos estágios.
+**Edição de 26/11/2026.** As prévias mínimas estão integradas à `main` e disponíveis na pré-release pública `v1.0.0-preview.1`; não significam que toda a arquitetura dos handoffs esteja entregue ou que já exista uma release estável. Este roadmap não fixa datas para os próximos estágios.
 
 CREXE permite descrever. CREXP permite organizar especificações. CREXB permite distribuir e abrir um resultado aceito. Os três papéis se complementam: a receita preserva intenção, o pacote organiza essa intenção e o bundle preserva também uma implementação.
 
@@ -45,6 +45,17 @@ Os guias mantidos de [CREXP](crexp.md) e [CREXB](crexb.md) descrevem comandos, l
 | Concorrência e escala | Locks, transações, políticas de retenção e gerenciamento de bundles em execução | Aberturas simultâneas e falhas intermediárias não corrompem cache ou estado |
 
 ## O que continua sendo pesquisa
+
+O whitepaper [Compatibilidade temporal generativa](whitepaper-compatibilidade-temporal-generativa.md) acrescenta uma visão de evolução, sem implementação ou validação experimental de drivers e pontes temporais no CREXE. Seu [original completo em inglês](originais/CREXE_Generative_Temporal_Compatibility_White_Paper.md) está disponível para download. `.crdll` e `.crdrv` são nomes propostos, não extensões reconhecidas como novos formatos pela engine atual.
+
+| Direção de pesquisa | Questão a investigar | Evidência necessária antes de anunciar suporte |
+| --- | --- | --- |
+| `.crdll` — bibliotecas generativas | Preservar comportamento, APIs e ABIs ao gerar componentes para outros ambientes | Contratos versionados e testes independentes de comportamento e integração em cada target |
+| `.crdrv` — compatibilidade de hardware | Gerar componentes em espaço de usuário ou, quando justificado, privilegiados, a partir de protocolos documentados | Simulação, testes de protocolo, limites de privilégio, recuperação e validação controlada no hardware |
+| Compatibilidade temporal bidirecional | Hardware antigo com SO futuro; hardware moderno com SO histórico | Demonstração reproduzível de cada combinação, incluindo requisitos físicos e limitações |
+| Pontes entre épocas | Gerar as partes de software de uma solução distribuída, como um componente legado e um proxy moderno | Adaptador físico disponível, interfaces documentadas e testes ponta a ponta; código não cria hardware ausente |
+
+Os casos Lisa/impressora moderna, Windows 3.1/IPP, controle Bluetooth/retrocomputador e DOS/NVMe são cenários de pesquisa. O relato do autor sobre geração de software para Lisa não valida esses cenários. Não há prazo de entrega; essas propostas complementam, sem substituir, os papéis de CREXE, CREXP e CREXB.
 
 Integração profunda com sistemas operacionais, plataformas históricas, montagem virtual, execução parcial/streaming e reprodução bit a bit em toolchains diferentes continuam hipóteses de pesquisa. Uma Gallery, serviços comerciais e publicação cloud podem ser planejados sem serem produtos disponíveis nesta versão. Este site não inclui uma landing comercial.
 

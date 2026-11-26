@@ -22,6 +22,19 @@
     "language": "pt-BR"
   },
   {
+    "slug": "compatibilidade-temporal-generativa",
+    "title": "CREXE: compatibilidade temporal generativa",
+    "description": "Uma visão de bibliotecas, drivers e pontes entre épocas: hardware antigo em sistemas futuros e hardware moderno em sistemas históricos.",
+    "category": "whitepaper",
+    "status": "Visão de futuro · Draft 0.1",
+    "source": "docs/publicacoes/whitepaper-compatibilidade-temporal-generativa.md",
+    "originalSource": "docs/publicacoes/originais/CREXE_Generative_Temporal_Compatibility_White_Paper.md",
+    "originalLanguage": "en",
+    "date": "2026-11-26",
+    "notice": "Proposta de pesquisa, não funcionalidade disponível. .crdll, .crdrv e pontes de compatibilidade temporal não estão implementados nem validados no CREXE. Edição editorial; o Markdown original em inglês está disponível integralmente para download.",
+    "language": "pt-BR"
+  },
+  {
     "slug": "seguranca-e-confianca",
     "title": "Segurança e confiança no software regenerável",
     "description": "Onde estão as fronteiras de confiança, o que a engine controla hoje e o que uma arquitetura com isolamento precisaria provar.",
@@ -221,7 +234,7 @@
     "status": "Roadmap · Sem datas prometidas",
     "source": "docs/publicacoes/roadmap-formatos.md",
     "notice": "Planejamento público. As etapas futuras não são funcionalidades disponíveis. Downloads preservam os dois handoffs completos e os JSON originais; exemplos com placeholders não constituem builds executáveis.",
-    "date": "2026-11-25",
+    "date": "2026-11-26",
     "language": "pt-BR"
   }
 ]

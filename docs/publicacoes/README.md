@@ -10,6 +10,7 @@ A coleção também tem [edição completa em inglês](../en/publicacoes/README.
 
 - [Fundamentos da distribuição por intenção](whitepaper-fundamentos.md): modelo, contratos, custos e limites da implementação.
 - [Computação regenerável](whitepaper-computacao-regeneravel.md): investigação de longo prazo, incluindo utilitários de sistema e critérios de validação.
+- [Compatibilidade temporal generativa](whitepaper-compatibilidade-temporal-generativa.md): visão de evolução para bibliotecas `.crdll`, drivers `.crdrv` e pontes entre hardware e sistemas de épocas diferentes. Edição de 26/11/2026, integral em português; propostas não implementadas nem validadas. O [whitepaper original em inglês](originais/CREXE_Generative_Temporal_Compatibility_White_Paper.md) está preservado byte a byte e disponível para download, junto à edição editorial inglesa no site.
 
 ## RFCs
 
