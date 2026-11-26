@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import test from 'node:test';
 import { createDownloadCountsWorker } from '../download-counts-worker.js';
 
@@ -160,6 +161,45 @@ test('rejects unpublished or mismatching release metadata', async (t) => {
   });
 });
 
+test('rejects release and asset redirects without fetching their destinations', async (t) => {
+  let destinationRequests = 0;
+  const server = createServer((request, response) => {
+    if (request.url.startsWith('/redirect/')) {
+      response.writeHead(Number(request.url.slice('/redirect/'.length)), { Location: '/destination' });
+      response.end();
+    } else {
+      destinationRequests++;
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(release()));
+    }
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(() => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
+  const localOrigin = `http://127.0.0.1:${server.address().port}`;
+  for (const stage of ['release', 'assets']) {
+    for (const status of [301, 302, 303, 307, 308]) await t.test(`${stage} HTTP ${status}`, async () => {
+      const metadata = release();
+      metadata.assets = [];
+      const app = harness({ fetcher: async (url, options) => {
+        if (stage === 'assets' && url === `${api}/tags/v1.0.0`) return Response.json(metadata);
+        assert.equal(url, stage === 'release' ? `${api}/tags/v1.0.0` : `${api}/42/assets?per_page=100&page=1`);
+        // Exercise real fetch redirect handling without contacting external hosts.
+        return fetch(`${localOrigin}/redirect/${status}`, options);
+      } });
+      const response = await app.request();
+      assert.equal(response.status, 503);
+      const data = await response.json();
+      assert.equal(data.status, 'unavailable');
+      assert.equal(data.total, null);
+      assert.equal(app.requests.length, stage === 'release' ? 1 : 2);
+      assert.equal(destinationRequests, 0);
+    });
+  }
+});
+
 test('rejects invalid counts, duplicate assets and totals outside safe integer precision', async (t) => {
   for (const value of [-1, 0.5, '12', null, Number.MAX_SAFE_INTEGER + 1]) {
     await t.test(`count ${value}`, async () => {
@@ -267,7 +307,7 @@ test('visitor headers and credentials are never forwarded to catalog or GitHub',
   assert.deepEqual([...app.assetRequests[0].headers], []);
   const [url, options] = app.requests[0];
   assert.equal(new URL(url).hostname, 'api.github.com');
-  assert.equal(options.redirect, 'error');
+  assert.equal(options.redirect, 'manual');
   assert.deepEqual(Object.keys(options.headers).sort(), ['Accept', 'User-Agent', 'X-GitHub-Api-Version']);
   assert.doesNotMatch(JSON.stringify(options.headers), /visitor|private|192\.0\.2/);
 });

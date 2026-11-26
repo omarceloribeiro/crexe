@@ -91,7 +91,9 @@ async function cacheRequest(origin, manifest) {
 
 async function githubJson(fetcher, url, signal) {
   const response = await fetcher(url, {
-    method: 'GET', redirect: 'error', signal,
+    // Workers supports manual/follow, not error. Reject 3xx below without
+    // following Location, so the fixed GitHub API remains the only upstream.
+    method: 'GET', redirect: 'manual', signal,
     headers: {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
