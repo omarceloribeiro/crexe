@@ -8,6 +8,13 @@ const ENDPOINT = '/api/download-counts';
 const SUCCESS_TTL = 900;
 const ERROR_TTL = 60;
 
+class CountsError extends Error {
+  constructor(code) {
+    super(code);
+    this.code = code;
+  }
+}
+
 function emptyCounts(status, manifest = null) {
   return {
     schemaVersion: 1, status, version: manifest?.version ?? null,
@@ -17,8 +24,8 @@ function emptyCounts(status, manifest = null) {
   };
 }
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
+function jsonResponse(data, status = 200, errorCode = null) {
+  const response = new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
@@ -26,6 +33,10 @@ function jsonResponse(data, status = 200) {
       'Cache-Control': 'public, max-age=60',
     },
   });
+  // Only locally defined categories are exposed, never upstream messages,
+  // response bodies or visitor data. The public JSON contract is unchanged.
+  if (errorCode) response.headers.set('X-CREXE-Counts-Error', errorCode);
+  return response;
 }
 
 function exactGithubUrl(value, expectedPrefix, asset = false) {
@@ -90,28 +101,36 @@ async function cacheRequest(origin, manifest) {
 }
 
 async function githubJson(fetcher, url, signal) {
-  const response = await fetcher(url, {
-    // Workers supports manual/follow, not error. Reject 3xx below without
-    // following Location, so the fixed GitHub API remains the only upstream.
-    method: 'GET', redirect: 'manual', signal,
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'CREXE-public-download-counter',
-    },
-  });
-  if (!response.ok) throw new Error('Public release information is unavailable.');
-  return response.json();
+  let response;
+  try {
+    response = await fetcher(url, {
+      // Workers supports manual/follow, not error. Reject 3xx below without
+      // following Location, so the fixed GitHub API remains the only upstream.
+      method: 'GET', redirect: 'manual', signal,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'CREXE-public-download-counter',
+      },
+    });
+  } catch { throw new CountsError(signal.aborted ? 'timeout' : 'fetch-error'); }
+  if (!response.ok) {
+    const code = response.status === 403 ? 'github-http-403'
+      : response.status === 429 ? 'github-http-429' : 'github-http-error';
+    throw new CountsError(code);
+  }
+  try { return await response.json(); }
+  catch { throw new CountsError('invalid-json'); }
 }
 
 function collectCounts(assets, expected, found) {
-  if (!Array.isArray(assets)) throw new Error('Invalid asset list.');
+  if (!Array.isArray(assets)) throw new CountsError('assets-mismatch');
   for (const asset of assets) {
     if (!asset || !expected.has(asset.browser_download_url)) continue;
     if (asset.state !== 'uploaded' || !Number.isSafeInteger(asset.download_count) || asset.download_count < 0) {
-      throw new Error('Invalid download count.');
+      throw new CountsError('assets-mismatch');
     }
-    if (found.has(asset.browser_download_url)) throw new Error('Duplicate release asset.');
+    if (found.has(asset.browser_download_url)) throw new CountsError('assets-mismatch');
     found.set(asset.browser_download_url, asset.download_count);
   }
 }
@@ -123,7 +142,7 @@ async function queryCounts(manifest, fetcher, now, timeoutMs) {
   const deadline = new Promise((_, reject) => {
     timer = setTimeout(() => {
       controller.abort();
-      reject(new Error('GitHub request timed out.'));
+      reject(new CountsError('timeout'));
     }, timeoutMs);
   });
   const query = async () => {
@@ -132,7 +151,7 @@ async function queryCounts(manifest, fetcher, now, timeoutMs) {
         release.tag_name !== manifest.version || release.html_url !== manifest.releaseUrl ||
         typeof release.published_at !== 'string' || !Number.isFinite(Date.parse(release.published_at)) ||
         !Number.isSafeInteger(release.id) || release.id <= 0) {
-      throw new Error('The public release did not match the catalog.');
+      throw new CountsError('release-mismatch');
     }
     const expected = new Set(Object.values(manifest.platforms).filter(Boolean).map((entry) => entry.url));
     let found = new Map();
@@ -147,14 +166,14 @@ async function queryCounts(manifest, fetcher, now, timeoutMs) {
         if (found.size === expected.size || assets.length < 100) break;
       }
     }
-    if (found.size !== expected.size) throw new Error('A configured package is missing from the release.');
+    if (found.size !== expected.size) throw new CountsError('assets-mismatch');
     const data = emptyCounts('available', manifest);
     for (const platform of PLATFORMS) {
       const entry = manifest.platforms[platform];
       if (entry) data.platforms[platform] = found.get(entry.url);
     }
     data.total = [...found.values()].reduce((sum, count) => sum + count, 0);
-    if (!Number.isSafeInteger(data.total)) throw new Error('Download total exceeds integer precision.');
+    if (!Number.isSafeInteger(data.total)) throw new CountsError('assets-mismatch');
     data.updatedAt = new Date(now()).toISOString();
     return data;
   };
@@ -178,7 +197,7 @@ export function createDownloadCountsWorker(options = {}) {
         const catalog = await env.ASSETS.fetch(new Request(`${incoming.origin}/downloads.json`));
         if (!catalog.ok) throw new Error('Catalog unavailable.');
         manifest = readManifest(await catalog.json());
-      } catch { return finish(jsonResponse(emptyCounts('unavailable'), 503)); }
+      } catch { return finish(jsonResponse(emptyCounts('unavailable'), 503, 'catalog-error')); }
       if (!manifest.version || !Object.values(manifest.platforms).some(Boolean)) {
         return finish(jsonResponse(emptyCounts('unpublished', manifest)));
       }
@@ -198,7 +217,10 @@ export function createDownloadCountsWorker(options = {}) {
         const data = await queryCounts(manifest, options.fetch ?? globalThis.fetch,
           options.now ?? Date.now, Math.min(5000, Math.max(1, options.timeoutMs ?? 5000)));
         response = jsonResponse(data);
-      } catch { response = jsonResponse(emptyCounts('unavailable', manifest), 503); }
+      } catch (error) {
+        response = jsonResponse(emptyCounts('unavailable', manifest), 503,
+          error instanceof CountsError ? error.code : 'runtime-error');
+      }
       if (cache && key) {
         const cached = response.clone();
         cached.headers.set('Cache-Control', `public, max-age=${response.ok ? SUCCESS_TTL : ERROR_TTL}`);

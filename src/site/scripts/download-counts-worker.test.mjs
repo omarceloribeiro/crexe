@@ -28,7 +28,7 @@ function release(catalog = manifest()) {
       .flatMap((entry, index) => [asset(entry.url, 10 + index), asset(entry.checksumUrl, 1000)]),
   };
 }
-function harness({ catalog = manifest(), metadata, fetcher, cache = null, timeoutMs } = {}) {
+function harness({ catalog = manifest(), metadata, fetcher, cache = null, timeoutMs, now } = {}) {
   let current = catalog;
   const requests = [];
   const assetRequests = [];
@@ -42,7 +42,7 @@ function harness({ catalog = manifest(), metadata, fetcher, cache = null, timeou
     fetch: async (...args) => {
       requests.push(args);
       return fetcher ? fetcher(...args) : Response.json(metadata ?? release(current));
-    }, cache, now: () => Date.parse(checkedAt), timeoutMs,
+    }, cache, now: now ?? (() => Date.parse(checkedAt)), timeoutMs,
   });
   return {
     requests, assetRequests, setCatalog: (next) => { current = next; },
@@ -79,6 +79,7 @@ test('counts only advertised engine archives, excluding checksums and unrelated 
   assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
   assert.equal(response.headers.get('access-control-allow-origin'), null);
+  assert.equal(response.headers.get('x-crexe-counts-error'), null);
 });
 
 test('real zero stays zero; a disabled platform stays null; prereleases are supported', async () => {
@@ -158,6 +159,33 @@ test('rejects unpublished or mismatching release metadata', async (t) => {
   for (const [index, mutate] of mutations.entries()) await t.test(`invalid metadata ${index}`, async () => {
     const metadata = release(); mutate(metadata);
     assert.equal((await harness({ metadata }).request()).status, 503);
+  });
+});
+
+test('failure headers expose fixed categories without upstream or visitor details', async (t) => {
+  const sensitive = 'private-document-secret-token-192.0.2.1';
+  const cases = [
+    ['fetch-error', { fetcher: async () => { throw new Error(sensitive); } }],
+    ['invalid-json', { fetcher: async () => new Response(sensitive) }],
+    ['release-mismatch', { metadata: { ...release(), html_url: sensitive } }],
+    ['assets-mismatch', { metadata: { ...release(), assets: null } }],
+    ['catalog-error', { catalog: { ...manifest(), releaseUrl: sensitive } }],
+    ['runtime-error', { now: () => { throw new Error(sensitive); } }],
+    ['timeout', { timeoutMs: 5, fetcher: async () => new Promise(() => {}) }],
+    ...[403, 429, 500].map((status) => [status === 500 ? 'github-http-error' : `github-http-${status}`, {
+      fetcher: async () => new Response(sensitive, { status, headers: { 'X-Upstream-Detail': sensitive } }),
+    }]),
+  ];
+  for (const [code, options] of cases) await t.test(code, async () => {
+    const response = await harness(options).request(`/api/download-counts?secret=${sensitive}`, {
+      headers: { Authorization: `Bearer ${sensitive}`, Cookie: sensitive },
+    });
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('x-crexe-counts-error'), code);
+    const body = await response.text();
+    assert.equal(JSON.parse(body).total, null);
+    assert.equal(JSON.stringify([...response.headers]).includes(sensitive), false);
+    assert.equal(body.includes(sensitive), false);
   });
 });
 
@@ -289,7 +317,9 @@ test('upstream errors are cached briefly and cache errors do not suppress fresh 
   const cache = memoryCache();
   const app = harness({ cache, fetcher: async () => new Response('', { status: 429 }) });
   assert.equal((await app.request()).status, 503);
-  assert.equal((await app.request()).status, 503);
+  const cached = await app.request();
+  assert.equal(cached.status, 503);
+  assert.equal(cached.headers.get('x-crexe-counts-error'), 'github-http-429');
   assert.equal(app.requests.length, 1);
   assert.equal([...cache.records.values()][0].headers.get('cache-control'), 'public, max-age=60');
   const broken = { match: async () => { throw new Error('cache down'); }, put: async () => { throw new Error('cache full'); } };
